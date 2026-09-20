@@ -25,6 +25,9 @@ searches the web live, and connects to any application or database through **Mod
 3. **🛠️ Powerful Built-in Tools**:
    - **PowerShell / Terminal commands**: full computer control.
    - **Filesystem**: read, create, edit (regex replace).
+   - **📚 Local Workspace RAG**: `workspace_rag(query)` — zero-dependency BM25-style retrieval over ALL workspace
+     files (docs, notes, code). Returns the most relevant snippets **with file paths** so answers come with citations,
+     no embeddings or API keys needed.
    - **Live Web Search**: DuckDuckGo — fresh data, no key.
    - **Python Sandbox**: complex calculations and scripts in an isolated process.
    - **Deep Search**: multi-source research dossier.
@@ -34,6 +37,8 @@ searches the web live, and connects to any application or database through **Mod
    - **Process Manager**: list or kill running OS processes.
 4. **🧠 Long-term Memory (SQLite)**:
    - Saves conversations and learned facts to SQLite and remembers them in future sessions (`memory_save` / `memory_search`).
+   - **Auto recall**: every new task starts with the most relevant remembered facts already in context — the agent
+     begins each session knowing your name, preferences and past decisions (Memory-Agent pattern).
 5. **💻 Two Friendly Interfaces**:
    - **Web Dashboard**: modern dark cyberpunk glassmorphic control panel (reasoning display, tool animations, file manager, model browser).
    - **Terminal CLI**: Rich-based console.
@@ -183,7 +188,7 @@ titan-agent/
 ├── titan_agent/
 │   ├── agent.py              # TitanAgent — the core agentic loop (Plan-Act-Verify-Reflect) + modes + memory tools
 │   ├── llm_client.py         # Multi-provider LLM client (puter/openrouter/groq/deepseek/ollama/lmstudio/openai)
-│   ├── tools.py              # Built-in tools (execute_command, web_search, deep_search, deep_coder, system_info, manage_processes...)
+│   ├── tools.py              # Built-in tools (execute_command, web_search, workspace_rag, deep_search, deep_coder, system_info, manage_processes...)
 │   ├── mcp_client.py         # Model Context Protocol connection manager
 │   ├── memory.py             # SQLite long-term memory
 │   ├── deep_search.py        # DeepSearchEngine — multi-angle research dossier

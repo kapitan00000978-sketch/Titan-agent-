@@ -496,6 +496,7 @@ async function sendPuterMessage(prompt, card, statusLine) {
           "### TOOL CATALOG (execute via /api/tools/execute):\n" +
           "- execute_command(command, cwd?) — run PowerShell commands on the host OS\n" +
           "- read_file(path), write_file(path, content), edit_file(path, target_text, replacement_text), list_directory(path?) — filesystem\n" +
+          "- workspace_rag(query, top_k?) — find the most relevant snippets across ALL workspace files (with file paths)\n" +
           "- web_search(query, max_results?) — live DuckDuckGo search\n" +
           "- scrape_webpage(url) — fetch readable text from a URL\n" +
           "- python_eval(code) — run Python in a subprocess\n" +

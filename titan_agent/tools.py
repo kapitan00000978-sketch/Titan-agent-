@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+from math import log
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -14,6 +15,116 @@ try:
 except ImportError:
     from duckduckgo_search import DDGS
 from .config import WORKSPACE_DIR
+
+
+def _tokenize(text: str) -> list[str]:
+    """Lowercase alphanumeric tokens for lightweight lexical ranking."""
+    return re.findall(r"[a-z0-9][a-z0-9_\-']*", text.lower())
+
+
+class WorkspaceRAG:
+    """Zero-dependency retrieval over the workspace.
+
+    A lightweight, lexical (BM25-style) index over text files: documents are
+    split into overlapping chunks, scored against the query, and the top
+    chunks are returned with file paths so the LLM can answer WITH citations.
+    No external embeddings, no API keys — everything runs locally.
+    """
+
+    CHUNK_SIZE = 900
+    CHUNK_OVERLAP = 140
+    MAX_FILE_BYTES = 512 * 1024
+    TEXT_SUFFIXES = {
+        ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".md", ".txt",
+        ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".csv", ".xml",
+        ".sql", ".sh", ".ps1", ".bat", ".env", ".log",
+    }
+
+    def __init__(self, workspace: Path):
+        self.workspace = Path(workspace)
+
+    def _iter_documents(self):
+        """Yield (relative_path, text) for every searchable file in the workspace."""
+        if not self.workspace.exists():
+            return
+        for fpath in self.workspace.rglob("*"):
+            if not fpath.is_file():
+                continue
+            if fpath.suffix.lower() not in self.TEXT_SUFFIXES:
+                continue
+            try:
+                if fpath.stat().st_size > self.MAX_FILE_BYTES:
+                    continue
+                text = fpath.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            if not text.strip():
+                continue
+            yield fpath.relative_to(self.workspace).as_posix(), text
+
+    @staticmethod
+    def _chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
+        if len(text) <= size:
+            return [text]
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = start + size
+            chunk = text[start:end]
+            chunks.append(chunk)
+            if end >= len(text):
+                break
+            start = end - overlap
+        return chunks
+
+    @staticmethod
+    def _bm25(chunk_tokens: list[str], query_tokens: list[str], avg_len: float, k1: float = 1.5, b: float = 0.75) -> float:
+        if not chunk_tokens or not query_tokens or avg_len <= 0:
+            return 0.0
+        dl = len(chunk_tokens)
+        freq: Dict[str, int] = {}
+        for t in chunk_tokens:
+            freq[t] = freq.get(t, 0) + 1
+        score = 0.0
+        for qt in set(query_tokens):
+            f = freq.get(qt, 0)
+            if f == 0:
+                continue
+            tf_part = (f * (k1 + 1)) / (f + k1 * (1 - b + b * (dl / avg_len)))
+            score += tf_part
+        return score
+
+    def search(self, query: str, top_k: int = 4) -> list[dict[str, Any]]:
+        query_tokens = _tokenize(query)
+        if not query_tokens:
+            return []
+        candidates: list[dict[str, Any]] = []
+        for rel_path, text in self._iter_documents():
+            chunks = self._chunk_text(text)
+            chunk_lens = [len(_tokenize(c)) for c in chunks]
+            avg_len = max(1.0, sum(chunk_lens) / len(chunk_lens)) if chunk_lens else 1.0
+            for i, chunk in enumerate(chunks):
+                ct = _tokenize(chunk)
+                score = self._bm25(ct, query_tokens, avg_len)
+                if score <= 0:
+                    continue
+                # Bonus for earlier chunks (files usually front-load meaning).
+                score += max(0.0, 0.15 * (1 - i / max(len(chunks), 1)))
+                candidates.append({
+                    "path": rel_path,
+                    "chunk_index": i,
+                    "score": round(score, 4),
+                    "snippet": chunk.strip()[:700],
+                })
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        # Keep at most one chunk per file unless the file is clearly central.
+        picked: list[dict[str, Any]] = []
+        per_file: Dict[str, int] = {}
+        for c in candidates:
+            per_file[c["path"]] = per_file.get(c["path"], 0) + 1
+            if per_file[c["path"]] <= 2 and len(picked) < max(top_k, 1):
+                picked.append(c)
+        return picked[:top_k]
 
 
 class ToolRegistry:
@@ -181,6 +292,27 @@ class ToolRegistry:
                             }
                         },
                         "required": ["code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "workspace_rag",
+                    "description": "Searches all text/code files inside the workspace using a fast local lexical (BM25) retrieval index and returns the most relevant snippets WITH their file paths. Use this instead of read_file when you need to answer a question from documents, notes, or code that may live anywhere in the workspace — it finds the exact relevant lines fast.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The question or keywords to find inside workspace files."
+                            },
+                            "top_k": {
+                                "type": "integer",
+                                "description": "How many snippets to return (default 4, range 1-8)."
+                            }
+                        },
+                        "required": ["query"]
                     }
                 }
             },
@@ -452,6 +584,21 @@ class ToolRegistry:
             out.append(f"\nUnit Test Execution: {'PASSED' if res['test_passed'] else 'FAILED'}")
             out.append(f"Output:\n```\n{res['test_output']}\n```")
         return "\n".join(out)
+
+    def tool_workspace_rag(self, query: str, top_k: int = 4) -> str:
+        try:
+            rag = WorkspaceRAG(self.workspace)
+            top_k = max(1, min(int(top_k or 4), 8))
+            results = rag.search(query, top_k=top_k)
+            if not results:
+                return "No relevant snippets found in the workspace for this query."
+            lines = [f"### WORKSPACE RAG RESULTS for: {query}"]
+            for r in results:
+                lines.append(f"\n**{r['path']}** (chunk {r['chunk_index']}, score {r['score']}):")
+                lines.append(r["snippet"])
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Workspace RAG error: {e!s}"
 
     def tool_launch_application(self, app_or_command: str) -> str:
         try:

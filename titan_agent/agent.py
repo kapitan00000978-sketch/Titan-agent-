@@ -21,6 +21,7 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 ### TOOL CATALOG (use these; the full live catalog is appended to your context):
 - execute_command — run PowerShell/terminal commands (real OS execution)
 - read_file / write_file / edit_file / list_directory — filesystem operations inside the workspace
+- workspace_rag — local BM25 retrieval: finds the most relevant snippets (with file paths) across ALL workspace files for any question
 - web_search — live DuckDuckGo internet search
 - scrape_webpage — fetch readable text from a URL
 - python_eval — run Python in an isolated subprocess
@@ -277,6 +278,15 @@ class TitanAgent:
             + "\n\n### LIVE TOOL CATALOG (all tools currently available):\n"
             + catalog_text
         )
+        # Auto-recall: seed remembered facts relevant to this request (Memory
+        # Agent pattern) so the model starts the turn already knowing the user.
+        recalled = self.memory.recall_relevant(user_input, limit=5)
+        if recalled:
+            recall_block = "\n\n### REMEMBERED FACTS (from long-term memory, relevant to this request):\n"
+            for f in recalled:
+                recall_block += f"- [{f['category']}] {f['key']}: {f['value']}\n"
+            recall_block += "(Use these facts as true context; do not claim you read them fresh.)"
+            system_content += recall_block
         if mode == "deep":
             system_content += "\n\n" + DEEP_THINKING_PROMPT
         elif mode == "deep_search":

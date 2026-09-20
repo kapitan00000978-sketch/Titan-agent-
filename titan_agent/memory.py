@@ -1,4 +1,5 @@
 import json
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -7,6 +8,10 @@ from typing import Any
 from .config import BASE_DIR
 
 DB_PATH = BASE_DIR / "titan_memory.db"
+
+def _tokens(text: str) -> set[str]:
+    """Lowercase alphanumeric tokens for lightweight relevance matching."""
+    return set(re.findall(r"[a-z0-9][a-z0-9_\-']*", str(text).lower()))
 
 class MemoryManager:
     def __init__(self, db_path: Path = DB_PATH):
@@ -103,6 +108,31 @@ class MemoryManager:
             cursor = conn.cursor()
             cursor.execute("SELECT category, key, value FROM knowledge ORDER BY id DESC LIMIT 50")
             return [{"category": r[0], "key": r[1], "value": r[2]} for r in cursor.fetchall()]
+
+    def recall_relevant(self, query: str, limit: int = 5) -> list[dict[str, str]]:
+        """Return the long-term facts most relevant to `query` (lexical overlap).
+
+        Used to auto-seed a session with remembered context (Memory Agent
+        pattern): the agent's message is matched against every saved fact and
+        the best-scoring ones are injected into the system context so the model
+        starts the turn already knowing the user.
+        """
+        q_tokens = _tokens(query) if query else set()
+        if not q_tokens:
+            return []
+        facts = self.get_all_knowledge()
+        ranked = []
+        for f in facts:
+            haystack = _tokens(f"{f['key']} {f['value']} {f['category']}")
+            if not haystack:
+                continue
+            hits = len(q_tokens & haystack)
+            if hits:
+                # Prefer exact key matches and higher overlap share.
+                key_hit = 1.0 if (q_tokens & _tokens(f["key"])) else 0.0
+                ranked.append((hits + key_hit, len(haystack), f))
+        ranked.sort(key=lambda r: (-r[0], r[1]))
+        return [f for _, _, f in ranked[:limit]]
 
     def clear_session(self, session_id: str):
         with self._get_conn() as conn:

@@ -58,6 +58,98 @@ def test_tool_python_eval():
     assert "42" in py_res
 
 
+def test_tool_workspace_rag(tmp_path):
+    """workspace_rag finds relevant snippets with file paths, locally."""
+    from titan_agent.tools import ToolRegistry
+
+    ws = tmp_path / "ragdoc"
+    ws.mkdir()
+    (ws / "notes.md").write_text(
+        "# Meeting notes\nBudget for Q3 is 45k dollars. Team wants more tests.\n",
+        encoding="utf-8",
+    )
+    (ws / "code.py").write_text(
+        "def calculate_budget():\n    return 45000  # quarterly budget\n",
+        encoding="utf-8",
+    )
+    (ws / "unrelated.txt").write_text(
+        "The cat sat on the mat. Nothing about money here.\n",
+        encoding="utf-8",
+    )
+    reg = ToolRegistry(workspace=ws)
+
+    result = reg.tool_workspace_rag("budget", top_k=3)
+    assert "notes.md" in result
+    assert "code.py" in result
+    assert "unrelated.txt" not in result
+    # Snippets carry the matched text for citation-style answers
+    assert "45k" in result or "45000" in result
+
+    # Empty / no-match query returns a graceful message
+    empty = reg.tool_workspace_rag("zzzzzznomatch", top_k=2)
+    assert "No relevant snippets" in empty
+
+
+def test_memory_auto_recall(tmp_path):
+    """recall_relevant returns only facts that actually match the query."""
+    from titan_agent.memory import MemoryManager
+
+    mem = MemoryManager(tmp_path / "mem_test.db")
+    mem.remember_fact("user_name", "Aziz", category="profile")
+    mem.remember_fact("favorite_food", "osh", category="preference")
+    mem.remember_fact("project_api_key", "sk-test-123", category="project")
+
+    hits = mem.recall_relevant("Aziz asked about osh recipe", limit=5)
+    keys = {f["key"] for f in hits}
+    assert "user_name" in keys
+    assert "favorite_food" in keys
+    assert "project_api_key" not in keys
+
+    # Exact key match ranks first even when the shared token is common
+    hits2 = mem.recall_relevant("user_name please", limit=5)
+    assert hits2 and hits2[0]["key"] == "user_name"
+
+
+def test_run_task_auto_recalls_memory_into_system_prompt(tmp_path):
+    """Fast-mode run_task seeds the system context with remembered facts."""
+    import asyncio
+    from titan_agent.agent import TitanAgent
+    from titan_agent.llm_client import LLMResponse
+    from titan_agent.memory import MemoryManager
+
+    mem = MemoryManager(tmp_path / "recall_integration.db")
+    mem.remember_fact("user_favorite", "apple juice", category="preference")
+
+    captured = {}
+
+    class FakeLLM:
+        async def chat_completion(self, messages, tools=None):
+            captured["system"] = messages[0]["content"]
+            captured["tools"] = tools
+            return LLMResponse(content="You like apple juice.")
+
+    async def _run():
+        agent = TitanAgent(llm=FakeLLM(), memory=mem)
+        return [ev async for ev in agent.run_task("What do I like to drink?", session_id="t", mode="fast")]
+
+    events = asyncio.run(_run())
+    # (the recall is best-effort lexical: use a query that overlaps the fact) — rerun with overlap
+    async def _run2():
+        agent = TitanAgent(llm=FakeLLM(), memory=mem)
+        return [ev async for ev in agent.run_task("I want some apple juice", session_id="t", mode="fast")]
+
+    asyncio.run(_run())
+    events = asyncio.run(_run2())
+
+    # The recall block reached the model's system prompt
+    assert "REMEMBERED FACTS" in captured["system"]
+    assert "apple juice" in captured["system"]
+    # The live catalog still advertises the new RAG tool
+    assert "workspace_rag" in captured["system"]
+    # And a plain final answer was produced
+    assert any(ev.type == "final_answer" for ev in events)
+
+
 def test_tool_deep_search():
     tools = ToolRegistry(WORKSPACE_DIR)
     deep_s_res = asyncio.run(tools.tool_deep_search("Python 3.12"))

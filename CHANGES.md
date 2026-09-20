@@ -106,9 +106,30 @@ All fixes and improvements made during the completion effort of this project.
 - **`mcp_servers.json`** made portable: `{WORKSPACE}` placeholder instead of a hardcoded path —
   `mcp_client.py` replaces it automatically with the real path (works on any machine).
 
+## 🆕 Local Workspace RAG + auto memory recall (2026)
+
+Two zero-cost, zero-dependency capabilities (no embeddings, no API keys):
+
+- **`workspace_rag(query, top_k?)` tool** (`titan_agent/tools.py`) — a lightweight local
+  **BM25-style retrieval index** over every text/code file in the workspace. Files are split
+  into overlapping chunks, scored against the query, and the top snippets are returned **with
+  their file paths** so the LLM can answer document/code questions *with citations* without
+  reading whole files. Works both in the backend agent loop and the in-browser Puter mode.
+- **Auto memory recall** (`titan_agent/memory.py` + `agent.py`) — at the start of every task,
+  Titan matches the user's request against saved long-term facts (`recall_relevant`) and seeds
+  the most relevant ones into the system context as *Remembered Facts*, so a session begins
+  already knowing the user (Memory-Agent pattern). The recall is best-effort lexical overlap —
+  silent when nothing matches, never noisy.
+- **Web UI** (`web_ui/app.js`) — the Puter system prompt advertises `workspace_rag` so the
+  in-browser agent reaches for it too.
+- **Tests** — `test_tool_workspace_rag` (finds relevant snippets + paths, ignores unrelated
+  files), `test_memory_auto_recall` (only matching facts returned, exact key match ranks
+  first), `test_run_task_auto_recalls_memory_into_system_prompt` (proves the remembered
+  facts reach the model's system context).
+
 ## ✅ Verified status
 
-- `python -m pytest tests -q` → **20 passed**
+- `python -m pytest tests -q` → **23 passed**
 - Server `python run.py` → starts, Web UI `http://127.0.0.1:7860`
 - MCP `filesystem` server (14 tools) connects cleanly with the `{WORKSPACE}` placeholder
 - Config: `puter / deepseek/deepseek-v4-pro`
