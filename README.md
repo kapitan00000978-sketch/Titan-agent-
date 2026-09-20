@@ -1,123 +1,128 @@
-# ⚡ TITAN AGENT — Hermes 3 dan ancha kuchli Avtonom AI Tizimi
+# ⚡ TITAN AGENT — Autonomous AI System, Far Beyond Hermes 3
 
-> **Titan Agent** — bu Nous Research Hermes 3, DeepSeek-R1 va zamonaviy eng kuchli AI agentlar imkoniyatlarini
-> o'zida birlashtirgan, to'liq mustaqil ishlay oladigan **Agentik AI Platformasi**.
+> **Titan Agent** — an autonomous **Agentic AI Platform** that combines Agent Core 2.0 discipline,
+> MCP (Model Context Protocol) integration, web research, coding, and OS control into one engine
+> engineered to outperform Nous Research Hermes 3, DeepSeek-R1 and frontier-tier agents.
 
-U nafaqat matn yozadi, balki mustaqil fikrlaydi, kompyuteringizda buyruqlar va dasturlarni ishga tushiradi,
-internetdan jonli qidiradi va **Model Context Protocol (MCP)** orqali har qanday ilova va ma'lumotlar bazasiga ulanadi.
+It does not just write text — it thinks autonomously, runs commands and programs on your computer,
+searches the web live, and connects to any application or database through **Model Context Protocol (MCP)**.
 
-| CI Status | Litsenziya | Python |
+| CI Status | License | Python |
 |---|---|---|
 | [![CI - Tests](https://github.com/YOUR_USERNAME/titan-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/titan-agent/actions) | MIT | 3.10+ |
 
 ---
 
-## 🚀 Asosiy Afzalliklari (Nega Hermes 3 dan ancha kuchli?)
+## 🚀 Key Advantages (Why it beats Hermes 3)
 
-1. **Ko'p Modelli va Moslashuvchan (Multi-LLM Routing)**:
-   - 🆓 **Puter.js — 500+ BEPUL modellar** (kalitsiz, to'g'ridan-to'g'ri brauzerda): DeepSeek V4 Pro, Claude, GPT-4o, Llama va boshqalar (`:free` varianti bilan)
-   - Nous Research Hermes 3 (Llama 3.1 405B / 70B / 8B)
-   - DeepSeek-R1 / V3 (Chuqur mantiqiy fikrlash)
-   - OpenAI GPT-4o / Claude 3.7 Sonnet
-   - Mahalliy bepul **Ollama** (internetsiz va mutlaqo maxfiy ishlash)
-2. **🔌 Model Context Protocol (MCP) Integratsiyasi**:
-   - `mcp_servers.json` orqali GitHub, SQLite, PostgreSQL, Filesystem, Slack, Brave Search va boshqa har qanday MCP serverlarni to'g'ridan-to'g'ri ulaydi!
-3. **🛠️ Kuchli Ichki Asboblar (Built-in Tools)**:
-   - **PowerShell / Terminal buyruqlari**: kompyuterni to'liq boshqarish.
-   - **Fayllar tizimi**: o'qish, yaratish, tahrirlash (regex replace).
-   - **Jonli Veb Qidiruv**: DuckDuckGo orqali 100% tekin va kalitsiz internetdan yangi ma'lumotlarni olish.
-   - **Python Sandbox**: murakkab hisob-kitoblar va skriptlarni alohida jarayonda bajarish.
-   - **Deep Search**: ko'p manbali chuqur tadqiqot dossyeri.
-   - **Deep Coder**: to'liq dasturiy ta'minot sikli (fayl yozish, sintaksis tekshirish, test yurgizish).
-   - **Ilovalarni ochish**: Windows dasturlarini ishga tushirish.
-4. **🧠 Uzoq Muddatli Xotira (SQLite Memory)**:
-   - Suhbatlar va o'rganilgan faktlarni SQLite bazasida saqlaydi va keyingi sessiyalarda ham eslab qoladi.
-5. **💻 Ikkita Qulay Interfeys**:
-   - **Web Dashboard**: Zamonaviy Dark Cyberpunk Glassmorphic vizual boshqaruv paneli (fikrlash, asboblar animatsiyasi, fayllar boshqaruvi, 500+ bepul model brauzeri).
-   - **Terminal CLI**: Rich kutubxonasi bilan konsoldan ishlash.
-6. **⚡ Yangi: Agent Core 2.0 — Hermes max darajasidan ham ustun**:
-   - **Reflection passi**: har bir real vazifadan so'ng Titan o'z ishini tanqidiy tekshiradi, xatolarni tuzatadi va sayqallangan javob beradi (Hermes'da bu sikl yo'q).
-   - **Faol xotira tool'lari**: `memory_save` / `memory_search` — faktlarni barcha sessiyalarda eslab qoladi.
-   - **Real-dunyo nazorati**: `system_info` (OS/CPU/RAM/disk) va `manage_processes` (jarayonlarni ro'yxat/tugatish).
+1. **Multi-Model & Flexible (Multi-LLM Routing)**:
+   - **Puter.js — 500+ models** (no key, runs directly in the browser): DeepSeek V4 Pro, Claude, GPT-4o, Llama and more
+   - DeepSeek V4 Pro / Flash, Claude 3.7/3.5 Sonnet, GPT-4o / mini, Gemini 2.0 Flash
+   - OpenAI GPT-4o / Claude 3.7 Sonnet (API keys optional)
+   - Local **Ollama** (fully offline and private)
+2. **🔌 Model Context Protocol (MCP) Integration**:
+   - Connect GitHub, SQLite, PostgreSQL, Filesystem, Slack, Brave Search and any other MCP server via `mcp_servers.json`!
+3. **🛠️ Powerful Built-in Tools**:
+   - **PowerShell / Terminal commands**: full computer control.
+   - **Filesystem**: read, create, edit (regex replace).
+   - **Live Web Search**: DuckDuckGo — fresh data, no key.
+   - **Python Sandbox**: complex calculations and scripts in an isolated process.
+   - **Deep Search**: multi-source research dossier.
+   - **Deep Coder**: full software engineering cycle (write files, syntax check, run tests).
+   - **Launch applications**: run Windows apps.
+   - **System Info**: live OS / CPU / RAM / disk / Python / Node / Git facts.
+   - **Process Manager**: list or kill running OS processes.
+4. **🧠 Long-term Memory (SQLite)**:
+   - Saves conversations and learned facts to SQLite and remembers them in future sessions (`memory_save` / `memory_search`).
+5. **💻 Two Friendly Interfaces**:
+   - **Web Dashboard**: modern dark cyberpunk glassmorphic control panel (reasoning display, tool animations, file manager, model browser).
+   - **Terminal CLI**: Rich-based console.
+6. **⚡ Agent Core 2.0 — beyond Hermes' max tier**:
+   - **Reflection pass**: after every real task Titan critically reviews its own work, fixes errors and returns a polished answer (Hermes has no such loop).
+   - **Active memory tools**: `memory_save` / `memory_search` — facts remembered across all sessions.
+   - **Real-world control**: `system_info` and `manage_processes`.
+7. **🎛️ Three Execution Modes**:
+   - **⚡ Fast** — quick, efficient single-pass tasks.
+   - **🧠 Deep Thinking** — extended reasoning, edge-case analysis, stricter verification, double iteration budget.
+   - **🔍 Deep Search** — automatic multi-source research dossier seeded before the answer, plus research-first instructions.
+8. **🚀 Parallel Tool Execution**:
+   - Multiple independent AI tools run **simultaneously** (batch tool calls) — from the agent loop and from the Puter in-browser path.
 
 ---
 
-## 🚀 Tezkor ishga tushirish
+## 🚀 Quick Start
 
-### 1-usul: Windows — `start.bat` (bitta bosish)
-`start.bat` faylini ikki marta bosing va Web yoki CLI rejimini tanlang. Skript `venv`, qaramliklar va `.env` ni avtomatik sozlaydi.
+### Method 1: Windows — `start.bat` (one click)
+Double-click `start.bat` and choose Web or CLI mode. The script auto-sets up `venv`, dependencies and `.env`.
 
-### 2-usul: PowerShell (tavsiya etiladi)
+### Method 2: PowerShell (recommended)
 ```powershell
 # Web Dashboard (default):
 .\start-titan.ps1
 
-# Terminal CLI rejimida:
+# Terminal CLI mode:
 .\start-titan.ps1 -CLI
 
-# Boshqa portda:
+# Different port:
 .\start-titan.ps1 -Port 8000
 
-# Muayyan provayder/model bilan:
+# Specific provider/model:
 .\start-titan.ps1 -Provider ollama -Model hermes3:8b
 ```
 
-### 3-usul: Qo'lda
+### Method 3: Manual
 ```bash
-# Web Dashboardni ishga tushirish:
+# Launch Web Dashboard:
 python run.py
 
-# Yoki Terminal CLI rejimida ishga tushirish:
+# Or Terminal CLI mode:
 python run.py --cli
 
-# Provayder/modelni vaqtincha almashtirish:
+# Temporarily switch provider/model:
 python run.py --provider ollama --model hermes3:8b
 ```
 
-Web dashboard avtomatik ravishda brauzeringizda `http://127.0.0.1:7860` manzilida ochiladi.
+The web dashboard opens automatically in your browser at `http://127.0.0.1:7860`.
 
-> 💡 **Mutlaqo kalitsiz ishlatish:** Web Dashboardda sozlamalar (⚙️) dan **Puter.js** provayderini tanlang —
-> **"🌐 Barcha Bepul Modellar"** tugmasi bilan 500+ bepul modelni ko'ring, `:free` variantini tanlang —
-> DeepSeek V4 Pro / Claude / GPT-4o kabi modellar 100% bepul, API kalit talab qilmaydi va to'g'ridan-to'g'ri
-> brauzeringizda ishlaydi. Yoki mahalliy **Ollama** dan foydalaning.
+> 💡 **No API key required:** In the Web Dashboard open Settings (⚙️) and keep the **Puter.js** provider —
+> click **"🌐 All Models"** to browse every available model and pick one (DeepSeek V4 Pro / Claude / GPT-4o etc.).
+> Everything runs directly in your browser, no API key needed. Or use local **Ollama**.
 
 ---
 
-## ⚙️ Sozlamalar va API Kalitlari
+## ⚙️ Settings & API Keys
 
-Web interfeysning yuqori o'ng burchagidagi sozlamalar tugmasi orqali yoki `.env` faylida provayderni belgilashingiz mumkin.
+Set the provider from the settings button in the top-right corner of the web interface, or in the `.env` file.
 
-**Klavon resurs:**
+**First launch — create `.env`:**
 ```bash
-# Birinchi ishga tushirishda .env ni yaratish (agar mavjud bo'lmasa):
 copy .env.example .env
 ```
 
 ```env
-# Puter.js — bepul, kalitsiz (brauzerda ishlaydi):
+# Puter.js — browser-side, no key:
 TITAN_PROVIDER=puter
 TITAN_MODEL=deepseek/deepseek-v4-pro
 
-# Yoki API kalitli provayder:
-TITAN_PROVIDER=openrouter
-TITAN_MODEL=nousresearch/hermes-3-llama-3.1-405b:free
-OPENROUTER_API_KEY=your_key_here
+# Or a keyed provider:
+TITAN_PROVIDER=deepseek
+TITAN_MODEL=deepseek-chat
+DEEPSEEK_API_KEY=your_key_here
 ```
 
-### Mahalliy Ollama bilan bepul ishlatish:
-1. Kompyuteringizda Ollamani ishga tushiring: `ollama run hermes3` yoki `ollama run qwen2.5-coder`
-2. Sozlamalardan Provayderni **Ollama** ga o'tkazing — hech qanday API kalit talab qilinmaydi!
+### Using local Ollama:
+1. Start Ollama on your computer: `ollama run hermes3` or `ollama run qwen2.5-coder`
+2. Switch the provider to **Ollama** in Settings — no API key required!
 
-> ⚠️ **Eslatma:** Puter.js faqat **brauzer (Web Dashboard)** da ishlaydi — u `puter.ai` SDK'sini
-> ishga tushiradigan veb-sahifa ichida yashaydi. CLI'da Puter tanlangan bo'lsa, Titan avtomatik ravishda
-> Ollama'ga o'tadi, aks holda foydalanuvchiga yo'l-yo'riq ko'rsatadi.
+> ⚠️ **Note:** Puter.js only works in the **browser (Web Dashboard)** — it runs inside the webpage that loads the
+> `puter.ai` SDK. In the CLI, if Puter is selected, Titan automatically falls back to Ollama, otherwise it guides the user.
 
 ---
 
-## 🔌 MCP Serverlarini qo'shish
+## 🔌 Adding MCP Servers
 
-`mcp_servers.json` fayliga istalgan MCP serveringizni qo'shishingiz mumkin. `{WORKSPACE}` va `{BASE_DIR}`
-placeholder'lari avtomatik ravishda haqiqiy yo'llarga almashtiriladi — shuning uchun konfiguratsiya portativ:
+Add any MCP server to `mcp_servers.json`. `{WORKSPACE}` and `{BASE_DIR}` placeholders are replaced
+automatically with real paths — so the configuration is portable:
 ```json
 {
   "mcpServers": {
@@ -128,62 +133,63 @@ placeholder'lari avtomatik ravishda haqiqiy yo'llarga almashtiriladi — shuning
   }
 }
 ```
-Titan Agent ishga tushganda bu serverlarning barcha vositalarini avtomatik aniqlaydi va o'zining aqliy sikliga qo'shadi!
+When Titan Agent starts, it auto-detects all tools of these servers and adds them to its reasoning loop!
 
-> 🔎 **Izoh:** Internetdan ma'lumot olish uchun Titan'ning o'zida `web_search` va `scrape_webpage`
-> asboblari mavjud — alohida MCP fetch serveri shart emas (eski `@modelcontextprotocol/server-fetch`
-> paketi npm'dan olib tashlangan).
+> 🔎 **Note:** Titan has its own `web_search` and `scrape_webpage` tools for internet data — a separate MCP
+> fetch server is not needed (the old `@modelcontextprotocol/server-fetch` package was removed from npm).
 
 ---
 
-## 🧪 Testlar
+## 🧪 Tests
 
 ```bash
 python -m pytest tests -q
 ```
 
-GitHub Actions CI (`tests.yml`) `push` va `pull_request` da Python 3.10/3.12 bilan testlarni avtomatik yurgizadi.
+GitHub Actions CI (`tests.yml`) automatically runs tests on Python 3.10/3.12 on `push` and `pull_request`.
 
 ---
 
-## 🗂️ Loyiha Tuzilishi
+## 🗂️ Project Structure
 
 ```
 titan-agent/
-├── run.py                    # Asosiy kirish nuqtasi (Web/CLI)
-├── cli.py                    # Terminal CLI rejimi
-├── start-titan.ps1           # PowerShell ishga tushirish skripti
-├── start.bat                 # Windows bitta-bosish ishga tushiruvchi
+├── run.py                    # Main entry point (Web/CLI)
+├── cli.py                    # Terminal CLI mode (Rich)
+├── start-titan.ps1           # PowerShell launcher script
+├── start.bat                 # Windows one-click launcher
 ├── requirements.txt
-├── mcp_servers.json          # MCP server konfiguratsiyasi
-├── .env.example              # Sozlamalar shabloni (nusxalab .env qiling)
-├── tests/                    # pytest testlari (9 ta)
+├── mcp_servers.json          # MCP server configuration
+├── .env.example              # Settings template (copy to .env)
+├── tests/                    # pytest tests
 ├── titan_agent/
-│   ├── agent.py              # TitanAgent — asosiy agentik sikl (Plan-Act-Verify-Reflect) + xotira tool'lari
-│   ├── llm_client.py         # Multi-provider LLM mijoz (puter/openrouter/groq/deepseek/ollama/lmstudio/openai)
-│   ├── tools.py              # Ichki asboblar (execute_command, web_search, deep_search, deep_coder, system_info, manage_processes...)
-│   ├── mcp_client.py         # Model Context Protocol ulanish boshqaruvi
-│   ├── memory.py             # SQLite uzoq muddatli xotira
-│   ├── config.py             # .env dan sozlamalar
+│   ├── agent.py              # TitanAgent — the core agentic loop (Plan-Act-Verify-Reflect) + modes + memory tools
+│   ├── llm_client.py         # Multi-provider LLM client (puter/openrouter/groq/deepseek/ollama/lmstudio/openai)
+│   ├── tools.py              # Built-in tools (execute_command, web_search, deep_search, deep_coder, system_info, manage_processes...)
+│   ├── mcp_client.py         # Model Context Protocol connection manager
+│   ├── memory.py             # SQLite long-term memory
+│   ├── deep_search.py        # DeepSearchEngine — multi-angle research dossier
+│   ├── deep_coder.py         # DeepCoderEngine — full software engineering cycle
+│   ├── config.py             # Settings from .env
 │   └── web_ui/               # Web Dashboard (index.html, app.js, style.css)
-└── workspace/                # Agent ishchi katalogi (git'ga kirmaydi)
+└── workspace/                # Agent working directory (gitignored)
 ```
 
 ---
 
-## 📜 Litsenziya
+## 📜 License
 
-MIT License — batafsil `LICENSE` faylida.
+MIT License — see `LICENSE` for details.
 
 ---
 
-## 🤝 Hissa qo'shish
+## 🤝 Contributing
 
-1. Fork va clone qiling
-2. Yangi branch yarating: `git checkout -b feature/x`
-3. O'zgartirishlar kiritib, testlarni yurgizing: `python -m pytest tests -q`
-4. Pull Request oching
+1. Fork and clone
+2. Create a new branch: `git checkout -b feature/x`
+3. Make changes and run tests: `python -m pytest tests -q`
+4. Open a Pull Request
 
-## ⭐ Qo'llab-quvvatlash
+## ⭐ Support
 
-Loyiha sizga yoqsa — ⭐ bosing! Savollar, takliflar va muammolar uchun GitHub Issues bo'limidan foydalaning.
+If you like this project — give it a ⭐! For questions, suggestions and issues use GitHub Issues.

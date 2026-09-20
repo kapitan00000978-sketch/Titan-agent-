@@ -53,17 +53,18 @@ async def root():
     if index_file.exists():
         with open(index_file, "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
-    return HTMLResponse("<h1>Titan Agent Web UI yuklanmoqda...</h1>")
+    return HTMLResponse("<h1>Titan Agent Web UI loading...</h1>")
 
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "web_session"
+    mode: str = "fast"
 
 @app.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest):
     async def event_generator():
         try:
-            async for ev in agent.run_task(req.message, session_id=req.session_id):
+            async for ev in agent.run_task(req.message, session_id=req.session_id, mode=req.mode):
                 payload = json.dumps(ev.to_dict())
                 yield f"data: {payload}\n\n"
         except Exception as e:

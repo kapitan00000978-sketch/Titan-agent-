@@ -1,17 +1,17 @@
 ﻿<#
 .SYNOPSIS
-    TITAN AGENT - PowerShell ishga tushirish skripti (avtomatik setup + Web/CLI).
+    TITAN AGENT - PowerShell launcher script (automatic setup + Web/CLI).
 
 .DESCRIPTION
-    - Python 3.10+ mavjudligini tekshiradi
-    - venv yaratadi (agar yo'q bo'lsa) va qaramliklarni o'rnatadi
-    - .env yo'q bo'lsa .env.example dan yaratadi
-    - Web Dashboard (default) yoki Terminal CLI rejimida ishga tushiradi
+    - Checks Python 3.10+ availability
+    - Creates venv (if missing) and installs dependencies
+    - Creates .env from .env.example if missing
+    - Launches Web Dashboard (default) or Terminal CLI mode
 
 .EXAMPLE
     .\start-titan.ps1                 # Web Dashboard (default)
-    .\start-titan.ps1 -CLI            # Terminal CLI rejimi
-    .\start-titan.ps1 -Port 8000      # Boshqa portda Web
+    .\start-titan.ps1 -CLI            # Terminal CLI mode
+    .\start-titan.ps1 -Port 8000      # Web on a different port
     .\start-titan.ps1 -Provider ollama -Model hermes3:8b
 #>
 [CmdletBinding()]
@@ -39,29 +39,29 @@ function Test-Python {
     try {
         $v = python --version 2>&1
         if ($LASTEXITCODE -ne 0) { throw "" }
-        Write-Titan "Python aniqlanmoqda: $v"
+        Write-Titan "Detecting Python: $v"
         return $true
     } catch {
-        Write-Host "❌ Python topilmadi. https://www.python.org/downloads/ dan Python 3.10+ o'rnating." -ForegroundColor Red
+        Write-Host "❌ Python not found. Install Python 3.10+ from https://www.python.org/downloads/." -ForegroundColor Red
         return $false
     }
 }
 
 function Ensure-Venv {
     if (-not (Test-Path $VenvPy)) {
-        Write-Titan "Yangi venv yaratilmoqda..."
+        Write-Titan "Creating a new venv..."
         python -m venv $Venv
-        if ($LASTEXITCODE -ne 0) { throw "venv yaratib bo'lmadi" }
+        if ($LASTEXITCODE -ne 0) { throw "Failed to create venv" }
     }
-    Write-Titan "Qaramliklar tekshirilmoqda/sozlanmoqda (birinchi marta uzoq davom etishi mumkin)..."
+    Write-Titan "Checking/installing dependencies (may take a while on first run)..."
     & $VenvPy -m pip install --upgrade pip --quiet
     & $VenvPy -m pip install -r $Requirements --quiet
-    if ($LASTEXITCODE -ne 0) { throw "pip install muvaffaqiyatsiz" }
+    if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 }
 
 function Ensure-Env {
     if (-not (Test-Path $EnvFile) -and (Test-Path $EnvExample)) {
-        Write-Titan ".env fayli .env.example dan yaratilmoqda..."
+        Write-Titan "Creating .env from .env.example..."
         Copy-Item $EnvExample $EnvFile
     }
 }
@@ -69,12 +69,12 @@ function Ensure-Env {
 function Start-Titan {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor DarkCyan
-    Write-Host "   ⚡ TITAN AGENT — Avtonom AI Tizimi (PowerShell)" -ForegroundColor Cyan
+    Write-Host "   ⚡ TITAN AGENT — Autonomous AI System (PowerShell)" -ForegroundColor Cyan
     Write-Host "============================================================" -ForegroundColor DarkCyan
     Write-Host ""
 
     if ($CLI) {
-        Write-Titan "Terminal CLI rejimi ishga tushirilmoqda..."
+        Write-Titan "Starting Terminal CLI mode..."
         & $VenvPy run.py --cli
     } else {
         $urlArgs = @("run.py")
@@ -82,7 +82,7 @@ function Start-Titan {
         if ($NoBrowser) { $urlArgs += "--no-browser" }
         if ($Provider) { $urlArgs += "--provider"; $urlArgs += $Provider }
         if ($Model) { $urlArgs += "--model"; $urlArgs += $Model }
-        Write-Titan "Web Dashboard ishga tushirilmoqda: http://127.0.0.1:$Port"
+        Write-Titan "Starting Web Dashboard: http://127.0.0.1:$Port"
         & $VenvPy @urlArgs
     }
 }
@@ -99,6 +99,6 @@ try {
         Pop-Location
     }
 } catch {
-    Write-Host "❌ Xatolik: $_" -ForegroundColor Red
+    Write-Host "❌ Error: $_" -ForegroundColor Red
     exit 1
 }

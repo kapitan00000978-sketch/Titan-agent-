@@ -129,8 +129,8 @@ class LLMClient:
     ) -> LLMResponse:
         if self.provider == "puter":
             raise RuntimeError(
-                "Puter.js provayderi faqat brauzer (Web UI) ichida ishlaydi. "
-                "Server orqali ishlatish uchun OpenRouter, DeepSeek, Groq, OpenAI yoki Ollama tanlang."
+                "Puter.js runs only inside the browser (Web UI). "
+                "For server-side usage, choose OpenRouter, DeepSeek, Groq, OpenAI or Ollama."
             )
         if not self.base_url:
             raise RuntimeError(f"Provider '{self.provider}' is not configured (missing API key).")
@@ -160,9 +160,9 @@ class LLMClient:
                     hint = ""
                     if resp.status in (401, 403):
                         hint = (
-                            " (Ishonch: API kaliti noto'g'ri yoki o'rnatilmagan. "
-                            "Web UI sozlamalaridan Puter.js (kalitsiz) yoki Ollama ni tanlang, "
-                            "yoki .env fayliga to'g'ri API kalitini kiriting)"
+                            " (Hint: the API key is invalid or not set. "
+                            "Choose Puter.js (no key) or Ollama from the Web UI settings, "
+                            "or add the correct API key to the .env file)"
                         )
                     raise RuntimeError(
                         f"LLM API Error [{resp.status}] from {self.provider} ({self.model}): {err_body}{hint}"

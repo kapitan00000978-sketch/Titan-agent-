@@ -20,6 +20,7 @@ const apiKeyInput = document.getElementById("api-key-input");
 const baseUrlInput = document.getElementById("base-url-input");
 
 let isStreaming = false;
+let currentMode = "fast"; // "fast" | "deep" | "deep_search"
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -28,6 +29,19 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchWorkspaceFiles();
   setupEventListeners();
 });
+
+// ---------- Model name helpers ----------
+// The underlying variant ID (e.g. "...:free") is what the API needs for free usage,
+// but the UI should never reveal it. We strip it for display and re-append on send.
+function displayModel(id) {
+  return id ? id.replace(/:free$/, "") : id;
+}
+function resolvePuterModel(raw) {
+  const v = (raw || "").trim();
+  if (!v) return "deepseek/deepseek-v4-pro:free";
+  if (/:(free|flex|priority)$/.test(v)) return v;
+  return v + ":free";
+}
 
 function setupEventListeners() {
   chatForm.addEventListener("submit", (e) => {
@@ -44,11 +58,20 @@ function setupEventListeners() {
     }
   });
 
+  // Mode selector (Fast / Deep Thinking / Deep Search)
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentMode = btn.dataset.mode;
+      document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("mode-active"));
+      btn.classList.add("mode-active");
+    });
+  });
+
   // Settings
   openSettingsBtn.addEventListener("click", () => {
     settingsModal.classList.add("open");
     scanLocalModels();
-    // Agar Puter provayderi tanlangan bo'lsa, barcha bepul modellarni avtomatik yuklash
+    // When Puter provider is selected, auto-load models
     if (providerSelect.value === "puter") {
       loadPuterModels(false);
     }
@@ -61,19 +84,19 @@ function setupEventListeners() {
   document.querySelectorAll(".model-chip").forEach(btn => {
     btn.addEventListener("click", () => {
       providerSelect.value = "puter";
-      modelInput.value = btn.dataset.model;
+      modelInput.value = displayModel(btn.dataset.model);
       apiKeyInput.value = "";
     });
   });
 
-  // Provayder o'zgarganda: Puter tanlansa model brauzerini avtomatik ochish
+  // When provider changes: open the model browser automatically for Puter
   providerSelect.addEventListener("change", () => {
     if (providerSelect.value === "puter") {
       loadPuterModels(false);
     }
   });
 
-  // Puter Model Browser — barcha modellarni listModels() orqali yuklash
+  // Puter Model Browser — load all models via listModels()
   const loadPuterBtn = document.getElementById("load-puter-models-btn");
   const modelSearch = document.getElementById("puter-model-search");
   if (modelSearch) {
@@ -91,12 +114,12 @@ function setupEventListeners() {
   }
 }
 
-// ---- Puter barcha model brauzeri ----
+// ---- Puter model browser ----
 let allPuterModels = [];
 let puterActiveTab = "free"; // "free" | "all"
 
 function normalizePuterModel(m) {
-  // listModels() ob'ektlar massivini qaytaradi; ba'zi SDK versiyalari string ham berishi mumkin
+  // listModels() returns an array of objects; some SDK versions may return strings
   if (typeof m === "string") return { id: m, provider: "", name: m };
   return {
     id: (m && m.id) || "",
@@ -113,28 +136,28 @@ async function loadPuterModels(force) {
   const listEl = document.getElementById("puter-model-list");
   if (!loadPuterBtn || !browserEl || !listEl) return;
 
-  if (loadPuterBtn.disabled) return; // yuklash allaqachon davom etmoqda
+  if (loadPuterBtn.disabled) return; // load already in progress
   loadPuterBtn.disabled = true;
-  loadPuterBtn.textContent = "Yuklanmoqda...";
-  listEl.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-muted);">Model ro\'yxati olinmoqda...</div>';
+  loadPuterBtn.textContent = "Loading...";
+  listEl.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-muted);">Fetching models...</div>';
   browserEl.style.display = "block";
 
   try {
     if (typeof puter === "undefined" || !puter.ai || !puter.ai.listModels) {
-      throw new Error("Puter.js yuklanmadi. Internet aloqasini tekshiring yoki sahifani qayta oching.");
+      throw new Error("Puter.js is not loaded. Check your internet connection or reopen the page.");
     }
     const models = await puter.ai.listModels();
     allPuterModels = (Array.isArray(models) ? models : []).map(normalizePuterModel).filter(m => m.id);
     if (allPuterModels.length === 0) {
-      listEl.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-muted);">Model topilmadi.</div>';
+      listEl.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-muted);">No models found.</div>';
       return;
     }
     renderPuterModels();
   } catch (err) {
-    listEl.innerHTML = `<div style="padding:12px; font-size:12px; color:var(--accent-rose);">Xatolik: ${escapeHtml(err.message)}</div>`;
+    listEl.innerHTML = `<div style="padding:12px; font-size:12px; color:var(--accent-rose);">Error: ${escapeHtml(err.message)}</div>`;
   } finally {
     loadPuterBtn.disabled = false;
-    loadPuterBtn.textContent = "🌐 Barcha Bepul Modellar";
+    loadPuterBtn.textContent = "🌐 All Models";
   }
 }
 
@@ -147,7 +170,6 @@ function renderPuterModels() {
   const activeTab = [...document.querySelectorAll(".puter-tab")].find(t => t.classList.contains("puter-tab-active"));
   puterActiveTab = activeTab ? activeTab.dataset.tab : "free";
 
-  // Tanlangan yorliq bo'yicha filtrlash: faqat :free varianti BEPUL hisoblanadi
   let filtered = allPuterModels;
   if (puterActiveTab === "free") {
     filtered = filtered.filter(m => m.id.endsWith(":free"));
@@ -161,28 +183,27 @@ function renderPuterModels() {
   }
 
   if (filtered.length === 0) {
-    listEl.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-muted);">Hech qanday model topilmadi. Qidiruvni o\'zgartiring yoki yorliqni almashtiring.</div>';
+    listEl.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-muted);">No models match your search. Try another query or switch tabs.</div>';
     return;
   }
 
-  // Provider bo'yicha guruhlash
+  // Group by provider
   const groups = {};
   for (const m of filtered) {
     const prov = m.provider || "others";
     (groups[prov] = groups[prov] || []).push(m);
   }
 
-  let html = `<div style="padding:6px 10px; font-size:11px; color:var(--text-muted); border-bottom:1px solid var(--border-color);">Jami: ${filtered.length} ta model${puterActiveTab === "free" ? " (barchasi bepul 🆓)" : ""}</div>`;
+  let html = `<div style="padding:6px 10px; font-size:11px; color:var(--text-muted); border-bottom:1px solid var(--border-color);">Total: ${filtered.length} models</div>`;
 
   for (const [prov, models] of Object.entries(groups)) {
     html += `<div style="padding:8px 10px 2px; font-size:11px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--accent-cyan);">${escapeHtml(prov)} (${models.length})</div>`;
     for (const m of models) {
-      const isFree = m.id.endsWith(":free");
-      const displayId = isFree ? m.id.slice(0, -":free".length) : m.id;
-      const ctx = m.context ? ` • ${Math.round(m.context / 1000)}k kontekst` : "";
+      const displayId = displayModel(m.id);
+      const ctx = m.context ? ` • ${Math.round(m.context / 1000)}k context` : "";
       html += `
-        <button type="button" class="puter-model-chip" data-model="${escapeHtml(m.id)}" title="${escapeHtml(m.id)}${ctx}" style="display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:7px 10px; background:rgba(255,255,255,0.03); border:1px solid transparent; border-radius:6px; cursor:pointer; font-size:12px; color:var(--text-primary);">
-          <span style="color:${isFree ? "var(--accent-emerald)" : "var(--text-muted)"};">${isFree ? "🆓" : "🤖"}</span>
+        <button type="button" class="puter-model-chip" data-model="${escapeHtml(m.id)}" title="${escapeHtml(displayId)}${ctx}" style="display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:7px 10px; background:rgba(255,255,255,0.03); border:1px solid transparent; border-radius:6px; cursor:pointer; font-size:12px; color:var(--text-primary);">
+          <span style="color:var(--text-muted);">🤖</span>
           <span style="font-family:var(--font-mono); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(displayId)}</span>
           <span style="font-size:10px; color:var(--text-muted); white-space:nowrap;">${ctx}</span>
         </button>`;
@@ -190,11 +211,11 @@ function renderPuterModels() {
   }
   listEl.innerHTML = html;
 
-  // Chip bosilganda modelni tanlash
+  // Selecting a chip applies the full variant internally but shows the clean name
   listEl.querySelectorAll(".puter-model-chip").forEach(chip => {
     chip.addEventListener("click", () => {
       providerSelect.value = "puter";
-      modelInput.value = chip.dataset.model;
+      modelInput.value = displayModel(chip.dataset.model);
       apiKeyInput.value = "";
       modelInput.style.borderColor = "var(--accent-emerald)";
     });
@@ -203,17 +224,17 @@ function renderPuterModels() {
 
 async function scanLocalModels() {
   const chipsContainer = document.getElementById("local-models-chips");
-  chipsContainer.innerHTML = '<span style="font-size:11px; color:var(--accent-cyan);">Qidirilmoqda...</span>';
+  chipsContainer.innerHTML = '<span style="font-size:11px; color:var(--accent-cyan);">Scanning...</span>';
   try {
     const res = await fetch("/api/local-models");
     const data = await res.json();
     chipsContainer.innerHTML = "";
-    
+
     const ollamaModels = data.ollama || [];
     const lmModels = data.lmstudio || [];
 
     if (ollamaModels.length === 0 && lmModels.length === 0) {
-      chipsContainer.innerHTML = '<span style="font-size:11px; color:var(--text-muted);">(Hozircha mahalliy model topilmadi)</span>';
+      chipsContainer.innerHTML = '<span style="font-size:11px; color:var(--text-muted);">(No local models found yet)</span>';
       return;
     }
 
@@ -246,7 +267,7 @@ async function scanLocalModels() {
       chipsContainer.appendChild(chip);
     });
   } catch (err) {
-    chipsContainer.innerHTML = '<span style="font-size:11px; color:var(--text-muted);">(Tekshirib bo\'lmadi)</span>';
+    chipsContainer.innerHTML = '<span style="font-size:11px; color:var(--text-muted);">(Could not check)</span>';
   }
 }
 
@@ -260,9 +281,9 @@ async function fetchConfig() {
     const res = await fetch("/api/config");
     const data = await res.json();
     currentProviderSpan.textContent = data.provider.toUpperCase();
-    currentModelSpan.textContent = data.model;
+    currentModelSpan.textContent = displayModel(data.model);
     providerSelect.value = data.provider;
-    modelInput.value = data.model;
+    modelInput.value = displayModel(data.model);
     if (data.base_url) baseUrlInput.value = data.base_url;
   } catch (err) {
     console.error("Config fetch error:", err);
@@ -272,7 +293,7 @@ async function fetchConfig() {
 async function saveConfig() {
   const payload = {
     provider: providerSelect.value,
-    model: modelInput.value.trim(),
+    model: providerSelect.value === "puter" ? resolvePuterModel(modelInput.value) : modelInput.value.trim(),
     api_key: apiKeyInput.value.trim(),
     base_url: baseUrlInput.value.trim()
   };
@@ -287,7 +308,7 @@ async function saveConfig() {
       fetchConfig();
     }
   } catch (err) {
-    alert("Sozlamalarni saqlashda xatolik: " + err);
+    alert("Error saving settings: " + err);
   }
 }
 
@@ -298,7 +319,7 @@ async function fetchMcpTools() {
     const serverKeys = Object.keys(data.servers || {});
     const mcpCountElem = document.getElementById("mcp-count");
     if (mcpCountElem) {
-      mcpCountElem.textContent = `${serverKeys.length} ta MCP Server ulangan`;
+      mcpCountElem.textContent = `${serverKeys.length} MCP server${serverKeys.length === 1 ? "" : "s"} connected`;
     }
   } catch (e) {
     console.warn("MCP tools fetch failed", e);
@@ -311,7 +332,7 @@ async function fetchWorkspaceFiles() {
     const data = await res.json();
     const tree = document.getElementById("files-tree");
     if (!data.files || data.files.length === 0) {
-      tree.innerHTML = '<div class="empty-hint">(Hozircha bo\'sh)</div>';
+      tree.innerHTML = '<div class="empty-hint">(Empty)</div>';
       return;
     }
     tree.innerHTML = data.files.map(f => `
@@ -338,15 +359,15 @@ function appendUserMessage(text) {
 function createAgentCard() {
   const row = document.createElement("div");
   row.className = "message-row agent";
-  
+
   const card = document.createElement("div");
   card.className = "agent-response-card";
-  
+
   const statusLine = document.createElement("div");
   statusLine.className = "status-line";
   statusLine.style.fontSize = "12px";
   statusLine.style.color = "var(--accent-cyan)";
-  statusLine.innerHTML = "⚡ Titan ishlamoqda...";
+  statusLine.innerHTML = "⚡ Titan is working...";
   card.appendChild(statusLine);
 
   row.appendChild(card);
@@ -361,7 +382,7 @@ async function sendMessage(prompt) {
   isStreaming = true;
   userPromptInput.value = "";
   submitBtn.disabled = true;
-  statusBadge.textContent = "Bajarilmoqda...";
+  statusBadge.textContent = "Working...";
 
   appendUserMessage(prompt);
   const { card, statusLine } = createAgentCard();
@@ -374,7 +395,7 @@ async function sendMessage(prompt) {
     await sendPuterMessage(prompt, card, statusLine);
     isStreaming = false;
     submitBtn.disabled = false;
-    statusBadge.textContent = "Tizim Tayyor";
+    statusBadge.textContent = "System Ready";
     statusLine.style.display = "none";
     fetchWorkspaceFiles();
     scrollToBottom();
@@ -385,7 +406,7 @@ async function sendMessage(prompt) {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: prompt, session_id: "web_session" })
+      body: JSON.stringify({ message: prompt, session_id: "web_session", mode: currentMode })
     });
 
     const reader = response.body.getReader();
@@ -420,11 +441,11 @@ async function sendMessage(prompt) {
       scrollToBottom();
     }
   } catch (err) {
-    statusLine.innerHTML = `<span style="color:var(--accent-rose)">Xatolik yuz berdi: ${err.message}</span>`;
+    statusLine.innerHTML = `<span style="color:var(--accent-rose)">An error occurred: ${err.message}</span>`;
   } finally {
     isStreaming = false;
     submitBtn.disabled = false;
-    statusBadge.textContent = "Tizim Tayyor";
+    statusBadge.textContent = "System Ready";
     statusLine.style.display = "none";
     fetchWorkspaceFiles();
     scrollToBottom();
@@ -432,24 +453,40 @@ async function sendMessage(prompt) {
 }
 
 async function sendPuterMessage(prompt, card, statusLine) {
-  let modelName = modelInput.value.trim() || "deepseek/deepseek-v4-pro";
-  statusLine.innerHTML = `⚡ Puter.js: ${escapeHtml(modelName)} bilan to'g'ridan-to'g'ri (bepul) bog'lanilmoqda...`;
+  let modelName = displayModel(resolvePuterModel(modelInput.value.trim() || "deepseek/deepseek-v4-pro"));
+  statusLine.innerHTML = `⚡ Connecting directly to ${escapeHtml(modelName)}...`;
   try {
     if (typeof puter === "undefined" || !puter.ai) {
-      throw new Error("Puter.js yuklanmadi. Internet aloqasini tekshiring.");
+      throw new Error("Puter.js is not loaded. Check your internet connection.");
     }
-    
+
     let answerDiv = document.createElement("div");
     answerDiv.className = "answer-content";
     card.insertBefore(answerDiv, statusLine);
-    
+
+    let modeNote = "";
+    if (currentMode === "deep") {
+      modeNote = "\n\n### DEEP THINKING MODE (engaged):\n" +
+        "- Decompose the problem into explicit sub-problems and reason about each one in detail.\n" +
+        "- Consider alternative approaches, edge cases, and failure modes before committing.\n" +
+        "- After every step, ask yourself: is there anything unverified, ambiguous, or missing?\n" +
+        "- Do not settle for a shallow answer: dig until the result is provably correct and complete.";
+    } else if (currentMode === "deep_search") {
+      modeNote = "\n\n### DEEP SEARCH MODE (engaged):\n" +
+        "- Start with the deep_search tool to build a comprehensive multi-source dossier on the topic.\n" +
+        "- Cross-check claims across multiple sources; prefer verifiable, recently updated information.\n" +
+        "- Scrape primary pages when a snippet is insufficient (scrape_webpage tool).\n" +
+        "- Structure the final answer with sections and cite the sources you actually retrieved.\n" +
+        "- If evidence is thin or conflicting, say so explicitly instead of guessing.";
+    }
+
     const messages = [
-      { 
-        role: "system", 
+      {
+        role: "system",
         content: "You are TITAN AGENT — an ultra-powerful autonomous AI reasoning and execution engine running in a web dashboard.\n\n" +
           "### PLAN-ACT-VERIFY-REPORT + REFLECT:\n" +
           "1. PLAN: briefly outline your strategy inside <thought>...</thought> before using tools.\n" +
-          "2. ACT: use tools via <tool_call>{\"name\": \"tool_name\", \"arguments\": {...}}</tool_call>. Batch independent calls when possible.\n" +
+          "2. ACT: use tools via <tool_call>{\"name\": \"tool_name\", \"arguments\": {...}}</tool_call>. Batch independent calls and run them together.\n" +
           "3. VERIFY: if a tool errors, read the message, fix arguments, retry with an alternative approach — never give up after one failure.\n" +
           "4. REFLECT: after tools run, critically review your own work — did you satisfy the whole request? fix gaps before answering.\n" +
           "5. REPORT: finish with a well-structured markdown final answer in the user's language.\n\n" +
@@ -464,17 +501,20 @@ async function sendPuterMessage(prompt, card, statusLine) {
           "- launch_application(app_or_command) — open a Windows app\n" +
           "- system_info() — live OS / CPU / RAM / disk / Python facts\n" +
           "- manage_processes(action: list|kill, pattern?) — list or kill OS processes\n" +
+          "- memory_save(key, value, category?) / memory_search(query) — persistent long-term memory\n" +
           "- mcp_* — tools from connected MCP servers\n\n" +
-          "### MEMORY: you have long-term persistent memory. Save important user facts with memory_save(key, value, category?) and recall them with memory_search(query) — use it across messages.\n\n" +
-          "### EFFICIENCY: never re-run a tool for already-known output; if the goal is reached, stop and answer immediately; don't add decorative steps.\n\n" +
-          "### LANGUAGE: respond in Uzbek (or the user's language). Be professional, direct, and precise."
+          "### EFFICIENCY: never re-run a tool for already-known output; if the goal is reached, stop and answer immediately; don't add decorative steps.\n" +
+          "### PARALLEL: when several independent tool calls are needed, batch them in one turn so they execute simultaneously." +
+          modeNote + "\n\n" +
+          "### LANGUAGE: respond in the user's language. Be professional, direct, and precise."
       },
       { role: "user", content: prompt }
     ];
-    
-    statusLine.innerHTML = `⚡ ${escapeHtml(modelName)} javob qaytarmoqda...`;
-    const response = await puter.ai.chat(messages, { model: modelName, stream: true });
-    
+
+    statusLine.innerHTML = `⚡ ${escapeHtml(modelName)} is generating a response...`;
+    const fullModelId = resolvePuterModel(modelInput.value.trim() || "deepseek/deepseek-v4-pro");
+    const response = await puter.ai.chat(messages, { model: fullModelId, stream: true });
+
     let fullText = "";
     for await (const part of response) {
       if (part && part.text) {
@@ -483,53 +523,70 @@ async function sendPuterMessage(prompt, card, statusLine) {
         scrollToBottom();
       }
     }
-    
+
     // Check for tool calls
     const toolMatches = [...fullText.matchAll(/<tool_call>\s*(.*?)\s*<\/tool_call>/gis)];
-    for (const match of toolMatches) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        const tName = parsed.name;
-        const tArgs = parsed.arguments || parsed.parameters || {};
-        
-        statusLine.innerHTML = `🔧 '${tName}' asbobi bajarilmoqda...`;
-        statusLine.style.display = "block";
-        
-        const toolCard = document.createElement("div");
-        toolCard.className = "tool-step-card";
-        toolCard.innerHTML = `
-          <div class="tool-header-line">
-            <span class="tool-badge-name">🔧 ${escapeHtml(tName)}</span>
-            <span style="color:var(--accent-emerald)">✓ Bajarildi</span>
-          </div>
-          <div class="tool-args-preview">${escapeHtml(JSON.stringify(tArgs))}</div>
-        `;
-        card.insertBefore(toolCard, statusLine);
-        
-        const execRes = await fetch("/api/tools/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tool_name: tName, arguments: tArgs })
-        });
-        const execData = await execRes.json();
-        
-        const resBox = document.createElement("div");
-        resBox.className = "tool-result-box";
-        resBox.textContent = execData.result || "Bajarildi";
-        toolCard.appendChild(resBox);
-      } catch (err) {
-        console.warn("Tool parse/exec error:", err);
-      }
+    if (toolMatches.length > 0) {
+      statusLine.innerHTML = `🔧 Executing ${toolMatches.length} tool${toolMatches.length === 1 ? "" : "s"} in parallel...`;
+      statusLine.style.display = "block";
+
+      // Build all tool cards first, then run every tool in parallel
+      const jobs = toolMatches.map((match) => {
+        try {
+          const parsed = JSON.parse(match[1]);
+          const tName = parsed.name;
+          const tArgs = parsed.arguments || parsed.parameters || {};
+
+          const toolCard = document.createElement("div");
+          toolCard.className = "tool-step-card";
+          toolCard.innerHTML = `
+            <div class="tool-header-line">
+              <span class="tool-badge-name">🔧 ${escapeHtml(tName)}</span>
+              <span style="color:var(--accent-amber)">Running...</span>
+            </div>
+            <div class="tool-args-preview">${escapeHtml(JSON.stringify(tArgs))}</div>
+          `;
+          card.insertBefore(toolCard, statusLine);
+
+          return { tName, tArgs, toolCard };
+        } catch (err) {
+          console.warn("Tool parse error:", err);
+          return null;
+        }
+      }).filter(Boolean);
+
+      // Execute all tools simultaneously
+      await Promise.all(jobs.map(async (job) => {
+        try {
+          const execRes = await fetch("/api/tools/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tool_name: job.tName, arguments: job.tArgs })
+          });
+          const execData = await execRes.json();
+          const resBox = document.createElement("div");
+          resBox.className = "tool-result-box";
+          resBox.textContent = execData.result || "Done";
+          job.toolCard.querySelector(".tool-header-line").lastChild.textContent = "✓ Done";
+          Object.assign(job.toolCard.querySelector(".tool-header-line").lastChild.style, { color: "var(--accent-emerald)" });
+          job.toolCard.appendChild(resBox);
+        } catch (err) {
+          const resBox = document.createElement("div");
+          resBox.className = "tool-result-box";
+          resBox.textContent = "Error: " + err.message;
+          job.toolCard.appendChild(resBox);
+        }
+      }));
     }
   } catch (err) {
-    statusLine.innerHTML = `<span style="color:var(--accent-rose)">Puter.js xatoligi: ${err.message}</span>`;
+    statusLine.innerHTML = `<span style="color:var(--accent-rose)">Puter.js error: ${err.message}</span>`;
   }
 }
 
 function handleAgentEvent(event, card, statusLine, state) {
   if (event.type === "status") {
     statusLine.innerHTML = `⚡ ${escapeHtml(event.data)}`;
-  } 
+  }
   else if (event.type === "thought") {
     let acc = state.getThought();
     if (!acc) {
@@ -537,7 +594,7 @@ function handleAgentEvent(event, card, statusLine, state) {
       acc.className = "thought-accordion";
       acc.innerHTML = `
         <div class="thought-header">
-          <span>🧠 Fikrlash (Reasoning / CoT)</span>
+          <span>🧠 Reasoning (CoT)</span>
           <span class="acc-toggle">▼</span>
         </div>
         <div class="thought-body"></div>
@@ -562,7 +619,7 @@ function handleAgentEvent(event, card, statusLine, state) {
     toolCard.innerHTML = `
       <div class="tool-header-line">
         <span class="tool-badge-name">🔧 ${escapeHtml(tName)}</span>
-        <span class="tool-status-tag" style="color:var(--accent-amber)">Bajarilmoqda...</span>
+        <span class="tool-status-tag" style="color:var(--accent-amber)">Running...</span>
       </div>
       <div class="tool-args-preview">${escapeHtml(tArgs)}</div>
     `;
@@ -574,9 +631,9 @@ function handleAgentEvent(event, card, statusLine, state) {
     const resText = typeof event.data.result === "string" ? event.data.result : JSON.stringify(event.data.result);
     resCard.innerHTML = `
       <div class="tool-header-line">
-        <span class="tool-badge-name" style="color:var(--accent-emerald)">✓ ${escapeHtml(event.data.name)} natijasi</span>
+        <span class="tool-badge-name" style="color:var(--accent-emerald)">✓ ${escapeHtml(event.data.name)} result</span>
       </div>
-      <div class="tool-result-box">${escapeHtml(resText.slice(0, 1000))}${resText.length > 1000 ? "\n...(qisqartirildi)" : ""}</div>
+      <div class="tool-result-box">${escapeHtml(resText.slice(0, 1000))}${resText.length > 1000 ? "\n...(truncated)" : ""}</div>
     `;
     card.insertBefore(resCard, statusLine);
   }
@@ -596,7 +653,7 @@ function handleAgentEvent(event, card, statusLine, state) {
     errDiv.style.padding = "10px";
     errDiv.style.background = "rgba(244, 63, 94, 0.1)";
     errDiv.style.borderRadius = "8px";
-    errDiv.innerHTML = `<strong>Xatolik:</strong> ${escapeHtml(event.data)}`;
+    errDiv.innerHTML = `<strong>Error:</strong> ${escapeHtml(event.data)}`;
     card.insertBefore(errDiv, statusLine);
   }
 }

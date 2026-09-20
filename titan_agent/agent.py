@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -62,6 +63,22 @@ Review the ENTIRE interaction critically before finalizing:
 If anything is missing or wrong, use the tools to fix it NOW (make the needed tool call), or clearly correct/complete your answer.
 Then produce the FINAL polished answer to the user (in their language, markdown, complete and precise).
 Do not repeat the whole history — output only the final answer (or the tool call needed to finish the job).
+"""
+
+DEEP_THINKING_PROMPT = """You are currently operating in DEEP THINKING mode. Elevate your rigor:
+- Decompose the problem into explicit sub-problems and reason about each one in detail.
+- Consider alternative approaches, edge cases, and failure modes before committing.
+- After every step, ask yourself: is there anything unverified, ambiguous, or missing?
+- Do not settle for a shallow answer: dig until the result is provably correct and complete.
+- You have extra iteration budget — use it deliberately for verification, never for decoration.
+"""
+
+DEEP_SEARCH_PROMPT = """You are currently operating in DEEP SEARCH mode. This is a research-heavy task:
+- Produce a comprehensive, multi-angle research dossier using deep_search and web_search tools.
+- Cross-check claims across multiple sources; prefer verifiable, recently updated information.
+- Scrape primary pages when a snippet is insufficient (scrape_webpage tool).
+- Structure the final answer with sections and cite the sources you actually retrieved.
+- If evidence is thin or conflicting, say so explicitly instead of guessing.
 """
 
 class AgentEvent:
@@ -181,7 +198,7 @@ class TitanAgent:
         messages: list[dict[str, Any]],
         iteration: int
     ) -> AsyncGenerator[AgentEvent, None]:
-        """Executes all tool_calls inside `response` and streams events. Mutates `messages` in place."""
+        """Executes all tool_calls inside `response` IN PARALLEL and streams events. Mutates `messages` in place."""
         assistant_msg = {
             "role": "assistant",
             "content": response.content or "",
@@ -189,6 +206,7 @@ class TitanAgent:
         }
         messages.append(assistant_msg)
 
+        parsed = []
         for tool_call in response.tool_calls:
             fn = tool_call.get("function", {})
             t_name = fn.get("name", "")
@@ -200,14 +218,30 @@ class TitanAgent:
                     t_args = {}
             else:
                 t_args = t_args_raw
+            parsed.append((tool_call, t_name, t_args))
 
+        # Emit all scheduled tool_call events first
+        for tool_call, t_name, t_args in parsed:
             yield AgentEvent("tool_call", {"name": t_name, "arguments": t_args})
 
-            yield AgentEvent("status", f"'{t_name}' asbobi bajarilmoqda...")
-            result = await self.execute_tool_unified(t_name, t_args)
+        if len(parsed) > 1:
+            yield AgentEvent("status", f"Running {len(parsed)} tools in parallel...")
+        else:
+            yield AgentEvent("status", f"Running tool: {parsed[0][1]}...")
 
+        # Execute all tools concurrently
+        async def _run_one(tool_call, t_name, t_args):
+            try:
+                result = await self.execute_tool_unified(t_name, t_args)
+                return tool_call, t_name, result
+            except Exception as e:
+                return tool_call, t_name, f"Error: {e!s}"
+
+        results = await asyncio.gather(*(_run_one(*p) for p in parsed))
+
+        # Emit results and append tool messages in original order
+        for tool_call, t_name, result in results:
             yield AgentEvent("tool_result", {"name": t_name, "result": result})
-
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.get("id", f"call_{iteration}"),
@@ -218,13 +252,18 @@ class TitanAgent:
     async def run_task(
         self,
         user_input: str,
-        session_id: str = "default_session"
+        session_id: str = "default_session",
+        mode: str = "fast"
     ) -> AsyncGenerator[AgentEvent, None]:
         """
         Executes a user request with autonomous multi-step reasoning, tool execution,
         and a critical reflection (self-review) pass before the final answer.
+        mode: "fast" | "deep" | "deep_search"
         Yields AgentEvent objects for real-time streaming to Web UI / CLI.
         """
+        if mode not in ("fast", "deep", "deep_search"):
+            mode = "fast"
+
         # Save user message to memory
         self.memory.add_message(session_id, "user", user_input)
 
@@ -238,27 +277,56 @@ class TitanAgent:
             + "\n\n### LIVE TOOL CATALOG (all tools currently available):\n"
             + catalog_text
         )
+        if mode == "deep":
+            system_content += "\n\n" + DEEP_THINKING_PROMPT
+        elif mode == "deep_search":
+            system_content += "\n\n" + DEEP_SEARCH_PROMPT
+
         messages = [{"role": "system", "content": system_content}]
         for msg in history:
             m_dict = {"role": msg["role"], "content": msg["content"]}
             messages.append(m_dict)
 
-        yield AgentEvent("status", "Reja tuzilmoqda va vazifa tahlil qilinmoqda...")
+        max_steps = MAX_ITERATIONS
+        if mode in ("deep", "deep_search"):
+            # Deep modes get a bigger iteration budget
+            max_steps = min(MAX_ITERATIONS * 2, 40)
+
+        # Deep Search mode: seed the context with an auto-researched dossier first
+        if mode == "deep_search":
+            yield AgentEvent("status", "Building deep search dossier...")
+            try:
+                from .deep_search import DeepSearchEngine
+                dossier = await DeepSearchEngine().run(user_input)
+                context_block = (
+                    f"### DEEP SEARCH DOSSIER (auto-researched):\n"
+                    f"Topic: {dossier['topic']}\n"
+                    f"Total sources found: {dossier['total_sources_found']}\n\n"
+                    "Sources:\n"
+                )
+                for s in dossier.get("sources", [])[:6]:
+                    context_block += f"- {s.get('title', '')}: {s.get('url', '')}\n"
+                messages.append({"role": "system", "content": context_block})
+                yield AgentEvent("status", f"Dossier ready: {dossier['total_sources_found']} sources found.")
+            except Exception as e:
+                yield AgentEvent("status", f"Auto deep search unavailable: {e!s}")
+
+        yield AgentEvent("status", "Planning and analyzing the task...")
 
         iteration = 0
         used_tools = False
         reflect_done = False
 
-        while iteration < MAX_ITERATIONS:
+        while iteration < max_steps:
             iteration += 1
-            yield AgentEvent("step_start", {"step": iteration, "max_steps": MAX_ITERATIONS})
+            yield AgentEvent("step_start", {"step": iteration, "max_steps": max_steps})
 
             available_tools = self._build_tools_list()
 
             try:
                 response = await self.llm.chat_completion(messages, tools=available_tools)
             except Exception as e:
-                err_msg = f"LLM bilan bog'lanishda xatolik: {e!s}"
+                err_msg = f"Error connecting to LLM: {e!s}"
                 yield AgentEvent("error", err_msg)
                 return
 
@@ -266,25 +334,26 @@ class TitanAgent:
             if response.thoughts:
                 yield AgentEvent("thought", response.thoughts)
 
-            # If model produced tool calls, execute them
+            # If model produced tool calls, execute them (in parallel)
             if response.tool_calls:
                 used_tools = True
                 async for ev in self._emit_tool_results(response, messages, iteration):
                     yield ev
 
                 # Check if iterations limit reached
-                if iteration >= MAX_ITERATIONS:
-                    yield AgentEvent("final_answer", f"Maksimal qadamlar soniga ({MAX_ITERATIONS}) yetildi. Oxirgi holat va natijalar yuqoridagi amallarda saqlandi.")
+                if iteration >= max_steps:
+                    yield AgentEvent("final_answer", f"Reached the maximum number of steps ({max_steps}). The latest state and results are preserved above.")
                     return
                 continue
 
             # ---- No tool calls: candidate final answer ----
             final_text = response.content or ""
 
-            # Reflection (critic) pass: only when real tools were used and not yet reflected
-            if used_tools and not reflect_done:
+            # Reflection (critic) pass: after real tool use (or always in deep modes)
+            needs_reflection = used_tools or mode in ("deep", "deep_search")
+            if needs_reflection and not reflect_done:
                 reflect_done = True
-                yield AgentEvent("status", "Tangidiy tahlil (reflection) bosqichi...")
+                yield AgentEvent("status", "Critically reviewing results (reflection)...")
                 critic_messages = list(messages) + [
                     {"role": "assistant", "content": final_text},
                     {"role": "user", "content": REFLECTION_PROMPT}
@@ -292,7 +361,7 @@ class TitanAgent:
                 try:
                     crit = await self.llm.chat_completion(critic_messages, tools=available_tools)
                 except Exception as e:
-                    yield AgentEvent("error", f"Reflection pass xatosi: {e!s}")
+                    yield AgentEvent("error", f"Reflection pass error: {e!s}")
                     crit = None
 
                 if crit is not None:
@@ -302,8 +371,8 @@ class TitanAgent:
                         # Reflection decided more work is needed — execute it
                         async for ev in self._emit_tool_results(crit, messages, iteration):
                             yield ev
-                        if iteration >= MAX_ITERATIONS:
-                            yield AgentEvent("final_answer", f"Maksimal qadamlar soniga ({MAX_ITERATIONS}) yetildi. Oxirgi holat va natijalar yuqoridagi amallarda saqlandi.")
+                        if iteration >= max_steps:
+                            yield AgentEvent("final_answer", f"Reached the maximum number of steps ({max_steps}). The latest state and results are preserved above.")
                             return
                         continue
                     elif crit.content:

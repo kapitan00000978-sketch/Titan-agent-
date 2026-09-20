@@ -2,19 +2,19 @@
 title Titan Agent - Autonomous AI Cockpit
 color 0b
 echo ========================================================
-echo        TITAN AGENT - AVTONOM AI BOSHQARUV TIZIMI
+echo        TITAN AGENT - AUTONOMOUS AI SYSTEM
 echo ========================================================
 echo.
-echo 1) Web Dashboard (Brauzer orqali boshqarish)
-echo 2) Terminal CLI (Konsol orqali boshqarish)
+echo 1) Web Dashboard (control via browser)
+echo 2) Terminal CLI (control via console)
 echo.
-set /p choice="Tanlang (1 yoki 2) [Default: 1]: "
+set /p choice="Choose (1 or 2) [Default: 1]: "
 
 if "%choice%"=="2" (
-    echo Terminal CLI ishga tushirilmoqda...
+    echo Starting Terminal CLI...
     powershell -ExecutionPolicy Bypass -File "%~dp0start-titan.ps1" -CLI
 ) else (
-    echo Web Dashboard ishga tushirilmoqda...
+    echo Starting Web Dashboard...
     powershell -ExecutionPolicy Bypass -File "%~dp0start-titan.ps1"
 )
 pause
