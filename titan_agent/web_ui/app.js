@@ -316,10 +316,13 @@ async function fetchMcpTools() {
   try {
     const res = await fetch("/api/mcp/tools");
     const data = await res.json();
-    const serverKeys = Object.keys(data.servers || {});
+    const servers = data.servers || {};
+    const serverKeys = Object.keys(servers);
     const mcpCountElem = document.getElementById("mcp-count");
     if (mcpCountElem) {
-      mcpCountElem.textContent = `${serverKeys.length} MCP server${serverKeys.length === 1 ? "" : "s"} connected`;
+      const toolCount = serverKeys.reduce((sum, k) => sum + (servers[k].tools_count || 0), 0);
+      const plural = serverKeys.length === 1 ? "" : "s";
+      mcpCountElem.textContent = `${serverKeys.length} MCP server${plural} connected (${toolCount} tools)`;
     }
   } catch (e) {
     console.warn("MCP tools fetch failed", e);

@@ -122,21 +122,39 @@ DEEPSEEK_API_KEY=your_key_here
 ## 🔌 Adding MCP Servers
 
 Add any MCP server to `mcp_servers.json`. `{WORKSPACE}` and `{BASE_DIR}` placeholders are replaced
-automatically with real paths — so the configuration is portable:
+automatically with real paths — so the configuration is portable. Titan Agent starts **all configured
+servers in parallel**, and handles even **10+ servers at once** (each with its own timeout, stderr
+drain, per-server concurrency cap and automatic restart if a server drops).
+
+Ships with 4 officially supported reference servers (free, no API keys — 37 MCP tools total):
 ```json
 {
   "mcpServers": {
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "{WORKSPACE}"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"]
     }
   }
 }
 ```
 When Titan Agent starts, it auto-detects all tools of these servers and adds them to its reasoning loop!
+One broken server never blocks the others — it is skipped and the healthy servers keep working.
 
 > 🔎 **Note:** Titan has its own `web_search` and `scrape_webpage` tools for internet data — a separate MCP
-> fetch server is not needed (the old `@modelcontextprotocol/server-fetch` package was removed from npm).
+> fetch server is not needed (the old `@modelcontextprotocol/server-fetch` package was removed from npm,
+> just like `server-time` and `server-git`).
 
 ---
 

@@ -108,14 +108,47 @@ All fixes and improvements made during the completion effort of this project.
 
 ## ✅ Verified status
 
-- `python -m pytest tests -q` → **17 passed**
+- `python -m pytest tests -q` → **20 passed**
 - Server `python run.py` → starts, Web UI `http://127.0.0.1:7860`
 - MCP `filesystem` server (14 tools) connects cleanly with the `{WORKSPACE}` placeholder
 - Config: `puter / deepseek/deepseek-v4-pro`
 - Chat stream: status → step_start → result/error (controlled), English messages only
 - Deep Search mode: auto-dossier "Dossier ready: N sources found." + double iteration budget (max 40)
 - Parallel tool execution: 4 simultaneous `/api/tools/execute` calls verified (all 200)
+- MCP: **4 real servers** (filesystem 14, memory 9, sequential-thinking 1, everything 13 = 37 MCP tools) connect in **parallel**;
+  8 simultaneous tool calls across all servers verified (all 200, 0.12s)
 - Git: initial commits on `master`
+
+## 🆕 Ultra-parallel MCP (10+ servers at once)
+
+Works with **every MCP server simultaneously** — even **10+ at the same time**:
+
+- **`mcp_client.py`** — the whole manager was hardened for multi-server concurrency:
+  - **Parallel startup** — `start_all()` now launches every configured server with `asyncio.gather`,
+    each with its own 90s timeout. A slow or broken server never blocks the others.
+  - **stderr drain** — every server's stderr is continuously read (tail kept), so a chatty server
+    can never deadlock its pipe buffer (a real risk with 10 servers).
+  - **Per-server semaphore** — up to 32 concurrent calls per server; unbounded flooding is impossible,
+    but 10+ servers still run at the same time.
+  - **Auto-restart** — if a server disconnects mid-session, the next tool call restarts it automatically
+    (seamless operation, no manual reload).
+  - **Fail-fast on dead server** — pending requests are failed immediately when a server closes the
+    connection instead of hanging for the full 60s timeout.
+  - **Reliable tool routing** — an exact lookup map (`get_all_tools`) resolves
+    `mcp_{server}_{tool}` names, so server names containing underscores (e.g. `my_server`) work
+    correctly; the map rebuilds on demand if missing.
+  - **Parallel shutdown** — `stop_all()` stops every server with `asyncio.gather`.
+- **`mcp_servers.json`** — now ships 4 officially supported reference servers (all free, no API keys):
+  `filesystem` (14 tools), `memory` (9 tools), `sequential-thinking` (1 tool), `everything` (13 tools) = **37 MCP tools**.
+  (`server-fetch`, `server-time` and `server-git` were removed from npm — they 404; omitted on purpose.)
+- **Tests** (`tests/test_components.py` + new `tests/fake_mcp_server.py`):
+  - `test_mcp_10_servers_load_and_run_in_parallel` — spins up **10 real MCP processes**,
+    starts them in parallel, then executes 10 tool calls **across** the servers and 10 calls
+    **within** one server concurrently, asserting wall-clock parallelism (not just "they returned").
+  - `test_mcp_single_broken_server_never_blocks_others` — one dead server is isolated; the healthy
+    ones still start and serve tools.
+  - `test_mcp_auto_restart_after_disconnect` — killing a server mid-session, the next call
+    auto-restarts it and the tool still works.
 
 ## 🆕 Beyond Hermes' max tier — Agent Core 2.0
 

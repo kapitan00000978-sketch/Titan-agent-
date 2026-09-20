@@ -3,6 +3,18 @@
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "{WORKSPACE}"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "everything": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"]
     }
   }
 }

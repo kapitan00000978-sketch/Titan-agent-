@@ -5,6 +5,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# A generous per-server concurrency cap: many servers can run in parallel,
+# but a single healing server can't be flooded with unbounded concurrent calls.
+MAX_CONCURRENT_CALLS = 32
+DEFAULT_REQUEST_TIMEOUT = 60.0
+DEFAULT_START_TIMEOUT = 90.0
+STDERR_TAIL_LIMIT = 40
+
 
 class MCPServerConnection:
     def __init__(self, name: str, command: str, args: list[str], env: dict[str, str] | None = None):
@@ -17,16 +24,33 @@ class MCPServerConnection:
         self._request_id = 0
         self._pending_requests: dict[int, asyncio.Future] = {}
         self._read_task: asyncio.Task | None = None
+        self._stderr_task: asyncio.Task | None = None
+        self._stderr_tail: list[str] = []
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
         self.is_connected = False
+        # Generation counter: every (re)start bumps it so listeners of an
+        # old process can never touch the state of a new one.
+        self._generation = 0
+
+    @property
+    def recent_stderr(self) -> str:
+        """Last lines the server wrote to stderr (useful in error messages)."""
+        return "\n".join(self._stderr_tail[-STDERR_TAIL_LIMIT:])
 
     async def start(self) -> bool:
         try:
+            # Seamless restart: tear down any previous process first so stale
+            # listeners can't leak into the new one.
+            await self._teardown_process()
+            self._generation += 1
+            gen = self._generation
+
             full_env = os.environ.copy()
             full_env.update(self.env)
             # Ensure windows shell support if npx/npm/cmd
             cmd = self.command
             args = self.args
-            
+
             # Windows executable resolution
             if sys.platform == "win32" and cmd in ("npx", "npm"):
                 cmd = f"{cmd}.cmd"
@@ -39,7 +63,10 @@ class MCPServerConnection:
                 stderr=asyncio.subprocess.PIPE,
                 env=full_env
             )
-            self._read_task = asyncio.create_task(self._listen_stdout())
+            self._read_task = asyncio.create_task(self._listen_stdout(self.process, gen))
+            # Never let stderr fill up — otherwise a chatty server deadlocks us.
+            # The tail is kept so failures stay debuggable.
+            self._stderr_task = asyncio.create_task(self._drain_stderr(self.process, gen))
             self.is_connected = True
 
             # Send initialize handshake
@@ -61,17 +88,63 @@ class MCPServerConnection:
             tools_res = await self.send_request("tools/list", {})
             self.tools = tools_res.get("tools", [])
             return True
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             print(f"[MCP] Failed to start server '{self.name}': {e}")
             self.is_connected = False
             await self.stop()
             return False
 
-    async def _listen_stdout(self):
-        try:
-            while self.process and self.process.stdout:
+    async def _teardown_process(self):
+        """Kill/close the current process and its pipes (no-op if none)."""
+        proc = self.process
+        self.process = None
+        if self._read_task:
+            self._read_task.cancel()
+            try:
+                await asyncio.wait_for(self._read_task, timeout=3.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
+            except Exception:
+                pass
+            self._read_task = None
+        if self._stderr_task:
+            self._stderr_task.cancel()
+            try:
+                await asyncio.wait_for(self._stderr_task, timeout=3.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
+            except Exception:
+                pass
+            self._stderr_task = None
+        for future in self._pending_requests.values():
+            if not future.done():
+                future.set_exception(RuntimeError(f"MCP server '{self.name}' stopped."))
+        self._pending_requests.clear()
+        if proc:
+            try:
+                if proc.returncode is None:
+                    proc.terminate()
+                    try:
+                        await asyncio.wait_for(proc.wait(), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        proc.kill()
+            except Exception:
+                pass
+            # Close pipes to avoid "unclosed transport" ResourceWarnings on Windows
+            for pipe in (proc.stdin, proc.stdout, proc.stderr):
                 try:
-                    line = await self.process.stdout.readline()
+                    if pipe is not None:
+                        pipe.close()
+                except Exception:
+                    pass
+
+    async def _listen_stdout(self, process: asyncio.subprocess.Process, gen: int):
+        try:
+            while self.process is process and process.stdout:
+                try:
+                    line = await process.stdout.readline()
                     if not line:
                         break
                     decoded = line.decode('utf-8', errors='ignore').strip()
@@ -79,6 +152,8 @@ class MCPServerConnection:
                         continue
                     try:
                         data = json.loads(decoded)
+                        if gen != self._generation:
+                            break
                         req_id = data.get("id")
                         if req_id is not None and req_id in self._pending_requests:
                             future = self._pending_requests.pop(req_id)
@@ -92,9 +167,38 @@ class MCPServerConnection:
                 except Exception:
                     break
         finally:
-            self.is_connected = False
+            # Only the listener of the CURRENT process may flip the flag.
+            if gen == self._generation and self.process is process:
+                self.is_connected = False
+                # The server went away: fail every request still waiting so
+                # callers get a fast, actionable error instead of a 60s hang.
+                pend = list(self._pending_requests.items())
+                self._pending_requests.clear()
+                for req_id, future in pend:
+                    if not future.done():
+                        future.set_exception(
+                            RuntimeError(f"MCP server '{self.name}' closed the connection.")
+                        )
 
-    async def send_request(self, method: str, params: dict[str, Any], timeout: float = 30.0) -> Any:
+    async def _drain_stderr(self, process: asyncio.subprocess.Process, gen: int):
+        """Drain stderr continuously so the pipe never blocks the server."""
+        try:
+            while self.process is process and process.stderr:
+                try:
+                    line = await process.stderr.readline()
+                    if not line:
+                        break
+                    text = line.decode('utf-8', errors='ignore').strip()
+                    if text:
+                        self._stderr_tail.append(text)
+                        if len(self._stderr_tail) > STDERR_TAIL_LIMIT * 4:
+                            del self._stderr_tail[: len(self._stderr_tail) - STDERR_TAIL_LIMIT * 4]
+                except Exception:
+                    break
+        except Exception:
+            pass
+
+    async def send_request(self, method: str, params: dict[str, Any], timeout: float = DEFAULT_REQUEST_TIMEOUT) -> Any:
         if not self.process or not self.process.stdin:
             raise RuntimeError(f"MCP server '{self.name}' is not running.")
         self._request_id += 1
@@ -115,6 +219,7 @@ class MCPServerConnection:
         try:
             return await asyncio.wait_for(future, timeout=timeout)
         except asyncio.TimeoutError:
+            self._pending_requests.pop(req_id, None)
             raise RuntimeError(
                 f"MCP request '{method}' to server '{self.name}' timed out after {timeout}s"
             ) from None
@@ -131,11 +236,14 @@ class MCPServerConnection:
         self.process.stdin.write(msg.encode('utf-8'))
         await self.process.stdin.drain()
 
-    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
-        res = await self.send_request("tools/call", {
-            "name": tool_name,
-            "arguments": arguments
-        })
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any], timeout: float = DEFAULT_REQUEST_TIMEOUT) -> Any:
+        # Bounded concurrency per server, while still allowing many servers
+        # (and many calls within one server) to run at the same time.
+        async with self._semaphore:
+            res = await self.send_request("tools/call", {
+                "name": tool_name,
+                "arguments": arguments
+            }, timeout=timeout)
         # Extract content
         contents = res.get("content", [])
         text_outputs = []
@@ -145,41 +253,18 @@ class MCPServerConnection:
         return "\n".join(text_outputs) if text_outputs else json.dumps(res)
 
     async def stop(self):
-        if self._read_task:
-            self._read_task.cancel()
-            try:
-                await asyncio.wait_for(self._read_task, timeout=3.0)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
-                pass
-            except Exception:
-                pass
-            self._read_task = None
-
-        proc = self.process
-        self.process = None
-        if proc:
-            try:
-                if proc.returncode is None:
-                    proc.terminate()
-                    try:
-                        await asyncio.wait_for(proc.wait(), timeout=5.0)
-                    except asyncio.TimeoutError:
-                        proc.kill()
-            except Exception:
-                pass
-            # Close pipes to avoid "unclosed transport" ResourceWarnings on Windows
-            for pipe in (proc.stdin, proc.stdout, proc.stderr):
-                try:
-                    if pipe is not None:
-                        pipe.close()
-                except Exception:
-                    pass
+        await self._teardown_process()
         self.is_connected = False
+
 
 class MCPManager:
     def __init__(self, config_file: Path | None = None):
         self.config_file = config_file
         self.servers: dict[str, MCPServerConnection] = {}
+        # full tool name -> (server name, original tool name)
+        # Built in get_all_tools; used by execute_tool for reliable resolution
+        # even when server or tool names contain underscores.
+        self._tool_map: dict[str, tuple[str, str]] = {}
 
     def load_config(self) -> dict[str, Any]:
         if not self.config_file or not self.config_file.exists():
@@ -190,33 +275,62 @@ class MCPManager:
         except Exception:
             return {"mcpServers": {}}
 
+    def _resolve_server_command(self, details: dict[str, Any], workspace_dir: Path) -> tuple[str, list[str], dict[str, str]]:
+        cmd = str(details.get("command", ""))
+        args = [str(a).replace("{WORKSPACE}", str(workspace_dir)).replace("{BASE_DIR}", str(workspace_dir.parent)) for a in details.get("args", [])]
+        cmd = cmd.replace("{WORKSPACE}", str(workspace_dir)).replace("{BASE_DIR}", str(workspace_dir.parent))
+        env = {str(k): str(v) for k, v in (details.get("env") or {}).items()}
+        return cmd, args, env
+
+    async def _start_one(self, conn: MCPServerConnection):
+        """Start a single server with its own timeout. Failures never block others."""
+        try:
+            ok = await asyncio.wait_for(conn.start(), timeout=DEFAULT_START_TIMEOUT)
+            if ok:
+                self.servers[conn.name] = conn
+                print(f"[MCP] Connected to '{conn.name}' ({len(conn.tools)} tools available)")
+                return True
+            print(f"[MCP] Server '{conn.name}' did not start (returned False).")
+        except asyncio.TimeoutError:
+            print(f"[MCP] Server '{conn.name}' timed out after {DEFAULT_START_TIMEOUT}s — skipped.")
+        except Exception as e:
+            print(f"[MCP] Failed to start server '{conn.name}': {e}")
+        await conn.stop()
+        return False
+
     async def start_all(self):
+        """Start every configured MCP server IN PARALLEL.
+
+        Each server gets its own timeout and its failure is isolated — so 10+
+        servers can come up at the same time and a single broken one never
+        blocks the rest.
+        """
         from .config import WORKSPACE_DIR
         cfg = self.load_config()
         servers = cfg.get("mcpServers", {})
+        if not servers:
+            return
+        conns = []
         for name, details in servers.items():
-            cmd = details.get("command", "")
-            args = details.get("args", [])
-            env = details.get("env", {})
-            # Placeholder substitution (portable config)
-            args = [str(a).replace("{WORKSPACE}", str(WORKSPACE_DIR)).replace("{BASE_DIR}", str(WORKSPACE_DIR.parent)) for a in args]
-            cmd = str(cmd).replace("{WORKSPACE}", str(WORKSPACE_DIR)).replace("{BASE_DIR}", str(WORKSPACE_DIR.parent))
+            cmd, args, env = self._resolve_server_command(details, WORKSPACE_DIR)
             if cmd:
-                conn = MCPServerConnection(name, cmd, args, env)
-                ok = await conn.start()
-                if ok:
-                    self.servers[name] = conn
-                    print(f"[MCP] Connected to '{name}' ({len(conn.tools)} tools available)")
+                conns.append(MCPServerConnection(name, cmd, args, env))
+        if conns:
+            print(f"[MCP] Starting {len(conns)} server(s) in parallel...")
+            await asyncio.gather(*(self._start_one(c) for c in conns))
+            print(f"[MCP] {len(self.servers)}/{len(conns)} server(s) connected.")
 
     def get_all_tools(self) -> list[dict[str, Any]]:
         """Returns tools formatted for OpenAI LLM function calling"""
         formatted = []
+        self._tool_map = {}
         for s_name, conn in self.servers.items():
             if not conn.is_connected:
                 continue
             for tool in conn.tools:
                 orig_name = tool.get("name", "")
                 full_name = f"mcp_{s_name}_{orig_name}"
+                self._tool_map[full_name] = (s_name, orig_name)
                 formatted.append({
                     "type": "function",
                     "function": {
@@ -231,22 +345,66 @@ class MCPManager:
                 })
         return formatted
 
-    async def execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
+    def _resolve_tool_name(self, name: str) -> tuple[str, str] | None:
+        """Reliably map a full tool name back to (server, original tool).
+
+        Uses the exact lookup map first; falls back to parsing so names with
+        underscores in server names still resolve.
+        """
+        hit = self._tool_map.get(name)
+        if hit:
+            return hit
         if not name.startswith("mcp_"):
+            return None
+        rest = name[4:]
+        if "_" not in rest:
+            return None
+        s_name, orig = rest.split("_", 1)
+        return s_name, orig
+
+    async def execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        resolved = self._resolve_tool_name(name)
+        if resolved is None:
             return f"Error: '{name}' is not an MCP tool."
-        parts = name.split("_", 2)
-        if len(parts) < 3:
-            return f"Error: Invalid MCP tool name format '{name}'."
-        s_name = parts[1]
-        orig_name = parts[2]
-        if s_name not in self.servers or not self.servers[s_name].is_connected:
-            return f"Error: MCP Server '{s_name}' is not connected."
+        s_name, orig_name = resolved
+        conn = self.servers.get(s_name)
+        if conn is None:
+            # The lookup map may be missing/stale (e.g. execute_tool called
+            # before get_all_tools). Rebuild it from live servers and retry —
+            # this also keeps names like "mcp_good_1_echo" resolvable when the
+            # server name itself contains underscores.
+            self._tool_map = {}
+            _ = self.get_all_tools()
+            resolved = self._resolve_tool_name(name)
+            if resolved is None:
+                return f"Error: '{name}' is not an MCP tool."
+            s_name, orig_name = resolved
+            conn = self.servers.get(s_name)
+            if conn is None:
+                return f"Error: MCP Server '{s_name}' is not connected."
+
+        # Auto-reconnect once if the server dropped (seamless operation)
+        if not conn.is_connected:
+            try:
+                print(f"[MCP] Server '{s_name}' disconnected — trying to restart...")
+                ok = await asyncio.wait_for(conn.start(), timeout=DEFAULT_START_TIMEOUT)
+                if not ok:
+                    return f"Error: MCP Server '{s_name}' failed to restart."
+                self._tool_map = {}
+                _ = self.get_all_tools()
+            except Exception as e:
+                return f"Error: MCP Server '{s_name}' could not restart: {e!s}"
         try:
-            return await self.servers[s_name].call_tool(orig_name, arguments)
+            return await conn.call_tool(orig_name, arguments)
         except Exception as e:
+            hint = conn.recent_stderr[:400]
+            if hint:
+                return f"Error executing MCP tool '{orig_name}' on '{s_name}': {e!s}\nServer stderr (tail):\n{hint}"
             return f"Error executing MCP tool '{orig_name}' on '{s_name}': {e!s}"
 
     async def stop_all(self):
-        for conn in self.servers.values():
-            await conn.stop()
+        conns = list(self.servers.values())
+        if conns:
+            await asyncio.gather(*(conn.stop() for conn in conns), return_exceptions=True)
         self.servers.clear()
+        self._tool_map = {}

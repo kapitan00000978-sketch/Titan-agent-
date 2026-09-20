@@ -279,3 +279,150 @@ def test_run_task_deep_search_seeds_dossier(monkeypatch):
     from titan_agent.config import MAX_ITERATIONS
     steps = [ev for ev in events if ev.type == "step_start"]
     assert steps[0].data["max_steps"] == min(MAX_ITERATIONS * 2, 40)
+
+
+def test_mcp_10_servers_load_and_run_in_parallel(tmp_path):
+    """10 MCP servers must start in parallel, expose tools, and serve
+    concurrent tool calls — across servers and within a single server.
+
+    Uses fake_mcp_server.py (a real JSON-RPC-over-stdio MCP process).
+    Server names contain underscores on purpose: resolution must not
+    depend on naive name splitting.
+    """
+    import json as _json
+
+    from titan_agent.mcp_client import MCPManager
+
+    script = Path(__file__).resolve().parent / "fake_mcp_server.py"
+    assert script.exists(), "tests/fake_mcp_server.py missing"
+
+    servers = {}
+    for i in range(1, 11):
+        sname = f"srv_{i:02d}"  # underscore in server name on purpose
+        servers[sname] = {
+            "command": sys.executable,
+            "args": [str(script), sname],
+        }
+    cfg = tmp_path / "mcp_servers.json"
+    cfg.write_text(_json.dumps({"mcpServers": servers}), encoding="utf-8")
+
+    async def _run():
+        mcp = MCPManager(cfg)
+
+        # 1) parallel startup of all 10 servers
+        await mcp.start_all()
+        assert len(mcp.servers) == 10, f"expected 10 servers, got {list(mcp.servers)}"
+
+        # 2) every server exposes its 3 tools → 30 namespaced tools
+        tools = mcp.get_all_tools()
+        assert len(tools) == 30
+        names = {t["function"]["name"] for t in tools}
+        for i in range(1, 11):
+            assert f"mcp_srv_{i:02d}_echo" in names
+            assert f"mcp_srv_{i:02d}_add" in names
+
+        # 3) 10 parallel calls ACROSS the 10 servers (one per server)
+        t0 = asyncio.get_running_loop().time()
+        cross = await asyncio.gather(*[
+            mcp.execute_tool(f"mcp_srv_{i:02d}_echo", {"text": f"hi{i}"})
+            for i in range(1, 11)
+        ])
+        cross_elapsed = asyncio.get_running_loop().time() - t0
+        for i, res in enumerate(cross, start=1):
+            assert f"srv_{i:02d}:echo:hi{i}" in res, f"bad routing: {res!r}"
+        # 10 × 0.15s echo: parallel should finish far under the 1.5s
+        # sequential total.
+        assert cross_elapsed < 1.0, f"cross-server calls were sequential: {cross_elapsed:.2f}s"
+
+        # 4) 10 parallel calls WITHIN a single server (same process)
+        t0 = asyncio.get_running_loop().time()
+        same = await asyncio.gather(*[
+            mcp.execute_tool("mcp_srv_01_add", {"a": i, "b": 1})
+            for i in range(1, 11)
+        ])
+        same_elapsed = asyncio.get_running_loop().time() - t0
+        for i, res in enumerate(same, start=1):
+            assert f"srv_01:add:{i + 1}" in res, f"bad same-server result: {res!r}"
+        # 10 × 0.25s add: sequential would be 2.5s.
+        assert same_elapsed < 2.0, f"same-server calls were sequential: {same_elapsed:.2f}s"
+
+        # 5) parallel stop
+        await mcp.stop_all()
+        assert len(mcp.servers) == 0
+
+    asyncio.run(_run())
+
+
+def test_mcp_single_broken_server_never_blocks_others(tmp_path):
+    """A server that fails to start must be isolated: the other servers
+    still come up and keep serving tools (seamless multi-MCP operation)."""
+    import json as _json
+
+    from titan_agent.mcp_client import MCPManager
+
+    script = Path(__file__).resolve().parent / "fake_mcp_server.py"
+    servers = {
+        "good_1": {"command": sys.executable, "args": [str(script), "good_1"]},
+        "broken": {
+            # a real interpreter pointed at a script that does not exist:
+            # the process starts and dies immediately → must fail fast and
+            # never block the other servers' startup/tool calls
+            "command": sys.executable,
+            "args": [str(Path(__file__).resolve().parent / "missing_script_xyz.py")],
+        },
+        "good_2": {"command": sys.executable, "args": [str(script), "good_2"]},
+    }
+    cfg = tmp_path / "mcp_servers_broken.json"
+    cfg.write_text(_json.dumps({"mcpServers": servers}), encoding="utf-8")
+
+    async def _run():
+        mcp = MCPManager(cfg)
+        await mcp.start_all()
+        # broken server excluded; the two good ones must be connected
+        assert "broken" not in mcp.servers
+        assert set(mcp.servers) == {"good_1", "good_2"}
+        res = await mcp.execute_tool("mcp_good_1_echo", {"text": "still-works"})
+        assert "good_1:echo:still-works" in res
+        await mcp.stop_all()
+
+    asyncio.run(_run())
+
+
+def test_mcp_auto_restart_after_disconnect(tmp_path):
+    """If a server drops mid-session, the next tool call auto-restarts it."""
+    import json as _json
+
+    from titan_agent.mcp_client import MCPManager
+
+    script = Path(__file__).resolve().parent / "fake_mcp_server.py"
+    cfg = tmp_path / "mcp_servers_restart.json"
+    cfg.write_text(_json.dumps({
+        "mcpServers": {
+            "flaky": {"command": sys.executable, "args": [str(script), "flaky"]},
+        }
+    }), encoding="utf-8")
+
+    async def _run():
+        mcp = MCPManager(cfg)
+        await mcp.start_all()
+        assert "flaky" in mcp.servers
+        _ = mcp.get_all_tools()
+        assert (await mcp.execute_tool("mcp_flaky_echo", {"text": "one"})) == "flaky:echo:one"
+
+        # simulate the server dying by force-killing its process
+        conn = mcp.servers["flaky"]
+        proc = conn.process
+        if proc and proc.returncode is None:
+            proc.kill()
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=5)
+            except (asyncio.TimeoutError, ProcessLookupError):
+                pass
+        conn.is_connected = False
+
+        # next call must reconnect automatically and still work
+        res = await mcp.execute_tool("mcp_flaky_echo", {"text": "two"})
+        assert "flaky:echo:two" in res, f"auto-restart failed: {res!r}"
+        await mcp.stop_all()
+
+    asyncio.run(_run())
