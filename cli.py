@@ -21,6 +21,7 @@ from titan_agent.mcp_client import MCPManager
 console = Console()
 
 VALID_MODES = ("fast", "deep", "deep_search")
+VALID_EFFORTS = ("auto", "low", "medium", "high", "ultra")
 
 async def resolve_cli_provider() -> tuple[str, str]:
     """Puter.js is browser-only, so the CLI auto-falls back to local Ollama."""
@@ -49,11 +50,15 @@ async def main():
     mode = os.getenv("TITAN_MODE", "fast").lower()
     if mode not in VALID_MODES:
         mode = "fast"
+    effort = os.getenv("TITAN_EFFORT", "auto").lower()
+    if effort not in VALID_EFFORTS:
+        effort = "auto"
 
     console.print(Panel.fit(
         "[bold cyan]⚡ TITAN AGENT[/bold cyan] - [italic]Autonomous AI System, far beyond classic agents[/italic]\n"
-        "[dim]Model: " + model + f" ({provider}) | MCP System: Active | Mode: {mode}[/dim]\n"
+        "[dim]Model: " + model + f" ({provider}) | MCP System: Active | Mode: {mode} | Effort: {effort}[/dim]\n"
         "[yellow]Type a command in Uzbek, Russian or English. Modes: fast | deep | deep_search (e.g. `mode deep`). "
+        "Effort levels: low | medium | high | ultra (e.g. `effort high`). "
         "Type 'exit' to quit.[/yellow]",
         border_style="cyan"
     ))
@@ -84,14 +89,23 @@ async def main():
                 else:
                     console.print(f"[bold red]Unknown mode: {new_mode}. Valid: {', '.join(VALID_MODES)}[/bold red]")
                 continue
+            # Effort level command (also accepts `/effort high`)
+            if lower_input.startswith("effort ") or lower_input.startswith("/effort "):
+                new_effort = lower_input.split(None, 1)[1].strip()
+                if new_effort in VALID_EFFORTS:
+                    effort = new_effort
+                    console.print(f"[bold cyan]Effort level switched to: {effort}[/bold cyan]")
+                else:
+                    console.print(f"[bold red]Unknown effort: {new_effort}. Valid: {', '.join(VALID_EFFORTS)}[/bold red]")
+                continue
             if lower_input in ("exit", "quit"):
                 console.print("[bold red]Titan Agent stopped. Goodbye![/bold red]")
                 await mcp.stop_all()
                 break
 
-            console.print(f"\n[bold magenta]⚡ Titan is working (mode: {mode})...[/bold magenta]")
+            console.print(f"\n[bold magenta]⚡ Titan is working (mode: {mode}, effort: {effort})...[/bold magenta]")
 
-            async for event in agent.run_task(user_input, session_id=session_id, mode=mode):
+            async for event in agent.run_task(user_input, session_id=session_id, mode=mode, effort=effort):
                 if event.type == "thought":
                     console.print(Panel(
                         f"[italic dim]{event.data}[/italic dim]",

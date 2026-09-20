@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--provider", default=None, help="Override LLM provider (puter, ollama, openrouter, deepseek, groq, lmstudio, openai)")
     parser.add_argument("--model", default=None, help="Override model name/id (e.g. hermes3:8b, deepseek/deepseek-v4-pro)")
     parser.add_argument("--mode", default=None, help="CLI mode: fast, deep or deep_search (default: fast)")
+    parser.add_argument("--effort", default=None, help="Effort level: auto, low, medium, high or ultra (default: auto)")
 
     args = parser.parse_args()
 
@@ -32,6 +33,8 @@ def main():
         os.environ["TITAN_MODEL"] = args.model
     if args.mode:
         os.environ["TITAN_MODE"] = args.mode
+    if args.effort:
+        os.environ["TITAN_EFFORT"] = args.effort
 
     # Import here so the env overrides take effect
     from titan_agent.config import SERVER_HOST, SERVER_PORT

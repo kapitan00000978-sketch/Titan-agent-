@@ -21,6 +21,7 @@ const baseUrlInput = document.getElementById("base-url-input");
 
 let isStreaming = false;
 let currentMode = "fast"; // "fast" | "deep" | "deep_search"
+let currentEffort = "medium"; // "low" | "medium" | "high" | "ultra"
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -64,6 +65,15 @@ function setupEventListeners() {
       currentMode = btn.dataset.mode;
       document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("mode-active"));
       btn.classList.add("mode-active");
+    });
+  });
+
+  // Effort selector (Low / Medium / High / Ultra)
+  document.querySelectorAll(".effort-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentEffort = btn.dataset.effort;
+      document.querySelectorAll(".effort-btn").forEach(b => b.classList.remove("effort-active"));
+      btn.classList.add("effort-active");
     });
   });
 
@@ -409,7 +419,7 @@ async function sendMessage(prompt) {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: prompt, session_id: "web_session", mode: currentMode })
+      body: JSON.stringify({ message: prompt, session_id: "web_session", mode: currentMode, effort: currentEffort })
     });
 
     const reader = response.body.getReader();
@@ -483,6 +493,23 @@ async function sendPuterMessage(prompt, card, statusLine) {
         "- If evidence is thin or conflicting, say so explicitly instead of guessing.";
     }
 
+    let effortNote = "";
+    if (currentEffort === "low") {
+      effortNote = "\n\n### EFFORT LEVEL: LOW\n" +
+        "- Prioritize SPEED: use the smallest number of tool calls that completes the task.\n" +
+        "- Answer directly and concisely; do not expand scope beyond the request.";
+    } else if (currentEffort === "high") {
+      effortNote = "\n\n### EFFORT LEVEL: HIGH\n" +
+        "- Work like a careful expert: decompose the problem and reason about each part in detail.\n" +
+        "- After every step ask yourself: is anything unverified, ambiguous, or missing?\n" +
+        "- Use your larger iteration budget deliberately for verification, never for decoration.";
+    } else if (currentEffort === "ultra") {
+      effortNote = "\n\n### EFFORT LEVEL: ULTRA\n" +
+        "- Be exhaustive: cover edge cases, failure modes, and alternative approaches.\n" +
+        "- Verify every claim with tools; do not settle for a shallow answer.\n" +
+        "- Review the whole request from the user's perspective — keep working until every part is met.";
+    }
+
     const messages = [
       {
         role: "system",
@@ -510,6 +537,7 @@ async function sendPuterMessage(prompt, card, statusLine) {
           "### EFFICIENCY: never re-run a tool for already-known output; if the goal is reached, stop and answer immediately; don't add decorative steps.\n" +
           "### PARALLEL: when several independent tool calls are needed, batch them in one turn so they execute simultaneously." +
           modeNote + "\n\n" +
+          effortNote + "\n\n" +
           "### LANGUAGE: respond in the user's language. Be professional, direct, and precise."
       },
       { role: "user", content: prompt }

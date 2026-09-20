@@ -59,12 +59,13 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str = "web_session"
     mode: str = "fast"
+    effort: str = "auto"
 
 @app.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest):
     async def event_generator():
         try:
-            async for ev in agent.run_task(req.message, session_id=req.session_id, mode=req.mode):
+            async for ev in agent.run_task(req.message, session_id=req.session_id, mode=req.mode, effort=req.effort):
                 payload = json.dumps(ev.to_dict())
                 yield f"data: {payload}\n\n"
         except Exception as e:

@@ -50,7 +50,13 @@ searches the web live, and connects to any application or database through **Mod
    - **⚡ Fast** — quick, efficient single-pass tasks.
    - **🧠 Deep Thinking** — extended reasoning, edge-case analysis, stricter verification, double iteration budget.
    - **🔍 Deep Search** — automatic multi-source research dossier seeded before the answer, plus research-first instructions.
-8. **🚀 Parallel Tool Execution**:
+8. **🌡️ Effort Levels** (`/effort`, `--effort`):
+   - **🌱 Low** — speed first: minimal tool calls, direct concise answers, half the iteration budget.
+   - **⚖️ Medium** — balanced default (budget ×1.0).
+   - **🔥 High** — like a careful expert: decompose, verify every step (budget ×1.6, reflection always on).
+   - **🚀 Ultra** — maximum thoroughness: exhaustive edge-case coverage, every claim verified (budget ×2.0, reflection always on).
+   - `auto` (default) — derives from the mode: deep/deep_search automatically run at High rigor.
+9. **🚀 Parallel Tool Execution**:
    - Multiple independent AI tools run **simultaneously** (batch tool calls) — from the agent loop and from the Puter in-browser path.
 
 ---
@@ -85,6 +91,7 @@ python run.py --cli
 
 # Temporarily switch provider/model:
 python run.py --provider ollama --model hermes3:8b
+python run.py --mode deep_search --effort ultra   # CLI: heavy research run
 ```
 
 The web dashboard opens automatically in your browser at `http://127.0.0.1:7860`.

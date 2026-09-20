@@ -82,6 +82,59 @@ DEEP_SEARCH_PROMPT = """You are currently operating in DEEP SEARCH mode. This is
 - If evidence is thin or conflicting, say so explicitly instead of guessing.
 """
 
+# Effort levels: how hard Titan works on a task (scales iteration budget + rigor).
+VALID_EFFORTS = ("auto", "low", "medium", "high", "ultra")
+
+EFFORT_MULTIPLIER = {
+    "low": 0.5,
+    "medium": 1.0,
+    "high": 1.6,
+    "ultra": 2.0,
+}
+
+EFFORT_PROMPTS = {
+    "low": """You are operating at LOW effort: prioritize SPEED and minimal token usage.
+- Use the smallest number of tool calls that completes the task; avoid redundant verification.
+- Answer directly and concisely; do not expand scope beyond the request.""",
+    "high": """You are operating at HIGH effort: work like a careful expert.
+- Decompose the problem into explicit sub-problems and reason about each one in detail.
+- After every step, ask yourself: is anything unverified, ambiguous, or missing?
+- Use your larger iteration budget deliberately for verification, never for decoration.""",
+    "ultra": """You are operating at ULTRA effort: maximum thoroughness.
+- Be exhaustive: cover edge cases, failure modes, and alternative approaches.
+- Verify every claim with tools; do not settle for a shallow answer.
+- Review the whole task from the user's perspective before finalizing — if any part of the
+  request is unmet, keep working until it is.""",
+}
+
+
+def _resolve_effort(effort: str, mode: str) -> str:
+    """Normalize a requested effort level; 'auto' derives from the mode."""
+    e = (effort or "auto").strip().lower()
+    if e not in VALID_EFFORTS:
+        e = "auto"
+    if e == "auto":
+        # Deep modes are inherently heavy — default them to 'high'.
+        e = "high" if mode in ("deep", "deep_search") else "medium"
+    return e
+
+
+def _compute_max_steps(mode: str, effort: str) -> int:
+    """Iteration budget = base (mode) scaled by the effort multiplier, clamped.
+
+    The multiplier applies ONLY to explicitly chosen effort levels ('low'/
+    'high'/'ultra'); 'auto' keeps the classic mode-based budget so deep modes
+    behave exactly as before unless the user opts into extra effort.
+    """
+    base = MAX_ITERATIONS
+    if mode in ("deep", "deep_search"):
+        base = min(MAX_ITERATIONS * 2, 40)
+    e = (effort or "auto").strip().lower()
+    if e not in VALID_EFFORTS:
+        e = "auto"
+    multiplier = 1.0 if e == "auto" else EFFORT_MULTIPLIER.get(e, 1.0)
+    return max(5, min(int(round(base * multiplier)), 48))
+
 class AgentEvent:
     def __init__(self, event_type: str, data: Any):
         self.type = event_type
@@ -254,16 +307,21 @@ class TitanAgent:
         self,
         user_input: str,
         session_id: str = "default_session",
-        mode: str = "fast"
+        mode: str = "fast",
+        effort: str = "auto"
     ) -> AsyncGenerator[AgentEvent, None]:
         """
         Executes a user request with autonomous multi-step reasoning, tool execution,
         and a critical reflection (self-review) pass before the final answer.
         mode: "fast" | "deep" | "deep_search"
+        effort: "auto" | "low" | "medium" | "high" | "ultra" — scales the iteration
+                budget and rigor of the run ('auto' derives from the mode).
         Yields AgentEvent objects for real-time streaming to Web UI / CLI.
         """
         if mode not in ("fast", "deep", "deep_search"):
             mode = "fast"
+        raw_effort = effort or "auto"  # budget scaling needs to know if effort was explicit
+        effort = _resolve_effort(effort, mode)
 
         # Save user message to memory
         self.memory.add_message(session_id, "user", user_input)
@@ -291,16 +349,16 @@ class TitanAgent:
             system_content += "\n\n" + DEEP_THINKING_PROMPT
         elif mode == "deep_search":
             system_content += "\n\n" + DEEP_SEARCH_PROMPT
+        # Effort-level guidance (LOW/HIGH/ULTRA)
+        if effort in EFFORT_PROMPTS:
+            system_content += "\n\n" + EFFORT_PROMPTS[effort]
 
         messages = [{"role": "system", "content": system_content}]
         for msg in history:
             m_dict = {"role": msg["role"], "content": msg["content"]}
             messages.append(m_dict)
 
-        max_steps = MAX_ITERATIONS
-        if mode in ("deep", "deep_search"):
-            # Deep modes get a bigger iteration budget
-            max_steps = min(MAX_ITERATIONS * 2, 40)
+        max_steps = _compute_max_steps(mode, raw_effort)
 
         # Deep Search mode: seed the context with an auto-researched dossier first
         if mode == "deep_search":
@@ -321,7 +379,7 @@ class TitanAgent:
             except Exception as e:
                 yield AgentEvent("status", f"Auto deep search unavailable: {e!s}")
 
-        yield AgentEvent("status", "Planning and analyzing the task...")
+        yield AgentEvent("status", f"Planning and analyzing the task... (effort: {effort}, max steps: {max_steps})")
 
         iteration = 0
         used_tools = False
@@ -359,8 +417,8 @@ class TitanAgent:
             # ---- No tool calls: candidate final answer ----
             final_text = response.content or ""
 
-            # Reflection (critic) pass: after real tool use (or always in deep modes)
-            needs_reflection = used_tools or mode in ("deep", "deep_search")
+            # Reflection (critic) pass: after real tool use (or always in deep / high-effort runs)
+            needs_reflection = used_tools or mode in ("deep", "deep_search") or effort in ("high", "ultra")
             if needs_reflection and not reflect_done:
                 reflect_done = True
                 yield AgentEvent("status", "Critically reviewing results (reflection)...")

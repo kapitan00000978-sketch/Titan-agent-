@@ -150,6 +150,61 @@ def test_run_task_auto_recalls_memory_into_system_prompt(tmp_path):
     assert any(ev.type == "final_answer" for ev in events)
 
 
+def test_effort_levels_scale_budget():
+    """Effort levels resolve correctly and scale the iteration budget."""
+    from titan_agent.agent import _compute_max_steps, _resolve_effort
+
+    assert _resolve_effort("auto", "fast") == "medium"
+    assert _resolve_effort("auto", "deep") == "high"
+    assert _resolve_effort("bogus", "fast") == "medium"
+    assert _resolve_effort("ULTRA", "fast") == "ultra"
+
+    steps_low = _compute_max_steps("fast", "low")
+    steps_med = _compute_max_steps("fast", "medium")
+    steps_high = _compute_max_steps("fast", "high")
+    steps_ultra = _compute_max_steps("fast", "ultra")
+    assert steps_low < steps_med <= steps_high < steps_ultra
+    # Deep modes start from a bigger base
+    assert _compute_max_steps("deep", "medium") > steps_med
+    # Clamped so a run can never explode
+    assert _compute_max_steps("deep_search", "ultra") <= 48
+
+
+def test_run_task_effort_guidance(tmp_path):
+    """Effort injects guidance into the prompt and controls forced reflection."""
+    import asyncio
+    from titan_agent.agent import TitanAgent
+    from titan_agent.llm_client import LLMResponse
+    from titan_agent.memory import MemoryManager
+
+    calls = {"n": 0, "system": ""}
+
+    class FakeLLM:
+        async def chat_completion(self, messages, tools=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                calls["system"] = messages[0]["content"]
+            return LLMResponse(content="done")
+
+    mem = MemoryManager(tmp_path / "effort_test.db")
+
+    async def _run(effort):
+        agent = TitanAgent(llm=FakeLLM(), memory=mem)
+        return [ev async for ev in agent.run_task("test task", session_id="t", mode="fast", effort=effort)]
+
+    # ULTRA: guidance in the prompt + critic reflection runs even with no tools (2 LLM calls)
+    calls["n"] = 0
+    asyncio.run(_run("ultra"))
+    assert "ULTRA effort" in calls["system"]
+    assert calls["n"] == 2  # main pass + critic reflection
+
+    # LOW: speed guidance + no forced reflection (single LLM call)
+    calls["n"] = 0
+    asyncio.run(_run("low"))
+    assert "LOW effort" in calls["system"]
+    assert calls["n"] == 1
+
+
 def test_tool_deep_search():
     tools = ToolRegistry(WORKSPACE_DIR)
     deep_s_res = asyncio.run(tools.tool_deep_search("Python 3.12"))

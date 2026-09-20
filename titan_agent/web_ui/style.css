@@ -785,3 +785,11 @@ body {
   color: #000;
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
 }
+
+/* Effort selector uses the same pill style; active state is emerald */
+.mode-btn.effort-active {
+  background: linear-gradient(135deg, var(--accent-emerald), #10b981);
+  border-color: transparent;
+  color: #000;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}

@@ -127,9 +127,29 @@ Two zero-cost, zero-dependency capabilities (no embeddings, no API keys):
   first), `test_run_task_auto_recalls_memory_into_system_prompt` (proves the remembered
   facts reach the model's system context).
 
+## 🆕 Effort Levels (2026)
+
+How hard Titan works on a task — user-selectable in the Web UI, CLI, `--effort` flag or `TITAN_EFFORT` env:
+
+- **Web UI** — an **Effort:** selector sits right under the Mode selector: 🌱 Low / ⚖️ Medium / 🔥 High / 🚀 Ultra
+  (emerald-active pills, same visual language as modes). Sent to the server stream and woven into the
+  Puter in-browser system prompt as an "EFFORT LEVEL" block.
+- **CLI** — `effort low|medium|high|ultra` (or `/effort high`) switches mid-session; `--effort` flag and
+  the banner show the active level. Modes and effort combine independently.
+- **`agent.py`** — `run_task(..., effort="auto"|"low"|"medium"|"high"|"ultra")`:
+  - Iteration budget = mode base (fast 25, deep/deep_search 40) × effort multiplier
+    (low 0.5 / medium 1.0 / high 1.6 / ultra 2.0), clamped to 48. **`auto` keeps the classic
+    mode budget** so existing deep behavior is unchanged unless the user opts in.
+  - HIGH/ULTRA always force the critic reflection pass (even without tool use); LOW adds
+    speed-first guidance and skips forced reflection.
+  - The planning status event now reports `(effort: X, max steps: N)` live.
+- **Tests** — `test_effort_levels_scale_budget` (resolution + monotonic budget scaling +
+  clamping), `test_run_task_effort_guidance` (ULTRA → guidance + forced reflection = 2 LLM
+  calls; LOW → speed guidance + single call).
+
 ## ✅ Verified status
 
-- `python -m pytest tests -q` → **23 passed**
+- `python -m pytest tests -q` → **25 passed**
 - Server `python run.py` → starts, Web UI `http://127.0.0.1:7860`
 - MCP `filesystem` server (14 tools) connects cleanly with the `{WORKSPACE}` placeholder
 - Config: `puter / deepseek/deepseek-v4-pro`
