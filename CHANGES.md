@@ -167,10 +167,12 @@ A hard token-per-second guardrail so Titan can never burst past its budget:
   `test_token_usage_endpoint_shape`.
 - With the default cap the guard is effectively invisible in production — the 214k/s budget
   is far larger than any real workload — but the throttling is real and provable.
+- **`server.py`** — also replaced the deprecated `@app.on_event("startup"/"shutdown")` with a
+  modern `lifespan` handler, so `pytest` output is fully clean: **29 passed, 0 warnings**.
 
 ## ✅ Verified status
 
-- `python -m pytest tests -q` → **29 passed**
+- `python -m pytest tests -q` → **29 passed, 0 warnings**
 - Server `python run.py` → starts, Web UI `http://127.0.0.1:7860`
 - MCP `filesystem` server (14 tools) connects cleanly with the `{WORKSPACE}` placeholder
 - Config: `puter / deepseek/deepseek-v4-pro`

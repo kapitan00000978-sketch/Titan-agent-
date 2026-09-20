@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict
 
@@ -16,7 +17,16 @@ from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .tools import ToolRegistry
 
-app = FastAPI(title="Titan Agent API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Startup: attempt to start MCP servers (mcp_manager is defined at module
+    # load, before the app ever starts serving, so this lookup is always valid).
+    asyncio.create_task(mcp_manager.start_all())
+    yield
+    # Shutdown
+    await mcp_manager.stop_all()
+
+app = FastAPI(title="Titan Agent API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,15 +47,6 @@ WEB_UI_DIR = Path(__file__).resolve().parent / "web_ui"
 WEB_UI_DIR.mkdir(parents=True, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=str(WEB_UI_DIR)), name="static")
-
-@app.on_event("startup")
-async def startup_event():
-    # Attempt to start MCP servers
-    asyncio.create_task(mcp_manager.start_all())
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await mcp_manager.stop_all()
 
 @app.get("/")
 async def root():
