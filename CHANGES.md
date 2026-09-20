@@ -60,10 +60,47 @@ Ushbu loyiha "tugatish" ishi davomida kiritilgan barcha tuzatish va takomillasht
 - **Maslahat**: Har qanday model ID oxiriga `:free` qo'shish orqali bepul ishlatish mumkin
   (masalan `deepseek/deepseek-v4-pro:free`). Chat oqimi tanlangan model nomini ko'rsatadi.
 
+## 🆕 Agent Core kuchaytirildi (Hermes'dan ustun)
+
+- **`titan_agent/agent.py`**: yangi `TITAN_SYSTEM_PROMPT` — **Plan-Act-Verify-Report**
+  intizomi: har doim avval reja, keyin aniq harakat, natijani tekshirish va yakuniy hisobot.
+- **Jonli tool katalogi**: har bir aylanishda mavjud barcha vositalar (built-in + MCP)
+  avtomatik system promptga qo'shiladi (`LIVE TOOL CATALOG`) — model imkoniyatlarini aniq biladi.
+- **Samaradorlik qoidalari**: keraksiz qadamlardan qochish, ma'lum natijalarni qayta
+  so'ramaslik, maqsadga erishilganda darhol to'xtash — kamroq token, tezroq javob.
+- **`titan_agent/web_ui/app.js`**: Puter brauzer rejimidagi system prompt ham xuddi
+  backend darajasiga ko'tarildi (tool katalogi + intizom + til qoidasi).
+
+## 🆕 PowerShell / CLI yaxshilanishlari
+
+- **`start-titan.ps1`** (yangi): avtomatik Python tekshiruvi, `venv` yaratish, qaramliklarni
+  o'rnatish, `.env` ni yaratish va Web/CLI ishga tushirish. Parametrlar: `-CLI`, `-Port`,
+  `-Provider`, `-Model`, `-NoBrowser`.
+- **`start.bat`** endi PowerShell skriptiga yo'naltiradi (bitta bosish bilan ishlayveradi).
+- **`run.py`**: yangi `--provider` va `--model` bayroqlari — config importidan oldin
+  `TITAN_PROVIDER` / `TITAN_MODEL` ni o'rnatadi (masalan: `python run.py --provider ollama --model hermes3:8b`).
+- **`cli.py`**: `puter` provayderi CLI'da tanlangan bo'lsa (Puter faqat brauzerda ishlaydi),
+  avtomatik ravishda mahalliy **Ollama** modellarini qidiradi va unga o'tadi; topilmasa
+  foydalanuvchiga aniq yo'l-yo'riq ko'rsatadi.
+
+## 🆕 GitHub'ga tayyorlash
+
+- **`git init` + birinchi commit** (26 fayl, 3948 satr).
+- **`.gitignore`** (yangi): `.env` (sir), `venv/`, `__pycache__/`, `*.db`, `workspace/`, `*.zip`
+  va boshqa runtime/IDE fayllari chiqarib tashlanadi.
+- **`LICENSE`** (yangi): MIT litsenziyasi.
+- **`.github/workflows/tests.yml`** (yangi): CI — push/PR da Python 3.10/3.12 bilan
+  `pytest` avtomatik ishlaydi.
+- **`README.md`** qayta yozildi: badge'lar, PowerShell ko'rsatmalari, Puter bepul modellar
+  yo'nalishi, loyiha tuzilishi, litsenziya.
+- **`mcp_servers.json`** portativ qilindi: qattiq yo'l o'rniga `{WORKSPACE}` placeholder —
+  `mcp_client.py` uni avtomatik haqiqiy yo'lga almashtiradi (har qanday mashinada ishlaydi).
+
 ## ✅ Tasdiqlangan holat
 
 - `python -m pytest tests -q` → **9 passed**
 - Server `python run.py` → ishga tushadi, Web UI `http://127.0.0.1:7860`
-- MCP `filesystem` serverni (14 vosita) toza ulaydi
+- MCP `filesystem` serverni (14 vosita) `{WORKSPACE}` placeholder bilan toza ulaydi
 - Config: `puter / deepseek/deepseek-v4-pro`
 - Chat oqimi: status → step_start → natija/xato (boshqariladigan)
+- Git: `3b20010` root commit, `master` branch'ida
