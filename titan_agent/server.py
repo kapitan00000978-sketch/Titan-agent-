@@ -88,6 +88,11 @@ async def get_local_models():
     models = await LLMClient.detect_local_models()
     return models
 
+@app.get("/api/token-usage")
+async def get_token_usage():
+    """Live token throughput guardrail stats (cap enforced on every LLM call)."""
+    return llm_client.token_limiter.stats()
+
 @app.get("/api/config")
 async def get_config():
     return {

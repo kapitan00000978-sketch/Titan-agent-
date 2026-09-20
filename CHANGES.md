@@ -147,9 +147,30 @@ How hard Titan works on a task — user-selectable in the Web UI, CLI, `--effort
   clamping), `test_run_task_effort_guidance` (ULTRA → guidance + forced reflection = 2 LLM
   calls; LOW → speed guidance + single call).
 
+## 🆕 Token Throughput Guard (214k tokens/s) (2026)
+
+A hard token-per-second guardrail so Titan can never burst past its budget:
+
+- **`titan_agent/token_limit.py`** (new) — `TokenRateLimiter`, an async **token bucket**:
+  up to 214,000 tokens/s (default, `TITAN_TOKEN_RATE_LIMIT` in `.env`), one second of burst,
+  then any call that would exceed the cap waits exactly long enough for the refill.
+  `estimate_tokens()` reserves input + max-output **before** every call (the cap is enforced
+  on the way in, never after the fact). Accounting: tokens reserved, calls, throttling waits.
+- **`llm_client.py`** — every server-side `chat_completion` first
+  `await self.token_limiter.acquire(estimate_tokens(...))` (covers OpenRouter/DeepSeek/Groq/Ollama/CLI).
+- **`server.py`** — new **`GET /api/token-usage`** endpoint returning the cap and live stats.
+- **Web UI** — the Puter in-browser path has the **same** token bucket in `app.js`
+  (`TOKEN_RATE_LIMIT = 214000`, `acquireTokens()` called right before `puter.ai.chat`);
+  a subtle `🔒 214k tok/s` badge sits in the dashboard header.
+- **Tests** — `test_token_rate_limit_default_is_214_k`, `test_token_limiter_enforces_rate`
+  (tiny 10 tok/s bucket: first call free, second throttled ~1s), `test_estimate_tokens_returns_positive`,
+  `test_token_usage_endpoint_shape`.
+- With the default cap the guard is effectively invisible in production — the 214k/s budget
+  is far larger than any real workload — but the throttling is real and provable.
+
 ## ✅ Verified status
 
-- `python -m pytest tests -q` → **25 passed**
+- `python -m pytest tests -q` → **29 passed**
 - Server `python run.py` → starts, Web UI `http://127.0.0.1:7860`
 - MCP `filesystem` server (14 tools) connects cleanly with the `{WORKSPACE}` placeholder
 - Config: `puter / deepseek/deepseek-v4-pro`

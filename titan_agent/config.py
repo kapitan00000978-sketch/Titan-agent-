@@ -44,3 +44,8 @@ SERVER_PORT = int(os.getenv("TITAN_PORT", "7860"))
 # Agent Autonomy Settings
 AUTONOMOUS_MODE = os.getenv("TITAN_AUTONOMOUS", "true").lower() in ("true", "1", "yes")
 MAX_ITERATIONS = int(os.getenv("TITAN_MAX_ITERATIONS", "25"))
+
+# Token throughput guardrail: the agent never exceeds this many tokens/second
+# (token bucket). 214,000/s is effectively invisible in production but fully
+# enforced for every LLM call (backend providers and the Puter browser path).
+TOKEN_RATE_LIMIT_PER_SEC = int(os.getenv("TITAN_TOKEN_RATE_LIMIT", "214000"))

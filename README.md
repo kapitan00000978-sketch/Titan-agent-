@@ -58,6 +58,11 @@ searches the web live, and connects to any application or database through **Mod
    - `auto` (default) — derives from the mode: deep/deep_search automatically run at High rigor.
 9. **🚀 Parallel Tool Execution**:
    - Multiple independent AI tools run **simultaneously** (batch tool calls) — from the agent loop and from the Puter in-browser path.
+10. **🔒 Token Throughput Guard (214k/s)**:
+    - A hard token-bucket guardrail: the agent can **never exceed 214,000 tokens/second**, no matter how many
+      providers, parallel tool turns or long streams are running (default; override with `TITAN_TOKEN_RATE_LIMIT`).
+    - Enforced on every server-side LLM call (`llm_client`) **and** on the Puter browser path (`app.js` token bucket).
+    - Live stats endpoint: `GET /api/token-usage` (cap, tokens reserved, throttling waits) + a small `🔒 214k tok/s` badge in the dashboard header.
 
 ---
 
@@ -198,6 +203,7 @@ titan-agent/
 │   ├── tools.py              # Built-in tools (execute_command, web_search, workspace_rag, deep_search, deep_coder, system_info, manage_processes...)
 │   ├── mcp_client.py         # Model Context Protocol connection manager
 │   ├── memory.py             # SQLite long-term memory
+│   ├── token_limit.py        # Token throughput guardrail (214k tokens/s token bucket)
 │   ├── deep_search.py        # DeepSearchEngine — multi-angle research dossier
 │   ├── deep_coder.py         # DeepCoderEngine — full software engineering cycle
 │   ├── config.py             # Settings from .env

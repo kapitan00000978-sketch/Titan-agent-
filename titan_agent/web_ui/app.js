@@ -23,6 +23,29 @@ let isStreaming = false;
 let currentMode = "fast"; // "fast" | "deep" | "deep_search"
 let currentEffort = "medium"; // "low" | "medium" | "high" | "ultra"
 
+// Token throughput guardrail: the browser (Puter) path can never exceed
+// 214,000 tokens/second. Token bucket, same contract as the backend limiter.
+const TOKEN_RATE_LIMIT = 214000;
+const tokenBucket = { tokens: TOKEN_RATE_LIMIT, last: performance.now() };
+async function acquireTokens(n) {
+  if (n <= 0) return 0;
+  const now = performance.now();
+  tokenBucket.tokens = Math.min(
+    TOKEN_RATE_LIMIT,
+    tokenBucket.tokens + ((now - tokenBucket.last) / 1000) * TOKEN_RATE_LIMIT
+  );
+  tokenBucket.last = now;
+  if (n <= tokenBucket.tokens) {
+    tokenBucket.tokens -= n;
+    return 0;
+  }
+  const waitMs = ((n - tokenBucket.tokens) / TOKEN_RATE_LIMIT) * 1000;
+  tokenBucket.tokens = 0;
+  tokenBucket.last = now + waitMs;
+  if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+  return waitMs;
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
   fetchConfig();
@@ -545,6 +568,9 @@ async function sendPuterMessage(prompt, card, statusLine) {
 
     statusLine.innerHTML = `⚡ ${escapeHtml(modelName)} is generating a response...`;
     const fullModelId = resolvePuterModel(modelInput.value.trim() || "deepseek/deepseek-v4-pro");
+    // Reserve the estimated token budget against the 214k tokens/s guardrail.
+    const estTokens = Math.ceil((prompt.length + modeNote.length + effortNote.length) / 4) + 4096;
+    await acquireTokens(estTokens);
     const response = await puter.ai.chat(messages, { model: fullModelId, stream: true });
 
     let fullText = "";

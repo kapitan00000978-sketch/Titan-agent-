@@ -205,6 +205,62 @@ def test_run_task_effort_guidance(tmp_path):
     assert calls["n"] == 1
 
 
+def test_token_rate_limit_default_is_214_k():
+    """The global token throughput cap is 214,000 tokens/second by default."""
+    from titan_agent.config import TOKEN_RATE_LIMIT_PER_SEC
+    from titan_agent.llm_client import LLMClient
+    from titan_agent.token_limit import TokenRateLimiter
+
+    assert TOKEN_RATE_LIMIT_PER_SEC == 214000
+    limiter = TokenRateLimiter()
+    assert limiter.rate == 214000
+    assert limiter.capacity == 214000.0
+    # The shared LLM client enforces the same cap
+    assert LLMClient().token_limiter.rate == 214000
+
+
+def test_token_limiter_enforces_rate():
+    """The token bucket actually throttles once the per-second budget is spent."""
+    import asyncio
+    from titan_agent.token_limit import TokenRateLimiter
+
+    async def _run():
+        limiter = TokenRateLimiter(tokens_per_sec=10)  # tiny cap for a fast test
+        w1 = await limiter.acquire(10)  # consumes the whole bucket (burst allowed)
+        w2 = await limiter.acquire(10)  # bucket is now empty -> must wait ~1s
+        return limiter, w1, w2
+
+    limiter, w1, w2 = asyncio.run(_run())
+    assert w1 == 0.0
+    assert w2 >= 0.95  # 10 tokens/s -> 10 tokens take 1s to refill
+    stats = limiter.stats()
+    assert stats["cap_per_second"] == 10
+    assert stats["total_tokens_reserved"] == 20
+    assert stats["calls"] == 2
+    assert stats["max_wait_seconds"] >= 0.95
+
+
+def test_estimate_tokens_returns_positive():
+    from titan_agent.token_limit import estimate_tokens
+
+    msgs = [{"role": "system", "content": "You are TITAN AGENT."}, {"role": "user", "content": "Hello world"}]
+    tools = [{"type": "function", "function": {"name": "web_search", "parameters": {}}}]
+    est = estimate_tokens(msgs, tools, max_output=4096)
+    assert est >= 4096  # at least the output allowance
+    assert estimate_tokens([], max_output=1) >= 1
+
+
+def test_token_usage_endpoint_shape():
+    """The /api/token-usage endpoint reports the 214k/s cap and live stats."""
+    import asyncio
+    from titan_agent import server
+
+    data = asyncio.run(server.get_token_usage())
+    assert data["cap_per_second"] == 214000
+    assert data["total_tokens_reserved"] >= 0
+    assert data["calls"] >= 0
+
+
 def test_tool_deep_search():
     tools = ToolRegistry(WORKSPACE_DIR)
     deep_s_res = asyncio.run(tools.tool_deep_search("Python 3.12"))

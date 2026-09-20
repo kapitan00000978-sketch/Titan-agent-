@@ -12,6 +12,7 @@ from .config import (
     DEEPSEEK_API_KEY,
     OLLAMA_BASE_URL,
 )
+from .token_limit import TokenRateLimiter, estimate_tokens
 
 class LLMResponse:
     def __init__(self, content: str = "", tool_calls: Optional[List[Dict[str, Any]]] = None, thoughts: str = ""):
@@ -31,6 +32,8 @@ class LLMClient:
         self.provider = provider or DEFAULT_PROVIDER
         self.model = model or DEFAULT_MODEL
         self._setup_credentials()
+        # Global token throughput guardrail (214,000 tokens/s cap).
+        self.token_limiter = TokenRateLimiter()
 
     def _setup_credentials(self):
         if self.provider == "openrouter":
@@ -134,6 +137,11 @@ class LLMClient:
             )
         if not self.base_url:
             raise RuntimeError(f"Provider '{self.provider}' is not configured (missing API key).")
+
+        # Enforce the token rate cap (214k tokens/s): reserve input estimate +
+        # max_output before the call; the bucket waits if the budget is exceeded.
+        await self.token_limiter.acquire(estimate_tokens(messages, tools, max_tokens))
+
         url = f"{self.base_url}/chat/completions"
         headers = {
             "Content-Type": "application/json",
