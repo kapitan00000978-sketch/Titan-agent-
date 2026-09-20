@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     TITAN AGENT - PowerShell ishga tushirish skripti (avtomatik setup + Web/CLI).
 
