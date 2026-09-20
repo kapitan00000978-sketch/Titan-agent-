@@ -16,7 +16,7 @@ env/
 ENV/
 
 # ===== Secrets =====
-# .env faqat lokalda — GitHub'ga yuklanmaydi (.env.example kommit qilinadi)
+# .env stays local — never uploaded to GitHub (.env.example is committed)
 .env
 .env.local
 .env.*.local

@@ -143,4 +143,4 @@ commands, verify results, or remember anything. Titan is now completely superior
 ### Live verification results (localhost:7860)
 - `system_info` → Windows 11, 12 CPU cores, 15.3 GB RAM, Python 3.12, Node v24, Git 2.55
 - `manage_processes` → python processes listed with PIDs
-- `memory_save`/`memory_search` → "user_lang = O'zbek" saved and found
+- `memory_save`/`memory_search` → a "user_lang" fact saved in one turn and successfully recalled
