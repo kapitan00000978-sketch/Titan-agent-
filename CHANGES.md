@@ -98,9 +98,40 @@ Ushbu loyiha "tugatish" ishi davomida kiritilgan barcha tuzatish va takomillasht
 
 ## ✅ Tasdiqlangan holat
 
-- `python -m pytest tests -q` → **9 passed**
+- `python -m pytest tests -q` → **13 passed**
 - Server `python run.py` → ishga tushadi, Web UI `http://127.0.0.1:7860`
 - MCP `filesystem` serverni (14 vosita) `{WORKSPACE}` placeholder bilan toza ulaydi
 - Config: `puter / deepseek/deepseek-v4-pro`
 - Chat oqimi: status → step_start → natija/xato (boshqariladigan)
 - Git: `3b20010` root commit, `master` branch'ida
+
+## 🆕 Hermes max darajasidan ham ustun — Agent Core 2.0
+
+Hermes 405B (max tarif) faqat matn ishlab chiqara oladi — u real dunyoda **hech narsa bajara
+olmaydi**: buyruq yurgiza olmaydi, natijani tekshira olmaydi, xotirasiz. Titan endi barcha
+ana shu qatlamlarda butunlay ustun:
+
+### 1. Reflection (o'z-o'zini tanqid) passi — `agent.py`
+- Task tool'lar bilan bajarilgach, model yakuniy javob berishdan **OLDIN** o'z ishini
+  tanqidiy tekshiradi (`REFLECTION_PROMPT`): foydalanuvchi so'rovi to'liq bajarildimi?
+  Barcha da'volar tool natijalari bilan tasdiqlanganmi? Xatolar bormi?
+- Reflection yetishmovchilik topsa → avtomatik **qo'shimcha tool chaqiradi** va tuzatadi,
+  aks holda sayqallangan yakuniy javobni beradi.
+- Bu Hermes (bir o'tishli model) qila olmaydigan haqiqiy **verification loop**.
+
+### 2. Faol uzoq muddatli xotira tool'lari — Hermesda umuman yo'q
+- `memory_save(key, value, category?)` — faktni abadiy eslab qoladi (barcha sessiyalarda).
+- `memory_search(query)` — avvalgi sessiyalarda saqlangan faktlarni eslaydi.
+- Agent endi foydalanuvchi ismi, afzalliklari, qarorlarini o'zi mustaqil saqlaydi va eslaydi.
+
+### 3. Real-dunyo nazorati tool'lari
+- `system_info()` — jonli OS / CPU / RAM / disk / Python / Node / Git ma'lumotlari.
+- `manage_processes(action: list|kill, pattern?)` — ishlayotgan jarayonlarni ro'yxatlaydi
+  yoki to'xtatadi (tasklist/taskkill yoki ps/kill).
+- Frontend (Puter rejimi) system prompti ham yangi tool katalogi + reflection qoidasi bilan
+  to'ldirildi.
+
+### Jonli sinov natijalari (localhost:7860)
+- `system_info` → Windows 11, 12 CPU core, 15.3 GB RAM, Python 3.12, Node v24, Git 2.55
+- `manage_processes` → python jarayonlari PID bilan ro'yxatlandi
+- `memory_save`/`memory_search` → "user_lang = O'zbek" saqlandi va topildi

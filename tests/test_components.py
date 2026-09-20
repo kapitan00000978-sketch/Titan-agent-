@@ -94,3 +94,48 @@ def test_llm_puter_provider_is_client_side():
     assert client.base_url == ""
     with pytest.raises(RuntimeError, match="Puter.js"):
         asyncio.run(client.chat_completion([{"role": "user", "content": "hi"}]))
+
+
+def test_tool_system_info():
+    """system_info returns live host facts."""
+    tools = ToolRegistry(WORKSPACE_DIR)
+    res = tools.tool_system_info()
+    assert "OS:" in res
+    assert "CPU cores:" in res
+    assert "Python:" in res
+
+
+def test_tool_manage_processes_list():
+    """manage_processes(list) returns at least the current process."""
+    tools = ToolRegistry(WORKSPACE_DIR)
+    res = asyncio.run(tools.tool_manage_processes("list"))
+    assert "PID" in res
+
+
+def test_agent_memory_tools():
+    """memory_save / memory_search route through the agent's MemoryManager."""
+    from titan_agent.agent import TitanAgent
+    from titan_agent.memory import MemoryManager
+    mem = MemoryManager(Path(__file__).parent / "test_memory.db")
+    mem.clear_session("mem_tools_test")
+    # Remove any pre-existing fact with this key to keep the test deterministic
+    agent = TitanAgent(memory=mem)
+
+    saved = asyncio.run(agent.execute_tool_unified(
+        "memory_save", {"key": "test_favorite_food", "value": "osh", "category": "profile"}
+    ))
+    assert "Saved to memory" in saved
+
+    found = asyncio.run(agent.execute_tool_unified(
+        "memory_search", {"query": "osh"}
+    ))
+    assert "test_favorite_food" in found
+
+
+def test_agent_tool_definitions_include_new_tools():
+    """The agent's live tool list now includes system/memory/process tools."""
+    from titan_agent.agent import TitanAgent
+    agent = TitanAgent()
+    names = [t["function"]["name"] for t in agent._build_tools_list()]
+    for expected in ("system_info", "manage_processes", "memory_save", "memory_search"):
+        assert expected in names

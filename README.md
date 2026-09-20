@@ -35,7 +35,10 @@ internetdan jonli qidiradi va **Model Context Protocol (MCP)** orqali har qanday
 5. **💻 Ikkita Qulay Interfeys**:
    - **Web Dashboard**: Zamonaviy Dark Cyberpunk Glassmorphic vizual boshqaruv paneli (fikrlash, asboblar animatsiyasi, fayllar boshqaruvi, 500+ bepul model brauzeri).
    - **Terminal CLI**: Rich kutubxonasi bilan konsoldan ishlash.
-6. **⚡ Yangi: Agent Core kuchaytirildi** — Plan-Act-Verify-Report intizomi, jonli tool katalogi va samaradorlik qoidalari — har bir buyruqda kamroq qadam bilan aniqroq natija.
+6. **⚡ Yangi: Agent Core 2.0 — Hermes max darajasidan ham ustun**:
+   - **Reflection passi**: har bir real vazifadan so'ng Titan o'z ishini tanqidiy tekshiradi, xatolarni tuzatadi va sayqallangan javob beradi (Hermes'da bu sikl yo'q).
+   - **Faol xotira tool'lari**: `memory_save` / `memory_search` — faktlarni barcha sessiyalarda eslab qoladi.
+   - **Real-dunyo nazorati**: `system_info` (OS/CPU/RAM/disk) va `manage_processes` (jarayonlarni ro'yxat/tugatish).
 
 ---
 
@@ -156,9 +159,9 @@ titan-agent/
 ├── .env.example              # Sozlamalar shabloni (nusxalab .env qiling)
 ├── tests/                    # pytest testlari (9 ta)
 ├── titan_agent/
-│   ├── agent.py              # TitanAgent — asosiy agentik sikl (Plan-Act-Verify)
+│   ├── agent.py              # TitanAgent — asosiy agentik sikl (Plan-Act-Verify-Reflect) + xotira tool'lari
 │   ├── llm_client.py         # Multi-provider LLM mijoz (puter/openrouter/groq/deepseek/ollama/lmstudio/openai)
-│   ├── tools.py              # Ichki asboblar (execute_command, web_search, deep_search, deep_coder...)
+│   ├── tools.py              # Ichki asboblar (execute_command, web_search, deep_search, deep_coder, system_info, manage_processes...)
 │   ├── mcp_client.py         # Model Context Protocol ulanish boshqaruvi
 │   ├── memory.py             # SQLite uzoq muddatli xotira
 │   ├── config.py             # .env dan sozlamalar

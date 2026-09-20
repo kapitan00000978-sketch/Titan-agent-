@@ -1,5 +1,8 @@
 import asyncio
+import os
+import platform
 import re
+import shutil
 import subprocess
 import sys
 import urllib.request
@@ -239,6 +242,39 @@ class ToolRegistry:
                         "required": ["app_or_command"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "system_info",
+                    "description": "Returns live information about the host system: OS version, CPU, RAM (total/free), disk space, Python version — useful for environment-aware decisions.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "manage_processes",
+                    "description": "Lists or kills running OS processes. action='list' to see running processes (optionally filtered by pattern), action='kill' to terminate a process by PID or image name.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["list", "kill"],
+                                "description": "'list' to show processes, 'kill' to terminate."
+                            },
+                            "pattern": {
+                                "type": "string",
+                                "description": "For 'list': substring to filter process names. For 'kill': PID number or image name (e.g. 'notepad.exe')."
+                            }
+                        },
+                        "required": ["action"]
+                    }
+                }
             }
         ]
 
@@ -426,3 +462,159 @@ class ToolRegistry:
             return f"Launched application/command: '{app_or_command}'"
         except Exception as e:
             return f"Failed to launch application: {e!s}"
+
+    def tool_system_info(self) -> str:
+        """Reads live host environment facts (OS, CPU, RAM, disk, Python)."""
+        try:
+            lines = []
+            lines.append(f"OS: {platform.system()} {platform.release()} ({platform.version()})")
+            lines.append(f"Machine: {platform.machine()} | Node: {platform.node()}")
+            lines.append(f"Python: {platform.python_version()} ({sys.executable})")
+            lines.append(f"CPU cores: {os.cpu_count() or 'unknown'}")
+
+            # RAM (total + free)
+            try:
+                if sys.platform == "win32":
+                    import ctypes
+                    class MEMORYSTATUSEX(ctypes.Structure):
+                        _fields_ = [
+                            ("dwLength", ctypes.c_ulong),
+                            ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong),
+                            ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong),
+                            ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong),
+                            ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                        ]
+                    stat = MEMORYSTATUSEX()
+                    stat.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+                    if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                        total_gb = stat.ullTotalPhys / (1024 ** 3)
+                        free_gb = stat.ullAvailPhys / (1024 ** 3)
+                        lines.append(f"RAM: {free_gb:.1f} GB free / {total_gb:.1f} GB total ({stat.dwMemoryLoad}% used)")
+                    else:
+                        lines.append("RAM: unable to read")
+                else:
+                    with open("/proc/meminfo") as f:
+                        meminfo = {}
+                        for line in f:
+                            parts = line.split(":", 1)
+                            if len(parts) == 2:
+                                meminfo[parts[0].strip()] = parts[1].strip()
+                    total_kb = int(meminfo.get("MemTotal", "0").split()[0])
+                    avail_kb = int(meminfo.get("MemAvailable", "0").split()[0])
+                    lines.append(f"RAM: {avail_kb/1048576:.1f} GB free / {total_kb/1048576:.1f} GB total")
+            except Exception as e:
+                lines.append(f"RAM: read failed ({e})")
+
+            # Disk on workspace drive
+            try:
+                usage = shutil.disk_usage(str(self.workspace))
+                lines.append(f"Disk: {usage.free/(1024**3):.1f} GB free / {usage.total/(1024**3):.1f} GB total")
+            except Exception:
+                pass
+
+            # Software hints
+            try:
+                node_ver = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=5).stdout.strip()
+                lines.append(f"Node.js: {node_ver or 'not found'}")
+            except Exception:
+                pass
+            try:
+                git_ver = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=5).stdout.strip()
+                lines.append(f"Git: {git_ver or 'not found'}")
+            except Exception:
+                pass
+
+            lines.append(f"Workspace: {self.workspace}")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"System info error: {e!s}"
+
+    async def tool_manage_processes(self, action: str = "list", pattern: str = "") -> str:
+        """Lists or kills OS processes (tasklist/taskkill on Windows, ps/kill on Unix)."""
+        action = (action or "list").lower()
+        try:
+            if sys.platform == "win32":
+                if action == "list":
+                    cmd = ["tasklist", "/FO", "CSV", "/NH"]
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=20.0)
+                    if stderr and not stdout:
+                        return f"Error listing processes: {stderr.decode('utf-8', errors='ignore')[:500]}"
+                    rows = []
+                    for line in stdout.decode("utf-8", errors="ignore").splitlines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        parts = line.split('","')
+                        if len(parts) >= 2:
+                            name = parts[0].strip('"')
+                            pid = parts[1].strip('"')
+                            if pattern and pattern.lower() not in name.lower():
+                                continue
+                            rows.append(f"PID {pid}: {name}")
+                    if not rows:
+                        return f"No processes found matching '{pattern}'." if pattern else "No processes found."
+                    return "\n".join(rows[:100])
+                elif action == "kill":
+                    if not pattern:
+                        return "Error: manage_processes kill requires 'pattern' (PID or image name)."
+                    cmd = ["taskkill", "/F"]
+                    if pattern.strip().isdigit():
+                        cmd += ["/PID", pattern.strip()]
+                    else:
+                        cmd += ["/IM", pattern.strip()]
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=20.0)
+                    out = (stdout or b"").decode("utf-8", errors="ignore").strip()
+                    err = (stderr or b"").decode("utf-8", errors="ignore").strip()
+                    return f"{out} {err}".strip() or f"Kill command finished (exit {proc.returncode})."
+                else:
+                    return f"Error: unknown action '{action}' (use 'list' or 'kill')."
+            else:
+                # Unix
+                if action == "list":
+                    proc = await asyncio.create_subprocess_exec(
+                        "ps", "-eo", "pid,comm",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=20.0)
+                    rows = []
+                    for line in stdout.decode("utf-8", errors="ignore").splitlines():
+                        parts = line.split(None, 1)
+                        if len(parts) == 2:
+                            pid, name = parts[0], parts[1]
+                            if pattern and pattern.lower() not in name.lower():
+                                continue
+                            rows.append(f"PID {pid}: {name}")
+                    return "\n".join(rows[:100]) if rows else f"No processes found matching '{pattern}'."
+                elif action == "kill":
+                    if not pattern:
+                        return "Error: manage_processes kill requires 'pattern' (PID)."
+                    proc = await asyncio.create_subprocess_exec(
+                        "kill", "-9", pattern.strip(),
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=20.0)
+                    out = (stdout or b"").decode("utf-8", errors="ignore").strip()
+                    err = (stderr or b"").decode("utf-8", errors="ignore").strip()
+                    return f"{out} {err}".strip() or f"Kill command finished (exit {proc.returncode})."
+                else:
+                    return f"Error: unknown action '{action}' (use 'list' or 'kill')."
+        except asyncio.TimeoutError:
+            return "Error: process query timed out after 20 seconds."
+        except Exception as e:
+            return f"Manage processes error: {e!s}"
