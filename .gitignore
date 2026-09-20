@@ -1,0 +1,51 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+
+# ===== Venv / Environment =====
+.venv/
+venv/
+env/
+ENV/
+
+# ===== Secrets =====
+# .env faqat lokalda — GitHub'ga yuklanmaydi (.env.example kommit qilinadi)
+.env
+.env.local
+.env.*.local
+
+# ===== Tests / Lint =====
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ===== Runtime data =====
+*.db
+*.sqlite
+*.sqlite3
+workspace/
+_staging/
+$null
+
+# ===== Packaging =====
+*.zip
+*.tar.gz
+*.7z
+
+# ===== IDE / OS =====
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

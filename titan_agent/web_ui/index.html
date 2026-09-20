@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TITAN AGENT | Autonomous AI Cockpit & MCP Hub</title>
+  <meta name="description" content="Hermes darajasidan ancha ustun, avtonom ko'p vositali AI agent va MCP boshqaruv paneli">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Puter.js Free AI SDK -->
+  <script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand-zone">
+        <div class="logo-orb">
+          <div class="orb-pulse"></div>
+          <span class="logo-icon">⚡</span>
+        </div>
+        <div class="brand-text">
+          <h1>TITAN <span>AGENT</span></h1>
+          <p class="subtitle">Autonomous AI Engine • MCP Integrated</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-pill online">
+          <span class="dot"></span>
+          <span id="agent-status-badge">Tizim Tayyor</span>
+        </div>
+
+        <div class="model-badge" id="active-model-display">
+          <span class="provider-tag" id="current-provider">OPENROUTER</span>
+          <span class="model-name" id="current-model">hermes-3-llama-3.1-405b</span>
+        </div>
+
+        <button class="icon-btn" id="open-settings-btn" title="Sozlamalar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="main-body">
+      <!-- Chat & Execution Feed -->
+      <section class="chat-viewport">
+        <div class="messages-container" id="messages-stream">
+          <!-- Welcome Hero Banner -->
+          <div class="welcome-card" id="welcome-card">
+            <div class="glow-backdrop"></div>
+            <div class="welcome-badge">AVTONOM AI AGENT TIZIMI</div>
+            <h2>Salom! Men <span class="gradient-text">TITAN AGENT</span>man.</h2>
+            <p>Menga istalgan kompyuter yoki veb vazifasini topshirishingiz mumkin. Men o'zim fikrlayman, fayllarni boshqaraman, dasturlarni ochaman, internetdan qidiraman va barcha MCP ilovalar bilan ishlayman.</p>
+            
+            <div class="capability-tags">
+              <span class="tag">⚡ ReAct Planning</span>
+              <span class="tag">🔍 Deep Search</span>
+              <span class="tag">💻 Deep Coding</span>
+              <span class="tag">🔌 MCP Protocol</span>
+              <span class="tag">🖥️ Local Ollama (hermes3:8b)</span>
+              <span class="tag">🧠 SQLite Memory</span>
+            </div>
+
+            <div class="quick-prompts">
+              <button class="quick-btn" onclick="sendQuickPrompt('2026-yilgi eng so\'nggi AI agent yangiliklarini DEEP SEARCH orqali to\'liq tahlil qilib ber')">
+                🔍 Deep Search: 2026 AI Yangiliklari
+              </button>
+              <button class="quick-btn" onclick="sendQuickPrompt('DEEP CODING: Kompyuter xotirasi va CPU yuklamasini kuzatuvchi to\'liq Python dasturi va uning testlarini yarat')">
+                💻 Deep Coding: Tizim Monitori
+              </button>
+              <button class="quick-btn" onclick="sendQuickPrompt('Kompyuterim ishchi katalogidagi barcha fayllarni ko\'rsat')">
+                📂 Ishchi fayllarni ko'rish
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-dock">
+          <form id="chat-form" class="input-form">
+            <textarea 
+              id="user-prompt" 
+              rows="1" 
+              placeholder="Titan Agentga topshiriq bering (masalan: fayllar yarat, ma'lumot qidir, MCP asboblarni ishlat)..."
+              required
+            ></textarea>
+            <button type="submit" id="submit-btn" class="send-btn" title="Yuborish">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+          <div class="input-hints">
+            <span>Enter: Yuborish • Shift+Enter: Yangi qator • MCP integratsiyasi faol</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Sidebar: Tools & Workspace Panel -->
+      <aside class="side-panel">
+        <div class="panel-section">
+          <div class="section-title">
+            <span class="icon">🔌</span>
+            <h3>MCP & Asboblar</h3>
+          </div>
+          <div class="tools-list" id="tools-list">
+            <div class="tool-item active">
+              <span class="tool-dot"></span>
+              <div class="tool-meta">
+                <span class="tool-name">execute_command</span>
+                <span class="tool-desc">PowerShell / Windows Shell</span>
+              </div>
+            </div>
+            <div class="tool-item active">
+              <span class="tool-dot"></span>
+              <div class="tool-meta">
+                <span class="tool-name">web_search</span>
+                <span class="tool-desc">DuckDuckGo jonli internet</span>
+              </div>
+            </div>
+            <div class="tool-item active">
+              <span class="tool-dot"></span>
+              <div class="tool-meta">
+                <span class="tool-name">file_system</span>
+                <span class="tool-desc">Read, Write, Regex Edit</span>
+              </div>
+            </div>
+            <div class="tool-item active">
+              <span class="tool-dot"></span>
+              <div class="tool-meta">
+                <span class="tool-name">mcp_servers</span>
+                <span class="tool-desc" id="mcp-count">Faol ulanishlar</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section files-section">
+          <div class="section-title">
+            <span class="icon">📁</span>
+            <h3>Ishchi Maydon Fayllari</h3>
+            <button class="tiny-btn" onclick="fetchWorkspaceFiles()">Yangilash</button>
+          </div>
+          <div class="files-tree" id="files-tree">
+            <div class="empty-hint">Fayllar hali yaratilmagan</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-backdrop" id="settings-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>⚡ Titan Agent Sozlamalari</h3>
+          <button class="close-btn" id="close-settings-btn">&times;</button>
+        </div>
+        <div class="modal-content">
+          <div class="form-group">
+            <label for="provider-select">LLM Provayder</label>
+            <select id="provider-select">
+              <option value="puter">🌐 Puter.js (Mutlaqo Bepul DeepSeek V4 - Kalitsiz!)</option>
+              <option value="ollama">🖥️ Ollama (Kompyuteringizdagi Mahalliy Model)</option>
+              <option value="openrouter">OpenRouter (Hermes 3, DeepSeek, Claude, Llama 3)</option>
+              <option value="deepseek">DeepSeek API (DeepSeek-V3 / R1)</option>
+              <option value="groq">Groq (Ultra-tezkor Llama 3)</option>
+              <option value="lmstudio">LM Studio (Local server: 1234)</option>
+              <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label for="model-input">Model Kodi</label>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="tiny-btn" id="load-puter-models-btn" style="border-color:var(--accent-emerald); color:var(--accent-emerald);">🌐 Barcha Bepul Modellar</button>
+                <button type="button" class="tiny-btn" id="scan-local-btn">🔄 Mahalliy (Ollama)</button>
+              </div>
+            </div>
+            <input type="text" id="model-input" placeholder="masalan: deepseek/deepseek-v4-pro:free, claude-3-7-sonnet:free, gpt-4o:free">
+            
+            <!-- Puter Model Browser (dynamic; shown after "load all" click) -->
+            <div id="puter-model-browser" style="display:none; margin-top:8px; border:1px solid var(--border-color); border-radius:8px; overflow:hidden;">
+              <div style="display:flex; gap:6px; padding:8px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-color);">
+                <input type="text" id="puter-model-search" placeholder="🔍 Model qidirish (claude, deepseek, gpt, gemini...)" style="flex:1; background:rgba(0,0,0,0.4); border:1px solid var(--border-color); color:#fff; padding:6px 10px; border-radius:6px; font-size:12px; outline:none;">
+                <div style="display:flex; gap:4px;">
+                  <button type="button" class="tiny-btn puter-tab puter-tab-active" data-tab="free" style="color:var(--accent-emerald);">🆓 Bepul</button>
+                  <button type="button" class="tiny-btn puter-tab" data-tab="all">Hammasi</button>
+                </div>
+              </div>
+              <div id="puter-model-list" style="max-height:260px; overflow-y:auto;"></div>
+            </div>
+
+            <!-- Quick Puter Model Chips -->
+            <div id="puter-quick-chips" style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:11px; color:var(--text-muted);">Puter Tezkor Modellar (bitta bosish bilan tanlang):</span>
+              <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                <button type="button" class="tiny-btn model-chip" data-model="deepseek/deepseek-v4-pro" style="color:#38bdf8;">🧠 DeepSeek V4 Pro</button>
+                <button type="button" class="tiny-btn model-chip" data-model="deepseek/deepseek-v4-flash" style="color:#38bdf8;">⚡ DeepSeek Flash</button>
+                <button type="button" class="tiny-btn model-chip" data-model="claude-3-7-sonnet" style="color:#f59e0b;">🧡 Claude 3.7 Sonnet</button>
+                <button type="button" class="tiny-btn model-chip" data-model="claude-3-5-sonnet" style="color:#f59e0b;">🧡 Claude 3.5 Sonnet</button>
+                <button type="button" class="tiny-btn model-chip" data-model="gpt-4o" style="color:#10b981;">💚 GPT-4o</button>
+                <button type="button" class="tiny-btn model-chip" data-model="gpt-4o-mini" style="color:#10b981;">💚 GPT-4o Mini</button>
+                <button type="button" class="tiny-btn model-chip" data-model="gemini-2.0-flash" style="color:#818cf8;">💎 Gemini 2.0 Flash</button>
+                <button type="button" class="tiny-btn model-chip" data-model="meta-llama/llama-3.3-70b-instruct" style="color:#c084fc;">🦙 Llama 3.3 70B</button>
+              </div>
+              <span style="font-size:10px; color:var(--text-muted);">💡 Bepul variant uchun model ID oxiriga <code>:free</code> qo'shing — masalan: <code>deepseek/deepseek-v4-pro:free</code>. "Barcha Bepul Modellar" tugmasi barcha bepul variantlarni avtomatik ko'rsatadi.</span>
+            </div>
+
+            <div id="local-models-chips" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="api-key-input">API Kalit</label>
+            <input type="password" id="api-key-input" placeholder="sk-...">
+            <span class="field-hint">Ollama ishlatilsa kalit talab etilmaydi</span>
+          </div>
+
+          <div class="form-group">
+            <label for="base-url-input">Custom Base URL (ixtiyoriy)</label>
+            <input type="text" id="base-url-input" placeholder="http://localhost:11434/v1">
+          </div>
+
+          <button class="save-btn" id="save-settings-btn">Sozlamalarni Saqlash</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
