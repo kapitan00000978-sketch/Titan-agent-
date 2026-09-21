@@ -2,6 +2,41 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🔧 Phase 9 — DEDICATED SUBAGENT STAFF
+
+Subagents stop being carbon copies of Titan: there is now a **staff of named
+specialists** — `planner`, `researcher`, `coder`, `reviewer`, `tester` (plus
+`generalist`) — each with its own persona overlay, tuned run options and an
+**enforced tool policy**. A researcher can't commit, a reviewer can't rewrite
+files, a tester only verifies. Role aliases (`code`, `research`, `qa`, ...)
+resolve automatically; unknown roles fall back to `generalist`.
+
+### How roles are enforced (not just prompted)
+- **Persona** — `system_extra` persona appended to the child's system prompt
+  right after the base identity (`run_task(..., system_extra=)`).
+- **Catalog filter** — `_build_tools_list()` / `_build_tool_catalog_text()`
+  drop forbidden tools (terminal/memory/skill/telegram/git/MCP), so the child
+  model never sees them.
+- **Execution gate** — `execute_tool_unified()` refuses out-of-role tools
+  before dispatch, for every tool family.
+
+### New/changed surface
+- `staff.py` (new): `ToolPolicy` (allowed/blocked), `Specialist`, `SPECIALISTS`,
+  `get_specialist()`, `staff_catalog()`, `StaffPool.run()` / `.team()` (runner
+  injectable for deterministic tests).
+- `headless.py`: `run_headless(..., system_extra=)`; `build_agent(tools=,
+  tool_policy=)`.
+- `agent.py`: `tool_policy` on `TitanAgent`; policy gate + catalog filtering;
+  `system_extra` on `run_task`; system prompt lists the staff.
+- `tools.py`: `subagent_delegate` gains `role`, `subagent_team` gains `roles`,
+  new `subagent_roles` catalog tool. FULL ACCESS still raises the team bound 2→8.
+
+### Verification
+- `tests/test_staff.py` — **26 deterministic tests**.
+- Full suite: **314 passed, 1 skipped**.
+- `ruff check` clean on all touched files (only the 4 pre-existing `ASYNC221`
+  wmctrl warnings remain in the wider tree).
+
 ## 🚀 Phase 8 — FULL ACCESS: every capability boundary removed
 
 `TITAN_FULL_ACCESS=1` makes Titan **truly unrestricted** — every limit that was

@@ -44,8 +44,10 @@ searches the web live, and connects to any application or database through **Mod
    - **📋 Autonomous task queue + daemon**: `task_enqueue` / `task_list` / `task_stats` / `task_cancel`,
      run by `python -m titan_agent.daemon` — jobs processed with priorities, scheduling and retries,
      with **no human at the keyboard**.
-   - **👥 Deep subagents**: `subagent_delegate` / `subagent_team` fan work out to independent child
-     agents (fresh sessions / checkpoints), in parallel.
+   - **👥 Deep subagents + specialist staff**: `subagent_delegate` / `subagent_team` fan work out to
+     independent child agents (fresh sessions / checkpoints), in parallel — now as **named roles**
+     (`planner`, `researcher`, `coder`, `reviewer`, `tester`) with per-role personas and enforced
+     tool policies; `subagent_roles` lists the roster.
 4. **🧠 Long-term Memory (SQLite)**:
    - Saves conversations and learned facts to SQLite and remembers them in future sessions (`memory_save` / `memory_search`).
    - **Auto recall**: every new task starts with the most relevant remembered facts already in context — the agent

@@ -776,7 +776,7 @@ class ToolRegistry:
                 "type": "function",
                 "function": {
                     "name": "subagent_delegate",
-                    "description": "DEEP SUBAGENT: runs one sub-task with a completely independent child agent (fresh session/checkpoint) and returns its final answer. Use to decompose a big task into isolated units of work.",
+                    "description": "DEDICATED SUBAGENT: runs one sub-task with a named specialist (fresh session/checkpoint) and returns its final answer. Roles: planner, researcher, coder, reviewer, tester, generalist. Use to decompose a big task into isolated units of work with the right specialist per unit.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -784,9 +784,13 @@ class ToolRegistry:
                                 "type": "string",
                                 "description": "The sub-task to delegate."
                             },
+                            "role": {
+                                "type": "string",
+                                "description": "Specialist role: planner | researcher | coder | reviewer | tester | generalist (default generalist)."
+                            },
                             "label": {
                                 "type": "string",
-                                "description": "Short label for the subagent (default 'worker')."
+                                "description": "Short label for the subagent (defaults to the role)."
                             }
                         },
                         "required": ["task"]
@@ -797,7 +801,7 @@ class ToolRegistry:
                 "type": "function",
                 "function": {
                     "name": "subagent_team",
-                    "description": "DEEP SUBAGENT TEAM: runs several sub-tasks in parallel with independent child agents and returns all results together. Use to fan out independent work items.",
+                    "description": "DEDICATED SUBAGENT TEAM: runs several sub-tasks in parallel, each with its own specialist role (roles list parallel to tasks; missing roles default to generalist). Returns all results together. Use to fan out independent work items.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -805,9 +809,25 @@ class ToolRegistry:
                                 "type": "array",
                                 "items": {"type": "string"},
                                 "description": "List of sub-tasks to run in parallel."
+                            },
+                            "roles": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Optional list of specialist roles, one per task (planner/researcher/coder/reviewer/tester/generalist)."
                             }
                         },
                         "required": ["tasks"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "subagent_roles",
+                    "description": "Lists the available dedicated subagent roles with a description of when to use each. Call before delegating to pick the right specialist.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
                     }
                 }
             }
@@ -1816,23 +1836,45 @@ class ToolRegistry:
         ok = self._queue().cancel(int(task_id))
         return f"Task #{task_id} cancelled." if ok else f"Task #{task_id} not found or already running."
 
-    # ---- Deep subagent tools ----
+    # ---- Deep subagent tools (Phase 7) + dedicated staff (Phase 9) ----
 
-    async def tool_subagent_delegate(self, task: str, label: str = "worker") -> str:
-        from .subagents import SubagentPool
+    async def tool_subagent_delegate(
+        self,
+        task: str,
+        role: str = "generalist",
+        label: str = "",
+    ) -> str:
+        from .staff import StaffPool
 
         if not task or not str(task).strip():
             return "Error: task is required."
-        pool = SubagentPool()
-        res = await pool.delegate(str(task).strip(), label=label or "worker")
+        pool = StaffPool()
+        res = await pool.run(str(role or "generalist"), str(task).strip(), label=label or "")
         return res.to_text()
 
-    async def tool_subagent_team(self, tasks: list[str]) -> str:
-        from .subagents import SubagentPool
+    async def tool_subagent_team(
+        self,
+        tasks: list[str],
+        roles: list[str] | None = None,
+    ) -> str:
+        from .staff import StaffPool
 
         if not tasks:
             return "Error: tasks list is required."
         # Phase 8: FULL access raises the parallel subagent bound 2 -> 8.
-        pool = SubagentPool(max_workers=min(_subagent_worker_cap(), len(tasks)))
-        results = await pool.team([str(t) for t in tasks])
+        pool = StaffPool(max_workers=min(_subagent_worker_cap(), len(tasks)))
+        results = await pool.team(
+            [str(t) for t in tasks],
+            roles=[str(r) for r in roles] if roles else None,
+        )
         return "\n\n".join(r.to_text() for r in results)
+
+    def tool_subagent_roles(self) -> str:
+        from .staff import staff_catalog
+
+        entries = staff_catalog()
+        if not entries:
+            return "No dedicated subagent roles configured."
+        return "### DEDICATED SUBAGENT ROLES\n" + "\n".join(
+            f"- {e['id']}: {e['title']} — {e['description']}" for e in entries
+        )

@@ -66,7 +66,7 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - take_screenshot — capture the primary screen to PNG (Windows)
 - self_update — git pull + pip install + run the test suite for the repo owning the workspace
 - task_enqueue / task_list / task_stats / task_cancel — the AUTONOMOUS TASK QUEUE: enqueue work for the daemon or other agents (priority, scheduling, retries)
-- subagent_delegate / subagent_team — DEEP SUBAGENTS: run sub-tasks with fully independent child agents (fresh sessions), in parallel via subagent_team
+- subagent_delegate / subagent_team / subagent_roles — DEDICATED SUBAGENT STAFF: delegate sub-tasks to named specialists (planner, researcher, coder, reviewer, tester) — each with its own persona, tuned run options and enforced tool policy. List roles with subagent_roles; delegate with role= or fan out with subagent_team(tasks, roles).
 
 ### SKILLS:
 Relevant skill playbooks for the current task are auto-injected into your context
@@ -211,7 +211,8 @@ class TitanAgent:
         git_root: Path | str | None = None,
         auto_commit: bool | None = None,
         checkpoint: CheckpointStore | None = None,
-        checkpoint_path: Path | str | None = None
+        checkpoint_path: Path | str | None = None,
+        tool_policy: Any | None = None,
     ):
         self.llm = llm or LLMClient()
         self.tools = tools or ToolRegistry()
@@ -219,6 +220,9 @@ class TitanAgent:
         self.memory = memory or MemoryManager()
         self.skills = skills or SkillRegistry()
         self.telegram = telegram or TelegramManager()
+        # Phase 9: per-role tool policy (Allowed/blocked sets enforced in
+        # execute_tool_unified AND reflected in the model's tool catalog).
+        self.tool_policy = tool_policy
         self.system_prompt = TITAN_SYSTEM_PROMPT
         # ---- Phase 4: MemGPT-style core memory + Git-first workflow ----
         self._core_memory = core_memory
@@ -538,33 +542,49 @@ class TitanAgent:
         all_tools.extend(self._build_git_tool_definitions())
         # Add MCP tools if connected
         all_tools.extend(self.mcp.get_all_tools())
+        # Phase 9: drop tools the role may not use (visible AND enforced).
+        if self.tool_policy is not None:
+            all_tools = self.tool_policy.filter_definitions(all_tools)
         return all_tools
+
+    def _policy_allows(self, name: str) -> bool:
+        return self.tool_policy is None or self.tool_policy.allows(name)
 
     def _build_tool_catalog_text(self) -> str:
         """Compact live tool catalog appended to the system prompt each turn."""
         lines = []
         for t in self.tools.get_tool_definitions():
             fn = t.get("function", {})
+            if not self._policy_allows(str(fn.get("name", ""))):
+                continue
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         for t in self._build_memory_tool_definitions():
             fn = t.get("function", {})
+            if not self._policy_allows(str(fn.get("name", ""))):
+                continue
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         for t in self._build_skill_tool_definitions():
             fn = t.get("function", {})
+            if not self._policy_allows(str(fn.get("name", ""))):
+                continue
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         for t in self._build_telegram_tool_definitions():
             fn = t.get("function", {})
+            if not self._policy_allows(str(fn.get("name", ""))):
+                continue
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         for t in self._build_git_tool_definitions():
             fn = t.get("function", {})
+            if not self._policy_allows(str(fn.get("name", ""))):
+                continue
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
@@ -573,6 +593,8 @@ class TitanAgent:
             lines.append("\nMCP server tools:")
             for t in mcp_tools:
                 fn = t.get("function", {})
+                if not self._policy_allows(str(fn.get("name", ""))):
+                    continue
                 lines.append(f"- {fn.get('name')}: {fn.get('description', '')}")
         return "\n".join(lines)
 
@@ -700,6 +722,11 @@ class TitanAgent:
             log.debug("checkpoint save failed for %s: %s", session_id, exc)
 
     async def execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
+        # Phase 9: per-role tool policy enforced for EVERY tool family
+        # (terminal / memory / skill / telegram / git / mcp) — a researcher
+        # cannot commit, a reviewer cannot write.
+        if not self._policy_allows(name):
+            return f"Error: tool '{name}' is outside this subagent's role and was blocked by tool policy."
         if name == "memory_save":
             key = str(args.get("key", "")).strip()
             value = str(args.get("value", "")).strip()
@@ -935,7 +962,8 @@ class TitanAgent:
         effort: str = "auto",
         strategy: str = "auto",
         auto_commit: bool | None = None,
-        resume: bool = False
+        resume: bool = False,
+        system_extra: str | None = None
     ) -> AsyncGenerator[AgentEvent, None]:
         """
         Executes a user request with autonomous multi-step reasoning, tool execution,
@@ -989,6 +1017,10 @@ class TitanAgent:
             + "\n\n### LIVE TOOL CATALOG (all tools currently available):\n"
             + catalog_text
         )
+        # Phase 9: role persona overlay (subagent specialist identity) — placed
+        # right after the base identity so it steers behaviour from the start.
+        if system_extra:
+            system_content += "\n\n" + system_extra
         # Auto-recall: seed remembered facts relevant to this request (Memory
         # Agent pattern) so the model starts the turn already knowing the user.
         recalled = self.memory.recall_relevant(user_input, limit=5)

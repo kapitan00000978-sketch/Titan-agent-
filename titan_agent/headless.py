@@ -38,16 +38,24 @@ EFFORTS = ("auto", "low", "medium", "high", "ultra")
 def build_agent(
     provider: str | None = None,
     model: str | None = None,
+    tools: ToolRegistry | None = None,
+    tool_policy: Any | None = None,
 ) -> TitanAgent:
-    """Construct the same global wiring the web server uses."""
+    """Construct the same global wiring the web server uses.
+
+    ``tools`` overrides the terminal tool registry (used by subagent roles to
+    filter capability) and ``tool_policy`` is the agent-level allowed/blocked
+    tool set enforced in ``execute_tool_unified``.
+    """
     llm = LLMClient(provider=provider, model=model) if provider else LLMClient()
     return TitanAgent(
         llm=llm,
-        tools=ToolRegistry(WORKSPACE_DIR),
+        tools=tools or ToolRegistry(WORKSPACE_DIR),
         mcp=MCPManager(MCP_CONFIG_FILE),
         memory=MemoryManager(),
         skills=SkillRegistry(),
         telegram=TelegramManager(),
+        tool_policy=tool_policy,
     )
 
 
@@ -60,6 +68,7 @@ async def _run_task(
     agent: TitanAgent | None,
     auto_commit: bool | None = None,
     resume: bool = False,
+    system_extra: str | None = None,
 ) -> tuple[int, str, list[dict[str, Any]]]:
     the_agent = agent or build_agent()
     events: list[dict[str, Any]] = []
@@ -73,6 +82,7 @@ async def _run_task(
         strategy=strategy,
         auto_commit=auto_commit,
         resume=resume,
+        system_extra=system_extra,
     ):
         events.append(ev.to_dict())
         if ev.type == "final_answer":
@@ -94,8 +104,13 @@ def run_headless(
     agent: TitanAgent | None = None,
     auto_commit: bool | None = None,
     resume: bool | None = None,
+    system_extra: str | None = None,
 ) -> tuple[int, str, list[dict[str, Any]]]:
-    """Run a task to completion and return (exit_code, final_answer, events)."""
+    """Run a task to completion and return (exit_code, final_answer, events).
+
+    ``system_extra`` is an optional system-prompt overlay appended for the run
+    (used to give a subagent its role persona).
+    """
     if strategy not in STRATEGIES:
         strategy = "auto"
     if mode not in MODES:
@@ -104,7 +119,9 @@ def run_headless(
         effort = "auto"
     if provider:
         agent = build_agent(provider, model)
-    return asyncio.run(_run_task(task, session_id, strategy, mode, effort, agent, auto_commit, resume or False))
+    return asyncio.run(
+        _run_task(task, session_id, strategy, mode, effort, agent, auto_commit, resume or False, system_extra)
+    )
 
 
 # --------------------------------------------------------------------------
