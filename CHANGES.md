@@ -2,6 +2,67 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🚀 Phase 7 — Full Autonomy (completely independent operation)
+
+Five blocks that let Titan run on its own, stop/repair/retry by itself, and keep
+going far past the old limits — **without removing any safety guardrail**
+(PolicyEngine, consent gates, SSRF checks and send allowlists all stay active).
+
+### A. Self-healing loop — `titan_agent/heal.py`
+- `diagnose()` classifies failures into deterministic repairs: `ModuleNotFoundError`
+  → `pip install <pkg>` (with a numpy special-case), cmdlet/command-not-found and
+  `MemoryError` → one transparent retry.
+- `heal_run(run, command, max_attempts)` re-runs the original command after each
+  repair until success or the budget is spent. All repairs run locally (zero LLM
+  tokens). Fully injectable for deterministic tests.
+- Exposed to the LLM as the `self_heal` tool.
+
+### B. Dynamic step budget (no hard 48 clamp)
+- `config.py` — `MAX_STEPS_CAP` (`TITAN_STEP_CAP`, default 48, was hardcoded),
+  `UNLIMITED_STEPS` (`TITAN_UNLIMITED_STEPS`) and `DEEP_MAX_STEPS_BASE`
+  (`TITAN_DEEP_MAX_STEPS`, default 40, was hardcoded).
+- `agent.py` — `_compute_max_steps` applies the cap via config and skips the
+  clamp entirely when `UNLIMITED_STEPS` is on: Titan iterates until the task is
+  provably done (verification + final answer still required).
+
+### C. Persistent task queue + autonomous daemon
+- `titan_agent/queue.py` — `TaskQueue`, a thread-safe SQLite queue:
+  priorities, `schedule_at` scheduling, atomic `claim_next`, exponential backoff
+  retries (5→15→30→60s), `complete`/`fail`/`cancel`/`list`/`stats`/`clear`.
+- `titan_agent/daemon.py` — `python -m titan_agent.daemon [--once] [--poll N]
+  [--concurrency N] [--list] [--stats]`; claims due tasks and executes them via
+  the headless runner in worker threads; a task crash never kills the daemon.
+- Web API: `GET/POST /api/queue/tasks`, `DELETE /api/queue/tasks/{id}`,
+  `POST /api/queue/process-once`.
+- CLI: `/queue list|stats|add <task>|cancel <id>` and `/daemon`.
+
+### D. Real-world tools — `titan_agent/tools.py`
+- `download_file` — SSRF-guarded (private/loopback refused via PolicyEngine),
+  100 MB cap, saves into the workspace.
+- `start_http_server` / `stop_http_server` — background local HTTP server.
+- `take_screenshot` — Windows screen capture via PowerShell (no extra deps).
+- `self_update` — `git pull` (walk-up to repo root) + pip install + `pytest`.
+- `task_enqueue` / `task_list` / `task_stats` / `task_cancel` — drive the queue
+  from inside the agent.
+- `subagent_delegate` / `subagent_team` — child-agent execution (Block E).
+- System prompt catalog updated; `cli.py` + `server.py` wired.
+
+### E. Deep subagent architecture — `titan_agent/subagents.py`
+- `SubagentPool.delegate()` — one independent child (fresh `sub-<session>-<n>`
+  session id; checkpoint/memory isolation) run to completion in a worker thread.
+- `SubagentPool.team()` — parallel fan-out bounded by `max_workers`.
+- Injectable runner keeps tests deterministic (no LLM/network).
+
+### Verification
+- `tests/test_phase7_autonomy.py` — 31 deterministic tests (heal, step budget,
+  queue lifecycle/priority/backoff, daemon run-once, subagent delegate/team,
+  tool registration, download SSRF, HTTP server, prompt catalog).
+- Full suite: **256 passed, 1 skipped** (Windows-only screenshot branch).
+- `python -m ruff check titan_agent/` — clean except the 4 known intentional
+  `ASYNC221` wmctrl warnings that predate this phase.
+- Live sanity: daemon `--stats`/`--list` run, an enqueue→daemon-run-once→done
+  cycle completed, `/api/queue/*` routes registered.
+
 ## 🆕 OmniRoute provider (Phase 6 — 2026)
 
 **OmniRoute** — self-hosted AI gateway (`http://localhost:20128/v1`) with smart auto-routing.

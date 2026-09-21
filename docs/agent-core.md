@@ -253,6 +253,11 @@ outputs = await tools.compose([
 
 **Total: 178 passed; ruff clean on `titan_agent/core/`.**
 
+### Latest phase
+- **Phase 7 — Full Autonomy** (self-healing loop, dynamic step budget, task
+  queue + daemon, real-world tools, deep subagents): see
+  [`docs/phase7-autonomy.md`](phase7-autonomy.md). Full suite now **256 passed.**
+
 ### Extension guide
 - **New provider**: implement `ILLMProvider`, register in DI `ServiceRegistry`.
 - **New engine**: implement `IReasoningEngine` (or subclass an existing one), export

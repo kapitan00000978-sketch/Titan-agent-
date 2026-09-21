@@ -10,7 +10,13 @@ import aiohttp
 
 from .checkpoint import MAX_MESSAGES as CHECKPOINT_MAX_MESSAGES
 from .checkpoint import CheckpointStore, RunCheckpoint
-from .config import MAX_ITERATIONS, WORKSPACE_DIR
+from .config import (
+    DEEP_MAX_STEPS_BASE,
+    MAX_ITERATIONS,
+    MAX_STEPS_CAP,
+    UNLIMITED_STEPS,
+    WORKSPACE_DIR,
+)
 from .core.memory.memory_system import MemorySystem
 from .core.memory.types import MemoryKind
 from .gitops import auto_commit as git_auto_commit
@@ -53,6 +59,13 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - skill_load — load the full text of a named skill playbook to follow it
 - telegram_status / telegram_accounts / telegram_login_start / telegram_login_confirm / telegram_send / telegram_recent / telegram_logout — user-consented Telegram account management (disabled unless TITAN_TELEGRAM_ENABLED=true; sending only to the .env allowlist)
 - mcp_* — tools exposed by connected MCP servers (filesystem, etc.)
+- self_heal — SELF-HEALING command runner: on failure it auto-installs missing Python modules and retries until success (use instead of execute_command when a dependency may be missing)
+- download_file — SSRF-guarded download of a public http(s) file into the workspace
+- start_http_server / stop_http_server — serve the workspace (or any dir) over a local HTTP server
+- take_screenshot — capture the primary screen to PNG (Windows)
+- self_update — git pull + pip install + run the test suite for the repo owning the workspace
+- task_enqueue / task_list / task_stats / task_cancel — the AUTONOMOUS TASK QUEUE: enqueue work for the daemon or other agents (priority, scheduling, retries)
+- subagent_delegate / subagent_team — DEEP SUBAGENTS: run sub-tasks with fully independent child agents (fresh sessions), in parallel via subagent_team
 
 ### SKILLS:
 Relevant skill playbooks for the current task are auto-injected into your context
@@ -144,20 +157,29 @@ def _resolve_effort(effort: str, mode: str) -> str:
 
 
 def _compute_max_steps(mode: str, effort: str) -> int:
-    """Iteration budget = base (mode) scaled by the effort multiplier, clamped.
+    """Iteration budget = base (mode) scaled by the effort multiplier.
 
     The multiplier applies ONLY to explicitly chosen effort levels ('low'/
     'high'/'ultra'); 'auto' keeps the classic mode-based budget so deep modes
     behave exactly as before unless the user opts into extra effort.
+
+    Phase 7 (Full Autonomy): the ceiling is now configurable via TITAN_STEP_CAP
+    (default 48 — the old hard clamp) and fully removable with
+    TITAN_UNLIMITED_STEPS=1, so the agent can keep working until the task is
+    provably done instead of stopping at an arbitrary number.
     """
     base = MAX_ITERATIONS
     if mode in ("deep", "deep_search"):
-        base = min(MAX_ITERATIONS * 2, 40)
+        base = min(MAX_ITERATIONS * 2, DEEP_MAX_STEPS_BASE)
     e = (effort or "auto").strip().lower()
     if e not in VALID_EFFORTS:
         e = "auto"
     multiplier = 1.0 if e == "auto" else EFFORT_MULTIPLIER.get(e, 1.0)
-    return max(5, min(round(base * multiplier), 48))
+    steps = max(5, round(base * multiplier))
+    if UNLIMITED_STEPS:
+        # No ceiling: still bounded by base*multiplier growth, but no 48 clamp.
+        return steps
+    return min(steps, MAX_STEPS_CAP)
 
 class AgentEvent:
     def __init__(self, event_type: str, data: Any):

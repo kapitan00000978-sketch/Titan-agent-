@@ -74,6 +74,20 @@ SERVER_PORT = int(os.getenv("TITAN_PORT", "7860"))
 AUTONOMOUS_MODE = os.getenv("TITAN_AUTONOMOUS", "true").lower() in ("true", "1", "yes")
 MAX_ITERATIONS = int(os.getenv("TITAN_MAX_ITERATIONS", "25"))
 
+# ---- Phase 7: Full Autonomy — dynamic step budget (no hard 48 clamp) ----
+# TITAN_STEP_CAP: the ceiling applied after effort scaling (default 48, was hardcoded).
+# TITAN_UNLIMITED_STEPS=1 (or true/yes) removes the ceiling entirely — the agent
+# keeps iterating until the task is provably done (safety: it still must VERIFY
+# and produce a final answer; it just may take more steps).
+MAX_STEPS_CAP = int(os.getenv("TITAN_STEP_CAP", "48"))
+UNLIMITED_STEPS = os.getenv("TITAN_UNLIMITED_STEPS", "0").strip().lower() in ("1", "true", "yes")
+# Deep modes' extra budget base (was hardcoded at 40).
+DEEP_MAX_STEPS_BASE = int(os.getenv("TITAN_DEEP_MAX_STEPS", "40"))
+# ---- Phase 7: autonomous task queue / daemon ----
+TASK_QUEUE_FILE = Path(os.getenv("TITAN_TASK_QUEUE", str(WORKSPACE_DIR / "task_queue.db")))
+DAEMON_POLL_INTERVAL = float(os.getenv("TITAN_DAEMON_INTERVAL", "5.0"))
+DAEMON_MAX_CONCURRENT = int(os.getenv("TITAN_DAEMON_CONCURRENCY", "1"))
+
 # Token throughput guardrail: the agent never exceeds this many tokens/second
 # (token bucket). 214,000/s is effectively invisible in production but fully
 # enforced for every LLM call (backend providers and the Puter browser path).

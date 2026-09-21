@@ -151,6 +151,90 @@ async def main():
                     elif name_l == "clear":
                         agent.memory.clear_session(session_id)
                         console.print("[bold cyan]Session history cleared.[/bold cyan]")
+                    elif name_l == "queue":
+                        from titan_agent.config import TASK_QUEUE_FILE
+                        from titan_agent.queue import TaskQueue
+
+                        q = TaskQueue(TASK_QUEUE_FILE)
+                        sub = local["arg"].split(None, 1)
+                        op = sub[0].lower() if sub else "list"
+                        try:
+                            if op == "list":
+                                tasks = q.list(limit=50)
+                                if not tasks:
+                                    console.print("[yellow]Task queue is empty.[/yellow]")
+                                else:
+                                    console.print(Panel(
+                                        "\n".join(
+                                            f"[cyan]#{t.id}[/cyan] [{t.status}] prio={t.priority} "
+                                            f"attempts={t.attempts}/{t.max_attempts} :: {t.name}"
+                                            for t in tasks
+                                        ),
+                                        title="[bold magenta]Task Queue[/bold magenta]",
+                                        border_style="magenta",
+                                    ))
+                            elif op == "stats":
+                                console.print(f"[bold cyan]Queue stats:[/bold cyan] {q.stats()}")
+                            elif op == "add":
+                                task_text = sub[1].strip() if len(sub) > 1 else ""
+                                if not task_text:
+                                    console.print("[yellow]Usage: /queue add <task>[/yellow]")
+                                else:
+                                    tid = q.enqueue(task_text)
+                                    console.print(f"[bold green]Task #{tid} enqueued.[/bold green]")
+                            elif op == "cancel":
+                                tid = int(sub[1]) if len(sub) > 1 else 0
+                                ok = q.cancel(tid)
+                                console.print(
+                                    f"[green]Task #{tid} cancelled.[/green]" if ok
+                                    else "[red]Task not found or already running.[/red]"
+                                )
+                            else:
+                                console.print("[yellow]Unknown: /queue list|stats|add <task>|cancel <id>[/yellow]")
+                        except (OSError, ValueError) as e:
+                            console.print(f"[red]Queue error: {e}[/red]")
+                    elif name_l == "daemon":
+                        from titan_agent.config import (
+                            DAEMON_POLL_INTERVAL,
+                            TASK_QUEUE_FILE,
+                        )
+                        from titan_agent.daemon import TaskDaemon
+                        from titan_agent.queue import TaskQueue
+
+                        console.print("[bold magenta]⚙️  Daemon: processing due tasks (Ctrl+C to stop)...[/bold magenta]")
+                        q = TaskQueue(TASK_QUEUE_FILE)
+
+                        def _runner(task: str, opts: dict):
+                            import asyncio as _aio
+
+                            final = ""
+                            err = ""
+
+                            async def _run():
+                                nonlocal final, err
+                                try:
+                                    async for ev in agent.run_task(task, session_id="daemon-cli", mode="fast"):
+                                        if ev.type == "final_answer":
+                                            final = ev.data
+                                        elif ev.type == "error":
+                                            err = str(ev.data)
+                                except Exception as exc:  # noqa: BLE001
+                                    err = str(exc)
+
+                            try:
+                                _aio.run(_run())
+                            except Exception as exc:  # noqa: BLE001
+                                err = str(exc)
+                            return (0 if (final and not err) else 1), final or err or "(no answer)", []
+
+                        # Route each queue task through the live agent (fully autonomous).
+                        daemon = TaskDaemon(q, runner=_runner, poll_interval=DAEMON_POLL_INTERVAL)
+
+                        import asyncio as _aio
+                        try:
+                            _aio.run(daemon.run_forever())
+                        except KeyboardInterrupt:
+                            console.print("\n[yellow]Daemon stopped by user.[/yellow]")
                     elif name_l == "exit":
                         console.print("[bold red]Titan Agent stopped. Goodbye![/bold red]")
                         await mcp.stop_all()

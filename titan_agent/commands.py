@@ -109,6 +109,8 @@ LOCAL_COMMANDS = {
     "skills": "List available skill playbooks.",
     "memory": "Search long-term memory. Usage: /memory <query>",
     "handoffs": "List open handoff notes.",
+    "queue": "Autonomous task queue: list/stats/enqueue/cancel. Usage: /queue list | /queue stats | /queue add <task> | /queue cancel <id>",
+    "daemon": "Run the autonomous daemon once. Usage: /daemon [--poll <sec>] (runs until Ctrl+C)",
     "clear": "Clear the current session's conversation history.",
     "exit": "Exit the CLI (also: quit).",
 }

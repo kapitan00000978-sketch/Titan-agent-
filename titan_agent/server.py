@@ -64,6 +64,45 @@ async def _cron_runner(prompt: str, session_id: str, mode: str, effort: str, str
 
 cron_scheduler = CronScheduler(runner=_cron_runner)
 
+
+def _cron_runner_as_runner(
+    task: str, opts: dict[str, Any]
+) -> tuple[int, str, list[dict[str, Any]]]:
+    """Adapt the live-agent cron runner to the daemon Runner signature.
+
+    Runs one task through the full live agent loop in this process (shared
+    LLM/agent wiring) and returns (exit_code, final_answer, events). Used by
+    POST /api/queue/process-once so queue tasks flow through the SAME agent
+    instance the web UI uses.
+    """
+    import asyncio as _asyncio
+
+    final = ""
+    err = ""
+
+    async def _run() -> None:
+        nonlocal final, err
+        try:
+            async for ev in agent.run_task(
+                task,
+                session_id=str(opts.get("session_id") or "queued-task"),
+                mode=str(opts.get("mode", "fast")),
+                effort=str(opts.get("effort", "auto")),
+                strategy=str(opts.get("strategy", "auto")),
+            ):
+                if ev.type == "final_answer":
+                    final = (final + "\n\n" + ev.data).strip() if final else ev.data
+                elif ev.type == "error":
+                    err = err or str(ev.data)
+        except Exception as exc:  # noqa: BLE001
+            err = err or str(exc)
+
+    try:
+        _asyncio.run(_run())
+    except Exception as exc:  # noqa: BLE001 - nested-loop safety
+        err = err or str(exc)
+    return (0 if (final and not err) else 1), final or err or "(no answer produced)", []
+
 WEB_UI_DIR = Path(__file__).resolve().parent / "web_ui"
 WEB_UI_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -248,6 +287,13 @@ class CronJobRequest(BaseModel):
     enabled: bool = True
     job_id: str = ""
 
+class EnqueueTaskRequest(BaseModel):
+    task: str
+    name: str = ""
+    priority: int = 0
+    schedule_at: float = 0.0
+    max_attempts: int = 3
+
 @app.get("/api/cron/jobs")
 async def cron_list():
     return {"jobs": cron_scheduler.list_jobs()}
@@ -287,4 +333,55 @@ async def cron_run(job_id: str):
         job = await cron_scheduler.run_now(job_id)
         return {"status": "success", "job": job}
     except KeyError as e:
+        return {"status": "error", "detail": str(e)}
+
+# ---- Phase 7: autonomous task queue ----
+
+def _task_queue():
+    from .config import TASK_QUEUE_FILE as _qfile
+    from .queue import TaskQueue
+
+    q = getattr(_task_queue, "_q", None)
+    if q is None:
+        q = TaskQueue(_qfile)
+        _task_queue._q = q
+    return q
+
+@app.get("/api/queue/tasks")
+async def queue_list(status: str = "", limit: int = 20):
+    try:
+        tasks = _task_queue().list(status=status or None, limit=limit)
+        return {"status": "success", "tasks": [t.to_dict() for t in tasks], "stats": _task_queue().stats()}
+    except Exception as e:  # noqa: BLE001 - API surface
+        return {"status": "error", "detail": str(e)}
+
+@app.post("/api/queue/tasks")
+async def queue_enqueue(req: EnqueueTaskRequest):
+    try:
+        tid = _task_queue().enqueue(
+            req.task.strip(),
+            name=req.name or None,
+            priority=req.priority,
+            schedule_at=req.schedule_at,
+            max_attempts=req.max_attempts,
+        )
+        return {"status": "success", "task_id": tid}
+    except Exception as e:  # noqa: BLE001 - API surface
+        return {"status": "error", "detail": str(e)}
+
+@app.delete("/api/queue/tasks/{task_id}")
+async def queue_delete(task_id: int):
+    ok = _task_queue().cancel(task_id)
+    return {"status": "success" if ok else "error"}
+
+@app.post("/api/queue/process-once")
+async def queue_process_once():
+    """Run the daemon loop once: claims and executes all currently-due tasks."""
+    from .daemon import TaskDaemon
+
+    try:
+        daemon = TaskDaemon(_task_queue(), runner=_cron_runner_as_runner)
+        processed = await daemon.run_once()
+        return {"status": "success", "processed": processed}
+    except Exception as e:  # noqa: BLE001 - API surface
         return {"status": "error", "detail": str(e)}

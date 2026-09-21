@@ -38,6 +38,14 @@ searches the web live, and connects to any application or database through **Mod
    - **Launch applications**: run Windows apps.
    - **System Info**: live OS / CPU / RAM / disk / Python / Node / Git facts.
    - **Process Manager**: list or kill running OS processes.
+   - **🚑 Self-healing**: `self_heal` auto-installs missing Python modules and retries failed commands.
+   - **🌐 Real-world actions**: `download_file` (SSRF-guarded), local `start_http_server`,
+     `take_screenshot`, and `self_update` (git pull + pip install + tests).
+   - **📋 Autonomous task queue + daemon**: `task_enqueue` / `task_list` / `task_stats` / `task_cancel`,
+     run by `python -m titan_agent.daemon` — jobs processed with priorities, scheduling and retries,
+     with **no human at the keyboard**.
+   - **👥 Deep subagents**: `subagent_delegate` / `subagent_team` fan work out to independent child
+     agents (fresh sessions / checkpoints), in parallel.
 4. **🧠 Long-term Memory (SQLite)**:
    - Saves conversations and learned facts to SQLite and remembers them in future sessions (`memory_save` / `memory_search`).
    - **Auto recall**: every new task starts with the most relevant remembered facts already in context — the agent

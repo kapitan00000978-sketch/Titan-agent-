@@ -5,7 +5,10 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
 import urllib.request
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +16,8 @@ try:
     from ddgs import DDGS
 except ImportError:
     from duckduckgo_search import DDGS
-from .config import WORKSPACE_DIR
+from .config import TASK_QUEUE_FILE, WORKSPACE_DIR
+from .core.guardrails.policy import PolicyEngine
 
 
 def _tokenize(text: str) -> list[str]:
@@ -557,6 +561,237 @@ class ToolRegistry:
                             }
                         },
                         "required": ["action", "title"]
+                    }
+                }
+            },
+            # ================= Phase 7: Full Autonomy tools =================
+            {
+                "type": "function",
+                "function": {
+                    "name": "self_heal",
+                    "description": "SELF-HEALING: runs a command and, if it fails, automatically diagnoses the error and applies deterministic repairs (installs a missing Python module via pip, retries transient failures) then re-runs the command until success or attempts are exhausted. Use this instead of execute_command when a dependency or flaky failure is suspected.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "command": {
+                                "type": "string",
+                                "description": "The exact command line string to run."
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Optional working directory. Defaults to workspace root."
+                            },
+                            "max_attempts": {
+                                "type": "integer",
+                                "description": "Max run attempts including repairs (default 3)."
+                            }
+                        },
+                        "required": ["command"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "download_file",
+                    "description": "Downloads a file from a public http(s) URL into the workspace (SSRF-guarded: private/loopback targets are refused). Returns the saved path and size.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "The public http(s) URL to download."
+                            },
+                            "dest": {
+                                "type": "string",
+                                "description": "Optional destination path inside the workspace (default: filename from the URL)."
+                            }
+                        },
+                        "required": ["url"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "start_http_server",
+                    "description": "Serves a directory (default workspace) over HTTP on localhost so the agent or user can browse generated files. Returns the URL. The server runs until the agent stops it with stop_http_server.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "port": {
+                                "type": "integer",
+                                "description": "Port to bind (default 8000)."
+                            },
+                            "directory": {
+                                "type": "string",
+                                "description": "Directory to serve (default workspace)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "stop_http_server",
+                    "description": "Stops a previously started local HTTP server.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "port": {
+                                "type": "integer",
+                                "description": "Port of the server to stop (default 8000)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "take_screenshot",
+                    "description": "Captures the primary screen to a PNG in the workspace (Windows; PowerShell-based, no extra deps). Use to visually inspect the current UI state.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "dest": {
+                                "type": "string",
+                                "description": "Optional PNG filename in the workspace (default screenshot_<ts>.png)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "self_update",
+                    "description": "Pulls the latest code from git, installs requirements and runs the test suite for the project containing the workspace. Returns the update log. Use to keep Titan's own runtime current.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "run_tests": {
+                                "type": "boolean",
+                                "description": "Whether to run the test suite after updating (default true)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "task_enqueue",
+                    "description": "AUTONOMOUS TASK QUEUE: adds a task that the daemon or another agent processes independently (with priorities, scheduling and retries). Returns the task id.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task": {
+                                "type": "string",
+                                "description": "The task instruction/prompt to execute."
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Optional short label for the task."
+                            },
+                            "priority": {
+                                "type": "integer",
+                                "description": "Priority: higher runs first (default 0)."
+                            },
+                            "schedule_at": {
+                                "type": "number",
+                                "description": "Optional epoch-seconds to run it at (default: now)."
+                            }
+                        },
+                        "required": ["task"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "task_list",
+                    "description": "Lists tasks in the autonomous task queue (optionally filtered by status: pending/running/done/failed/cancelled).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "description": "Optional status filter."
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Max tasks to return (default 20)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "task_stats",
+                    "description": "Returns the autonomous task queue status counts (pending/running/done/failed/cancelled).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "task_cancel",
+                    "description": "Cancels a pending task in the autonomous queue.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_id": {
+                                "type": "integer",
+                                "description": "The task id to cancel."
+                            }
+                        },
+                        "required": ["task_id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "subagent_delegate",
+                    "description": "DEEP SUBAGENT: runs one sub-task with a completely independent child agent (fresh session/checkpoint) and returns its final answer. Use to decompose a big task into isolated units of work.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task": {
+                                "type": "string",
+                                "description": "The sub-task to delegate."
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "Short label for the subagent (default 'worker')."
+                            }
+                        },
+                        "required": ["task"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "subagent_team",
+                    "description": "DEEP SUBAGENT TEAM: runs several sub-tasks in parallel with independent child agents and returns all results together. Use to fan out independent work items.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tasks": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of sub-tasks to run in parallel."
+                            }
+                        },
+                        "required": ["tasks"]
                     }
                 }
             }
@@ -1317,3 +1552,256 @@ class ToolRegistry:
                     return "(wmctrl not installed)"
         except RuntimeError as e:
             return f"Window control error: {e!s}"
+
+    # ================= Phase 7: Full Autonomy tools =================
+
+    async def _run_command_raw(
+        self,
+        command: str,
+        cwd: str = "",
+        timeout: float = 60.0,
+    ) -> tuple[int, str, str]:
+        """Execute a command and return (exit_code, stdout, stderr) — no decoration.
+
+        Used by self_heal so the repair loop can inspect raw output.
+        """
+        working_dir = self._resolve_path(cwd) if cwd else self.workspace
+        working_dir.mkdir(parents=True, exist_ok=True)
+        shell_cmd = (
+            ["powershell", "-NoProfile", "-Command", command]
+            if sys.platform == "win32"
+            else ["bash", "-c", command]
+        )
+        proc = await asyncio.create_subprocess_exec(
+            *shell_cmd,
+            cwd=str(working_dir),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return 1, "", f"Command timed out after {timeout:.0f}s."
+        return (
+            proc.returncode or 0,
+            stdout.decode("utf-8", errors="ignore"),
+            stderr.decode("utf-8", errors="ignore"),
+        )
+
+    async def tool_self_heal(self, command: str, cwd: str = "", max_attempts: int = 3) -> str:
+        """Self-healing command runner: run, diagnose failure, repair, re-run."""
+        from .heal import SelfHealEngine
+
+        engine = SelfHealEngine()
+        result = await engine.heal(
+            command,
+            max_attempts=max_attempts,
+            run=lambda cmd: self._run_command_raw(cmd, cwd=cwd),
+        )
+        return result.to_text()
+
+    async def tool_download_file(self, url: str, dest: str = "") -> str:
+        """SSRF-guarded download of a public http(s) URL into the workspace."""
+        url = (url or "").strip()
+        if not url.lower().startswith(("http://", "https://")):
+            return "Error: only http(s) URLs are allowed."
+        policy = PolicyEngine()
+        check = policy.check_network_target(url)
+        if check.decision == "deny":
+            return f"Error: refused to download private/loopback target ({url})."
+        try:
+            target = self._resolve_path(dest) if dest else self.workspace
+            if dest and dest.lower().endswith("/"):
+                target.mkdir(parents=True, exist_ok=True)
+            elif not dest:
+                target = self.workspace
+            fname = Path(url.split("?")[0].split("#")[0]).name or "download.bin"
+            out_path = (target if target.is_dir() else self.workspace) / fname
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            req = urllib.request.Request(url, headers={"User-Agent": "Titan-Agent/7.0"})
+
+            def _fetch() -> bytes:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return resp.read()
+
+            data = await asyncio.to_thread(_fetch)
+            if len(data) > 100 * 1024 * 1024:
+                return "Error: download exceeds 100 MB safety limit."
+            out_path.write_bytes(data)
+            return f"Downloaded {url}\nSaved: {out_path}\nSize: {len(data)} bytes"
+        except (OSError, ValueError, urllib.error.URLError) as e:
+            return f"Download failed: {e!s}"
+
+    def _start_server(self, port: int, directory: Path) -> str:
+        """Start (or return existing) ThreadingHTTPServer on localhost:port."""
+        from functools import partial
+
+        if not hasattr(self, "_http_servers"):
+            self._http_servers: dict[int, ThreadingHTTPServer] = {}
+        existing = self._http_servers.get(port)
+        if existing:
+            return f"Server already running at http://127.0.0.1:{port}"
+        directory.mkdir(parents=True, exist_ok=True)
+        handler = partial(SimpleHTTPRequestHandler, directory=str(directory))
+        server = ThreadingHTTPServer(("127.0.0.1", port), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self._http_servers[port] = server
+        return f"Serving {directory} at http://127.0.0.1:{port}"
+
+    def tool_start_http_server(self, port: int = 8000, directory: str = "") -> str:
+        try:
+            directory = self._resolve_path(directory) if directory else self.workspace
+            port = int(port or 8000)
+            if not 1024 <= port <= 49151:
+                return "Error: port must be in 1024-49151."
+            return self._start_server(port, directory)
+        except (OSError, ValueError) as e:
+            return f"Could not start HTTP server: {e!s}"
+
+    def tool_stop_http_server(self, port: int = 8000) -> str:
+        port = int(port or 8000)
+        server = getattr(self, "_http_servers", {}).get(port)
+        if not server:
+            return f"No HTTP server running on port {port}."
+        server.shutdown()
+        server.server_close()
+        self._http_servers.pop(port, None)
+        return f"Stopped HTTP server on port {port}."
+
+    async def tool_take_screenshot(self, dest: str = "") -> str:
+        """Capture the primary screen to a PNG (Windows via PowerShell)."""
+        if sys.platform != "win32":
+            return "Error: take_screenshot currently supports Windows only."
+        fname = dest or f"screenshot_{int(time.time())}.png"
+        out = self._resolve_path(fname)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        ps = (
+            "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; "
+            "$b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; "
+            f"$bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height); "
+            "$g = [System.Drawing.Graphics]::FromImage($bmp); "
+            "$g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size); "
+            f"$bmp.Save('{out}'); $g.Dispose(); $bmp.Dispose()"
+        )
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "powershell", "-NoProfile", "-Command", ps,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+            if not out.exists():
+                return f"Screenshot failed: {stderr.decode('utf-8', errors='ignore')[:500]}"
+            return f"Screenshot saved: {out} ({out.stat().st_size} bytes)"
+        except (OSError, asyncio.TimeoutError) as e:
+            return f"Screenshot error: {e!s}"
+
+    async def tool_self_update(self, run_tests: bool = True) -> str:
+        """Pull latest code, install requirements, run tests for the repo root."""
+        repo = self.workspace
+        # Walk up to find a .git dir
+        while not (repo / ".git").exists() and repo.parent != repo:
+            repo = repo.parent
+        if not (repo / ".git").exists():
+            return "No git repository found from workspace."
+        lines = ["### SELF-UPDATE"]
+        for cmd in ["git pull --ff-only", "git status --short"]:
+            code, out, err = await self._run_command_raw(cmd, cwd=str(repo), timeout=120)
+            lines.append(f"$ {cmd} (exit {code})")
+            if out.strip():
+                lines.append(out.strip())
+            if err.strip():
+                lines.append(err.strip())
+        # requirements install (best-effort, optional)
+        code, out, err = await self._run_command_raw(
+            f'"{sys.executable}" -m pip install -r requirements.txt --quiet',
+            cwd=str(repo),
+            timeout=300,
+        )
+        lines.append(f"$ pip install -r requirements.txt (exit {code}){(' ' + err.strip()[:300]) if err.strip() else ''}")
+        if run_tests and (repo / "tests").exists():
+            code, out, err = await self._run_command_raw(
+                f'"{sys.executable}" -m pytest -q',
+                cwd=str(repo),
+                timeout=600,
+            )
+            lines.append(f"\n$ pytest -q (exit {code})")
+            if out.strip():
+                lines.append(out.strip()[-1500:])
+            if err.strip():
+                lines.append(err.strip()[-500:])
+        return "\n".join(lines)
+
+    # ---- Autonomous task queue tools ----
+
+    def _queue(self):
+        from .queue import TaskQueue
+
+        if not hasattr(self, "_task_queue") or self._task_queue is None:
+            self._task_queue = TaskQueue(TASK_QUEUE_FILE)
+        return self._task_queue
+
+    def tool_task_enqueue(
+        self,
+        task: str,
+        name: str = "",
+        priority: int = 0,
+        schedule_at: float = 0.0,
+    ) -> str:
+        if not task or not str(task).strip():
+            return "Error: task is required."
+        try:
+            q = self._queue()
+            tid = q.enqueue(
+                str(task).strip(),
+                name=name or None,
+                priority=int(priority or 0),
+                schedule_at=float(schedule_at or 0),
+            )
+            return f"Task #{tid} enqueued: {(name or task)[:80]}"
+        except (OSError, ValueError) as e:
+            return f"Enqueue failed: {e!s}"
+
+    def tool_task_list(self, status: str = "", limit: int = 20) -> str:
+        q = self._queue()
+        tasks = q.list(status=status or None, limit=int(limit or 20))
+        if not tasks:
+            return "Task queue is empty."
+        lines = ["### TASK QUEUE"]
+        for t in tasks:
+            lines.append(
+                f"#{t.id} [{t.status}] prio={t.priority} attempts={t.attempts}/{t.max_attempts} :: {t.name}"
+            )
+        return "\n".join(lines)
+
+    def tool_task_stats(self) -> str:
+        q = self._queue()
+        stats = q.stats()
+        return "Queue stats: " + ", ".join(f"{k}={v}" for k, v in stats.items() if v) or "Queue is empty."
+
+    def tool_task_cancel(self, task_id: int) -> str:
+        ok = self._queue().cancel(int(task_id))
+        return f"Task #{task_id} cancelled." if ok else f"Task #{task_id} not found or already running."
+
+    # ---- Deep subagent tools ----
+
+    async def tool_subagent_delegate(self, task: str, label: str = "worker") -> str:
+        from .subagents import SubagentPool
+
+        if not task or not str(task).strip():
+            return "Error: task is required."
+        pool = SubagentPool()
+        res = await pool.delegate(str(task).strip(), label=label or "worker")
+        return res.to_text()
+
+    async def tool_subagent_team(self, tasks: list[str]) -> str:
+        from .subagents import SubagentPool
+
+        if not tasks:
+            return "Error: tasks list is required."
+        pool = SubagentPool(max_workers=min(2, len(tasks)))
+        results = await pool.team([str(t) for t in tasks])
+        return "\n\n".join(r.to_text() for r in results)
