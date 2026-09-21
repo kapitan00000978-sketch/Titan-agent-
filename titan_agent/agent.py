@@ -7,6 +7,7 @@ from .config import MAX_ITERATIONS
 from .llm_client import LLMClient
 from .mcp_client import MCPManager
 from .memory import MemoryManager
+from .skills import SkillRegistry
 from .tools import ToolRegistry
 
 TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI reasoning and execution engine, engineered to outperform classic agents (including Hermes-class and frontier-tier models) on real-world task completion.
@@ -32,7 +33,15 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - manage_processes — list or kill running OS processes
 - memory_save — store a fact in long-term persistent memory (remembered forever across sessions)
 - memory_search — recall previously saved facts from long-term memory
+- vault_list — browse the Memory Vault (scoped facts: global/project/team/user)
+- handoff_create / handoff_list / handoff_resolve — leave, read and close agent-to-agent handoff notes
+- skills_list — list available skill playbooks (Hermes-style reusable workflows)
+- skill_load — load the full text of a named skill playbook to follow it
 - mcp_* — tools exposed by connected MCP servers (filesystem, etc.)
+
+### SKILLS:
+Relevant skill playbooks for the current task are auto-injected into your context
+above (### RELEVANT SKILL PLAYBOOKS). Follow them. You may load more via skill_load.
 
 ### EFFICIENCY RULES (you are faster than typical agents):
 - Never re-run a tool to observe already-known output. Cache results mentally.
@@ -149,12 +158,14 @@ class TitanAgent:
         llm: LLMClient | None = None,
         tools: ToolRegistry | None = None,
         mcp: MCPManager | None = None,
-        memory: MemoryManager | None = None
+        memory: MemoryManager | None = None,
+        skills: SkillRegistry | None = None
     ):
         self.llm = llm or LLMClient()
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
+        self.skills = skills or SkillRegistry()
         self.system_prompt = TITAN_SYSTEM_PROMPT
 
     def _build_memory_tool_definitions(self) -> list[dict[str, Any]]:
@@ -163,13 +174,14 @@ class TitanAgent:
                 "type": "function",
                 "function": {
                     "name": "memory_save",
-                    "description": "Saves a fact or piece of information into Titan's long-term persistent memory so it is remembered in all future sessions (e.g. user name, preferences, decisions).",
+                    "description": "Saves a fact or piece of information into Titan's long-term persistent memory so it is remembered in all future sessions (e.g. user name, preferences, decisions). Use 'scope' to target a Memory Vault scope: global (everything), project (this repo), team (shared), user (personal).",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "key": {"type": "string", "description": "Unique short key for the fact (e.g. 'user_name')."},
                             "value": {"type": "string", "description": "The fact content to remember."},
-                            "category": {"type": "string", "description": "Optional category (e.g. 'profile', 'project', 'preference')."}
+                            "category": {"type": "string", "description": "Optional category (e.g. 'profile', 'project', 'preference')."},
+                            "scope": {"type": "string", "description": "Memory Vault scope: global, project, team, user (default global)."}
                         },
                         "required": ["key", "value"]
                     }
@@ -179,14 +191,105 @@ class TitanAgent:
                 "type": "function",
                 "function": {
                     "name": "memory_search",
-                    "description": "Searches Titan's long-term persistent memory for facts saved in earlier sessions.",
+                    "description": "Searches Titan's long-term persistent memory for facts saved in earlier sessions. Set 'scope' to search only that Memory Vault scope, or omit to search everything.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "query": {"type": "string", "description": "Text to search for in remembered facts."},
-                            "limit": {"type": "integer", "description": "Max results to return (default 5)."}
+                            "limit": {"type": "integer", "description": "Max results to return (default 5)."},
+                            "scope": {"type": "string", "description": "Optional Memory Vault scope filter: global, project, team, user."}
                         },
                         "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "vault_list",
+                    "description": "Lists facts in the Memory Vault, optionally filtered by scope (global/project/team/user).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "scope": {"type": "string", "description": "Optional scope filter: global, project, team, user."},
+                            "limit": {"type": "integer", "description": "Max results (default 50)."}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "handoff_create",
+                    "description": "Leaves a handoff note for the next agent / session (Hermes handoff pattern): a short 'where things stand + what to do next' pass-along.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string", "description": "Short title for the handoff."},
+                            "content": {"type": "string", "description": "The handoff note: current state, decisions, next steps."},
+                            "scope": {"type": "string", "description": "Optional scope: global, project, team, user (default global)."}
+                        },
+                        "required": ["title", "content"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "handoff_list",
+                    "description": "Lists open handoff notes left by previous agents/sessions (use at the START of a task to continue prior work).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "status": {"type": "string", "description": "Optional status filter: open or resolved (default open)."}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "handoff_resolve",
+                    "description": "Marks a handoff note as resolved/cancelled once its work is complete.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer", "description": "The handoff id."},
+                            "status": {"type": "string", "description": "resolved or cancelled (default resolved)."}
+                        },
+                        "required": ["id"]
+                    }
+                }
+            }
+        ]
+
+    def _build_skill_tool_definitions(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "skills_list",
+                    "description": "Lists all available skill playbooks (Hermes-style reusable workflows: research-ops, github-ops, coding-rules, terminal-ops, security-ops, planning-ops, ...).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "skill_load",
+                    "description": "Loads the full text of a named skill playbook so you can follow its workflow exactly.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "The skill name (e.g. 'research-ops')."}
+                        },
+                        "required": ["name"]
                     }
                 }
             }
@@ -196,6 +299,8 @@ class TitanAgent:
         all_tools = list(self.tools.get_tool_definitions())
         # Add memory tools (agent-level, routed through MemoryManager)
         all_tools.extend(self._build_memory_tool_definitions())
+        # Add skill tools (agent-level, routed through SkillRegistry)
+        all_tools.extend(self._build_skill_tool_definitions())
         # Add MCP tools if connected
         all_tools.extend(self.mcp.get_all_tools())
         return all_tools
@@ -213,6 +318,11 @@ class TitanAgent:
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
+        for t in self._build_skill_tool_definitions():
+            fn = t.get("function", {})
+            params = fn.get("parameters", {}).get("properties", {})
+            param_hint = ", ".join(params.keys()) if params else "no params"
+            lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         mcp_tools = self.mcp.get_all_tools()
         if mcp_tools:
             lines.append("\nMCP server tools:")
@@ -226,21 +336,72 @@ class TitanAgent:
             key = str(args.get("key", "")).strip()
             value = str(args.get("value", "")).strip()
             category = str(args.get("category", "agent")).strip() or "agent"
+            scope = args.get("scope")
             if not key or not value:
                 return "Error: memory_save requires both 'key' and 'value'."
-            self.memory.remember_fact(key, value, category)
-            return f"Saved to memory: {key} = {value} (category: {category})"
+            self.memory.remember_fact(key, value, category, scope=scope)
+            scope_note = f" (scope: {scope})" if scope else ""
+            return f"Saved to memory: {key} = {value} (category: {category}){scope_note}"
         if name == "memory_search":
             query = str(args.get("query", "")).strip()
             limit = int(args.get("limit", 5) or 5)
+            scope = args.get("scope")
             if not query:
                 return "Error: memory_search requires 'query'."
-            facts = self.memory.search_knowledge(query, limit=limit)
+            facts = self.memory.search_knowledge(query, limit=limit, scope=scope)
             if not facts:
                 return "No matching facts found in memory."
             return "\n".join(
-                f"- [{f['category']}] {f['key']}: {f['value']}" for f in facts
+                f"- [{f.get('category')}] {f['key']}: {f['value']}" for f in facts
             )
+        if name == "vault_list":
+            scope = args.get("scope")
+            limit = int(args.get("limit", 50) or 50)
+            facts = self.memory.vault_list(scope=scope, limit=limit)
+            if not facts:
+                return "Memory Vault is empty."
+            return "\n".join(
+                f"- [{f['scope']}/{f['category']}] {f['key']}: {f['value']}" for f in facts
+            )
+        if name == "handoff_create":
+            title = str(args.get("title", "")).strip()
+            content = str(args.get("content", "")).strip()
+            scope = args.get("scope")
+            if not title or not content:
+                return "Error: handoff_create requires both 'title' and 'content'."
+            hid = self.memory.create_handoff(title, content, scope=scope or "global")
+            return f"Handoff created (id: {hid}): {title}"
+        if name == "handoff_list":
+            status = args.get("status")
+            msgs = self.memory.list_handoffs(status=status or "open")
+            if not msgs:
+                return "No handoff notes found."
+            return "\n".join(
+                f"- [{m['id']}] ({m['status']}) {m['title']}:\n  {m['content']}" for m in msgs
+            )
+        if name == "handoff_resolve":
+            hid = int(args.get("id", 0) or 0)
+            status = str(args.get("status", "resolved")).strip()
+            if hid <= 0:
+                return "Error: handoff_resolve requires a valid 'id'."
+            ok = self.memory.resolve_handoff(hid, status=status)
+            return f"Handoff {hid} marked {status}." if ok else f"Handoff {hid} not found."
+        if name == "skills_list":
+            skills = self.skills.list_skills()
+            if not skills:
+                return "No skill playbooks available."
+            return "\n".join(
+                f"- {s['name']}: {s['description']}" for s in skills
+            )
+        if name == "skill_load":
+            skill_name = str(args.get("name", "")).strip()
+            if not skill_name:
+                return "Error: skill_load requires 'name'."
+            skill = self.skills.get_skill(skill_name)
+            if skill is None:
+                names = ", ".join(s["name"] for s in self.skills.list_skills()) or "none loaded"
+                return f"Unknown skill '{skill_name}'. Available: {names}"
+            return skill.full_text()
         if name.startswith("mcp_"):
             return await self.mcp.execute_tool(name, args)
         else:
@@ -345,6 +506,10 @@ class TitanAgent:
                 recall_block += f"- [{f['category']}] {f['key']}: {f['value']}\n"
             recall_block += "(Use these facts as true context; do not claim you read them fresh.)"
             system_content += recall_block
+        # Auto-skill load: inject relevant Hermes-style playbooks for this task
+        skill_block = self.skills.build_system_block(user_input)
+        if skill_block:
+            system_content += skill_block
         if mode == "deep":
             system_content += "\n\n" + DEEP_THINKING_PROMPT
         elif mode == "deep_search":

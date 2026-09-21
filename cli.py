@@ -14,6 +14,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from titan_agent.agent import TitanAgent
+from titan_agent.commands import ALL_COMMANDS, expand_slash, parse_local
 from titan_agent.config import DEFAULT_MODEL, DEFAULT_PROVIDER, MCP_CONFIG_FILE
 from titan_agent.llm_client import LLMClient
 from titan_agent.mcp_client import MCPManager
@@ -59,6 +60,8 @@ async def main():
         "[dim]Model: " + model + f" ({provider}) | MCP System: Active | Mode: {mode} | Effort: {effort}[/dim]\n"
         "[yellow]Type a command in Uzbek, Russian or English. Modes: fast | deep | deep_search (e.g. `mode deep`). "
         "Effort levels: low | medium | high | ultra (e.g. `effort high`). "
+        "Slash commands: /plan, /review, /security-scan, /research, /fix, /test, /explain, "
+        "/remember, /handoff, /help, /status, /skills, /memory, /handoffs, /clear. "
         "Type 'exit' to quit.[/yellow]",
         border_style="cyan"
     ))
@@ -98,6 +101,68 @@ async def main():
                 else:
                     console.print(f"[bold red]Unknown effort: {new_effort}. Valid: {', '.join(VALID_EFFORTS)}[/bold red]")
                 continue
+            # Slash commands: local ones (help/status/memory/...) and LLM ones (/plan, /review, ...)
+            if lower_input.startswith("/"):
+                local = parse_local(user_input)
+                if local is not None:
+                    name_l = local["name"]
+                    if name_l == "help":
+                        console.print(Panel.fit(
+                            "\n".join(f"[cyan]/{k}[/cyan] — {v}" for k, v in ALL_COMMANDS.items()),
+                            title="[bold magenta]Slash Commands[/bold magenta]",
+                            border_style="magenta"
+                        ))
+                    elif name_l == "status":
+                        console.print(f"[bold cyan]Provider:[/bold cyan] {provider} | [bold cyan]Model:[/bold cyan] {model}\n"
+                                      f"[bold cyan]Mode:[/bold cyan] {mode} | [bold cyan]Effort:[/bold cyan] {effort}")
+                    elif name_l == "skills":
+                        skill_names = agent.skills.list_skills()
+                        if skill_names:
+                            console.print(Panel.fit(
+                                "\n".join(f"- [cyan]{s['name']}[/cyan]: {s['description']}" for s in skill_names),
+                                title="[bold magenta]Skill Playbooks[/bold magenta]",
+                                border_style="magenta"
+                            ))
+                        else:
+                            console.print("[yellow]No skills loaded.[/yellow]")
+                    elif name_l == "memory":
+                        query = local["arg"]
+                        if not query:
+                            facts = agent.memory.get_all_knowledge()
+                            console.print("[yellow]Usage: /memory <query>[/yellow]")
+                        else:
+                            facts = agent.memory.search_knowledge(query, scope=None)
+                        if facts and query:
+                            console.print(Panel.fit(
+                                "\n".join(f"- [{f.get('category')}] {f['key']}: {f['value']}" for f in facts),
+                                title=f"[bold magenta]Memory: {query}[/bold magenta]",
+                                border_style="magenta"
+                            ))
+                    elif name_l == "handoffs":
+                        msgs = agent.memory.list_handoffs(status="open")
+                        if msgs:
+                            console.print(Panel.fit(
+                                "\n".join(f"- [{m['id']}] {m['title']}" for m in msgs),
+                                title="[bold magenta]Open Handoffs[/bold magenta]",
+                                border_style="magenta"
+                            ))
+                        else:
+                            console.print("[yellow]No open handoffs.[/yellow]")
+                    elif name_l == "clear":
+                        agent.memory.clear_session(session_id)
+                        console.print("[bold cyan]Session history cleared.[/bold cyan]")
+                    elif name_l == "exit":
+                        console.print("[bold red]Titan Agent stopped. Goodbye![/bold red]")
+                        await mcp.stop_all()
+                        break
+                    continue
+                expanded = expand_slash(user_input)
+                if expanded is not None:
+                    mode = expanded["mode"]
+                    effort = expanded["effort"]
+                    console.print(f"[bold cyan]/{expanded['command']}[/bold cyan] → mode: {mode}, effort: {effort}")
+                    user_input = expanded["prompt"]
+
             if lower_input in ("exit", "quit"):
                 console.print("[bold red]Titan Agent stopped. Goodbye![/bold red]")
                 await mcp.stop_all()

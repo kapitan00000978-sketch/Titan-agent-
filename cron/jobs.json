@@ -1,0 +1,19 @@
+{
+  "jobs": [
+    {
+      "id": "example-morning-digest",
+      "name": "Example: morning digest",
+      "prompt": "Give a short morning digest: summarize today's priorities from the workspace and any scheduled notes, in 5 bullets or fewer.",
+      "schedule": {
+        "interval_minutes": 1440
+      },
+      "mode": "deep",
+      "effort": "low",
+      "session_id": "cron_morning_digest",
+      "enabled": false,
+      "last_run": null,
+      "last_status": null,
+      "last_result": null
+    }
+  ]
+}

@@ -15,6 +15,7 @@ from .config import MCP_CONFIG_FILE, WORKSPACE_DIR
 from .llm_client import LLMClient
 from .mcp_client import MCPManager
 from .memory import MemoryManager
+from .scheduler import CronScheduler
 from .tools import ToolRegistry
 
 @asynccontextmanager
@@ -22,8 +23,11 @@ async def lifespan(_app: FastAPI):
     # Startup: attempt to start MCP servers (mcp_manager is defined at module
     # load, before the app ever starts serving, so this lookup is always valid).
     asyncio.create_task(mcp_manager.start_all())
+    # Startup: begin the cron scheduler loop (runs due jobs from cron/jobs.json).
+    asyncio.create_task(cron_scheduler.start())
     yield
     # Shutdown
+    await cron_scheduler.stop()
     await mcp_manager.stop_all()
 
 app = FastAPI(title="Titan Agent API", version="1.0.0", lifespan=lifespan)
@@ -42,6 +46,19 @@ tool_registry = ToolRegistry(WORKSPACE_DIR)
 memory_manager = MemoryManager()
 llm_client = LLMClient()
 agent = TitanAgent(llm=llm_client, tools=tool_registry, mcp=mcp_manager, memory=memory_manager)
+
+async def _cron_runner(prompt: str, session_id: str, mode: str, effort: str) -> str:
+    """Runner used by the cron scheduler: execute a prompt with the live agent
+    and return the final answer text (errors raise so the job is marked failed)."""
+    final = ""
+    async for ev in agent.run_task(prompt, session_id=session_id, mode=mode, effort=effort):
+        if ev.type == "final_answer":
+            final = (final + "\n\n" + ev.data).strip() if final else ev.data
+        elif ev.type == "error":
+            raise RuntimeError(ev.data)
+    return final or "(no answer produced)"
+
+cron_scheduler = CronScheduler(runner=_cron_runner)
 
 WEB_UI_DIR = Path(__file__).resolve().parent / "web_ui"
 WEB_UI_DIR.mkdir(parents=True, exist_ok=True)
@@ -148,7 +165,66 @@ async def list_workspace_files():
     return {"files": files}
 
 @app.get("/api/memory")
-async def get_memory(query: str = ""):
+async def get_memory(query: str = "", scope: str = ""):
     if query:
-        return {"knowledge": memory_manager.search_knowledge(query)}
+        return {"knowledge": memory_manager.search_knowledge(query, scope=scope or None)}
     return {"knowledge": memory_manager.get_all_knowledge()}
+
+@app.get("/api/memory/vault")
+async def get_memory_vault(scope: str = ""):
+    return {"vault": memory_manager.vault_list(scope=scope or None, limit=200)}
+
+@app.get("/api/memory/handoffs")
+async def get_handoffs(status: str = "open"):
+    return {"handoffs": memory_manager.list_handoffs(status=status or None)}
+
+class CronJobRequest(BaseModel):
+    prompt: str
+    name: str = "cron job"
+    schedule: Dict[str, Any] = Field(default_factory=lambda: {"interval_minutes": 60})
+    mode: str = "fast"
+    effort: str = "auto"
+    session_id: str = ""
+    enabled: bool = True
+    job_id: str = ""
+
+@app.get("/api/cron/jobs")
+async def cron_list():
+    return {"jobs": cron_scheduler.list_jobs()}
+
+@app.post("/api/cron/jobs")
+async def cron_add(req: CronJobRequest):
+    try:
+        job = cron_scheduler.add_job(
+            prompt=req.prompt,
+            name=req.name,
+            schedule=req.schedule,
+            mode=req.mode,
+            effort=req.effort,
+            session_id=req.session_id,
+            enabled=req.enabled,
+            job_id=req.job_id,
+        )
+        return {"status": "success", "job": job}
+    except ValueError as e:
+        return {"status": "error", "detail": str(e)}
+
+@app.delete("/api/cron/jobs/{job_id}")
+async def cron_delete(job_id: str):
+    ok = cron_scheduler.remove_job(job_id)
+    return {"status": "success" if ok else "error"}
+
+@app.post("/api/cron/jobs/{job_id}/toggle")
+async def cron_toggle(job_id: str):
+    job = cron_scheduler.toggle_job(job_id)
+    if job is None:
+        return {"status": "error", "detail": "Unknown job"}
+    return {"status": "success", "job": job}
+
+@app.post("/api/cron/jobs/{job_id}/run")
+async def cron_run(job_id: str):
+    try:
+        job = await cron_scheduler.run_now(job_id)
+        return {"status": "success", "job": job}
+    except KeyError as e:
+        return {"status": "error", "detail": str(e)}

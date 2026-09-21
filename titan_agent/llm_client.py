@@ -11,6 +11,8 @@ from .config import (
     GROQ_API_KEY,
     DEEPSEEK_API_KEY,
     OLLAMA_BASE_URL,
+    COMPLETIONS_API_KEY,
+    COMPLETIONS_BASE_URL,
 )
 from .token_limit import TokenRateLimiter, estimate_tokens
 
@@ -55,6 +57,10 @@ class LLMClient:
             # Puter.js runs fully client-side in the browser (free DeepSeek etc.).
             self.base_url = ""
             self.api_key = ""
+        elif self.provider == "completions":
+            # Completions.me — free OpenAI-compatible gateway (Claude Opus/GPT-5/Gemini/Grok).
+            self.base_url = COMPLETIONS_BASE_URL
+            self.api_key = COMPLETIONS_API_KEY
         else:
             self.base_url = OPENAI_BASE_URL
             self.api_key = OPENAI_API_KEY
@@ -133,7 +139,7 @@ class LLMClient:
         if self.provider == "puter":
             raise RuntimeError(
                 "Puter.js runs only inside the browser (Web UI). "
-                "For server-side usage, choose OpenRouter, DeepSeek, Groq, OpenAI or Ollama."
+                "For server-side usage, choose Completions (free), OpenRouter, DeepSeek, Groq, OpenAI or Ollama."
             )
         if not self.base_url:
             raise RuntimeError(f"Provider '{self.provider}' is not configured (missing API key).")
@@ -150,6 +156,13 @@ class LLMClient:
         if self.provider == "openrouter":
             headers["HTTP-Referer"] = "https://github.com/titan-agent"
             headers["X-Title"] = "Titan Agent"
+        if self.provider == "completions":
+            # Completions.me sits behind Cloudflare (error 1010 blocks non-browser agents).
+            headers["User-Agent"] = (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            )
+            headers["Accept"] = "application/json, text/plain, */*"
 
         payload = {
             "model": self.model,
@@ -169,7 +182,7 @@ class LLMClient:
                     if resp.status in (401, 403):
                         hint = (
                             " (Hint: the API key is invalid or not set. "
-                            "Choose Puter.js (no key) or Ollama from the Web UI settings, "
+                            "Choose Puter.js (no key), Ollama, or Completions (free) from the Web UI settings, "
                             "or add the correct API key to the .env file)"
                         )
                     raise RuntimeError(

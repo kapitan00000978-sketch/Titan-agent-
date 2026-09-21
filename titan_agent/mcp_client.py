@@ -279,7 +279,17 @@ class MCPManager:
         cmd = str(details.get("command", ""))
         args = [str(a).replace("{WORKSPACE}", str(workspace_dir)).replace("{BASE_DIR}", str(workspace_dir.parent)) for a in details.get("args", [])]
         cmd = cmd.replace("{WORKSPACE}", str(workspace_dir)).replace("{BASE_DIR}", str(workspace_dir.parent))
-        env = {str(k): str(v) for k, v in (details.get("env") or {}).items()}
+        # Expand {ENV_VAR_NAME} placeholders in env values from the process env
+        # (e.g. {GITHUB_TOKEN}); missing vars become empty strings so the server
+        # still launches and only auth-gated calls fail, never startup.
+        raw_env = {str(k): str(v) for k, v in (details.get("env") or {}).items()}
+        env = {}
+        for k, v in raw_env.items():
+            if v.startswith("{") and v.endswith("}"):
+                var_name = v[1:-1]
+                env[k] = os.environ.get(var_name, "")
+            else:
+                env[k] = v
         return cmd, args, env
 
     async def _start_one(self, conn: MCPServerConnection):

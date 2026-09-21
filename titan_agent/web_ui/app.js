@@ -72,6 +72,10 @@ function setupEventListeners() {
     e.preventDefault();
     const prompt = userPromptInput.value.trim();
     if (!prompt || isStreaming) return;
+    if (handleLocalSlashCommand(prompt)) {
+      userPromptInput.value = "";
+      return;
+    }
     sendMessage(prompt);
   });
 
@@ -413,12 +417,151 @@ function createAgentCard() {
   return { row, card, statusLine };
 }
 
+// ---- Slash commands (mirrors titan_agent/commands.py) ----
+const SLASH_COMMANDS = {
+  plan: { mode: "deep", effort: "high", template: "Create a detailed, step-by-step implementation plan for the following task. Break it into phases/milestones with clear done-criteria, list the files/tools you would touch, the risks, and end with the single next action to take now.\n\nTASK: {arg}" },
+  review: { mode: "deep", effort: "high", template: "Perform a rigorous code review of the following target. Check for bugs, edge cases, error handling, naming, security issues and test coverage. Report findings by severity (Critical / Important / Minor / Nit) with concrete fixes.\n\nREVIEW TARGET: {arg}" },
+  "security-scan": { mode: "deep", effort: "ultra", template: "Run a security audit on the following target using the security-ops skill. Threat-model first: check for injection, secrets, path traversal, SSRF, unsafe deserialization, and dependency vulnerabilities. Report by severity with fixes.\n\nSCAN TARGET: {arg}" },
+  research: { mode: "deep_search", effort: "high", template: "Research the following topic thoroughly. Find multiple sources, cross-check claims, prefer recently updated primary sources, and cite everything you actually retrieved.\n\nTOPIC: {arg}" },
+  explain: { mode: "deep", effort: "medium", template: "Explain the following in depth: what it is, how it works, why it matters, and any caveats. Use concrete examples.\n\nSUBJECT: {arg}" },
+  fix: { mode: "deep", effort: "high", template: "Diagnose and fix the following issue. Reproduce or understand the cause, make the smallest correct change, then verify it actually works before reporting.\n\nISSUE: {arg}" },
+  test: { mode: "deep", effort: "medium", template: "Write and/or run tests for the following target. Cover the happy path, edge cases, and error paths. Report test results.\n\nTEST TARGET: {arg}" },
+  remember: { mode: "fast", effort: "auto", template: "Save the following to memory using memory_save with a clear short key, then confirm it was saved.\n\nFACT: {arg}" },
+  handoff: { mode: "fast", effort: "auto", template: "Leave a handoff note using handoff_create summarizing current state, decisions, and next steps. Keep it concise and actionable.\n\nNOTE: {arg}" }
+};
+
+function expandSlashCommand(text) {
+  if (!text || text[0] !== "/" || text.length < 2) return null;
+  const stripped = text.slice(1).trim();
+  if (!stripped) return null;
+  const idx = stripped.indexOf(" ");
+  const name = (idx === -1 ? stripped : stripped.slice(0, idx)).toLowerCase();
+  const arg = (idx === -1 ? "" : stripped.slice(idx + 1)).trim();
+  const cmd = SLASH_COMMANDS[name];
+  if (!cmd) return null;
+  return {
+    prompt: cmd.template.replace("{arg}", arg || "(no argument provided — ask about the general case)"),
+    mode: cmd.mode,
+    effort: cmd.effort
+  };
+}
+
+// Local (no-LLM) slash commands rendered right in the chat area.
+async function handleLocalSlashCommand(text) {
+  if (!text || text[0] !== "/") return false;
+  const stripped = text.slice(1).trim();
+  if (!stripped) return false;
+  const idx = stripped.indexOf(" ");
+  const name = (idx === -1 ? stripped : stripped.slice(0, idx)).toLowerCase();
+  const arg = (idx === -1 ? "" : stripped.slice(idx + 1)).trim();
+
+  const appendRaw = (title, bodyHtml) => {
+    const { card, statusLine } = createAgentCard();
+    card.querySelector(".agent-message-title").textContent = title;
+    const div = document.createElement("div");
+    div.className = "answer-content";
+    div.innerHTML = bodyHtml;
+    card.insertBefore(div, statusLine);
+    statusLine.style.display = "none";
+    scrollToBottom();
+  };
+
+  if (name === "help") {
+    appendUserMessage(text);
+    const lines = [
+      "<b>Slash commands:</b>",
+      ...Object.keys(SLASH_COMMANDS).map(k => `<code>/${k}</code> — ${k}`),
+      "<b>Local commands:</b>",
+      "<code>/plan TASK</code>, <code>/review FILE</code>, <code>/security-scan FILE</code> — expert modes",
+      "<code>/research TOPIC</code>, <code>/fix ISSUE</code>, <code>/test FILE</code>, <code>/explain SUBJECT</code>",
+      "<code>/remember FACT</code>, <code>/handoff NOTE</code>",
+      "<code>/status</code> — current provider / model / mode / effort",
+      "<code>/skills</code> — list skill playbooks",
+      "<code>/handoffs</code> — list open handoff notes",
+      "<code>/memory QUERY</code> — search long-term memory"
+    ];
+    appendRaw("Help", lines.join("<br>"));
+    return true;
+  }
+  if (name === "status") {
+    appendUserMessage(text);
+    let cfgText = "Loading config...";
+    try {
+      const res = await fetch("/api/config");
+      const cfg = await res.json();
+      cfgText = `<b>Provider:</b> ${cfg.provider} · <b>Model:</b> ${cfg.model}<br>` +
+        `<b>Mode:</b> ${currentMode} · <b>Effort:</b> ${currentEffort} · <b>Workspace:</b> <code>${cfg.workspace}</code>`;
+    } catch (e) { cfgText = "Could not load config."; }
+    appendRaw("Status", cfgText);
+    return true;
+  }
+  if (name === "skills") {
+    appendUserMessage(text);
+    let body = "No skills loaded.";
+    try {
+      const res = await fetch("/api/tools/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_name: "skills_list", arguments: {} })
+      });
+      const data = await res.json();
+      body = (data.result || "No skills loaded.").replace(/\n/g, "<br>");
+    } catch (e) { body = "Could not list skills."; }
+    appendRaw("Skill Playbooks", body);
+    return true;
+  }
+  if (name === "handoffs") {
+    appendUserMessage(text);
+    let body = "No open handoffs.";
+    try {
+      const res = await fetch("/api/memory/handoffs?status=open");
+      const data = await res.json();
+      const list = data.handoffs || [];
+      if (list.length) {
+        body = list.map(h => `[${h.id}] <b>${escapeHtml(h.title)}</b> — ${escapeHtml((h.content || "").slice(0, 160))}`).join("<br>");
+      }
+    } catch (e) { body = "Could not list handoffs."; }
+    appendRaw("Open Handoffs", body);
+    return true;
+  }
+  if (name === "memory") {
+    appendUserMessage(text);
+    if (!arg) { appendRaw("Memory", "Usage: <code>/memory &lt;query&gt;</code>"); return true; }
+    let body = "Nothing found.";
+    try {
+      const res = await fetch("/api/memory?query=" + encodeURIComponent(arg));
+      const data = await res.json();
+      const list = data.knowledge || [];
+      if (list.length) {
+        body = list.map(f => `[${f.category}] <b>${escapeHtml(f.key)}</b>: ${escapeHtml(f.value)}`).join("<br>");
+      }
+    } catch (e) { body = "Could not search memory."; }
+    appendRaw(`Memory: ${arg}`, body);
+    return true;
+  }
+  return false;
+}
+
 async function sendMessage(prompt) {
   if (isStreaming) return;
   isStreaming = true;
   userPromptInput.value = "";
   submitBtn.disabled = true;
   statusBadge.textContent = "Working...";
+
+  // Expand slash commands (/plan, /review, ...) into a full prompt + mode + effort.
+  const slash = expandSlashCommand(prompt);
+  if (slash) {
+    prompt = slash.prompt;
+    currentMode = slash.mode;
+    currentEffort = slash.effort;
+    document.querySelectorAll(".mode-btn").forEach(b => {
+      b.classList.toggle("mode-active", b.dataset.mode === currentMode);
+    });
+    document.querySelectorAll(".effort-btn").forEach(b => {
+      b.classList.toggle("effort-active", b.dataset.effort === currentEffort);
+    });
+  }
 
   appendUserMessage(prompt);
   const { card, statusLine } = createAgentCard();

@@ -15,6 +15,9 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+# Completions.me — free OpenAI-compatible gateway (Claude Opus/GPT-5/Gemini/Grok free)
+COMPLETIONS_API_KEY = os.getenv("COMPLETIONS_API_KEY", "")
+COMPLETIONS_BASE_URL = os.getenv("COMPLETIONS_BASE_URL", "https://completions.me/api/v1")
 
 # If an API key is present, default to that provider; otherwise seamlessly use local Ollama!
 if OPENROUTER_API_KEY:
