@@ -76,6 +76,12 @@ searches the web live, and connects to any application or database through **Mod
       providers, parallel tool turns or long streams are running (default; override with `TITAN_TOKEN_RATE_LIMIT`).
     - Enforced on every server-side LLM call (`llm_client`) **and** on the Puter browser path (`app.js` token bucket).
     - Live stats endpoint: `GET /api/token-usage` (cap, tokens reserved, throttling waits) + a small `🔒 214k tok/s` badge in the dashboard header.
+11. **🛡️ Run Resilience (context-aware loop)**:
+    - Long/deep runs never blow the provider window: the living context is auto-trimmed to
+      `TITAN_CONTEXT_BUDGET_CHARS` (tool blocks are kept intact, the task head is never dropped).
+    - Broken tool-call JSON is repaired or skipped with explicit feedback (never run with empty args).
+    - Transient LLM network errors retry automatically, and context-overflow errors recover by
+      progressively shrinking the window instead of killing the run.
 
 ---
 

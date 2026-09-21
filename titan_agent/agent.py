@@ -11,7 +11,9 @@ import aiohttp
 from .checkpoint import MAX_MESSAGES as CHECKPOINT_MAX_MESSAGES
 from .checkpoint import CheckpointStore, RunCheckpoint
 from .config import (
+    CONTEXT_BUDGET_CHARS,
     DEEP_MAX_STEPS_BASE,
+    LLM_TRANSIENT_RETRIES,
     MAX_ITERATIONS,
     MAX_STEPS_CAP,
     UNLIMITED_STEPS,
@@ -188,6 +190,165 @@ def _compute_max_steps(mode: str, effort: str) -> int:
         # No ceiling: still bounded by base*multiplier growth, but no 48 clamp.
         return steps
     return min(steps, MAX_STEPS_CAP)
+
+
+# ---- Phase 10: harness hardening helpers --------------------------------
+
+def _msg_cost(m: dict[str, Any]) -> int:
+    """Rough char cost of one message (content + inline tool-call args)."""
+    cost = len(str(m.get("content") or ""))
+    for tc in m.get("tool_calls") or []:
+        if isinstance(tc, dict):
+            fn = tc.get("function", {}) or {}
+            cost += len(str(fn.get("arguments") or ""))
+    return cost
+
+
+CONTEXT_TRIM_MARKER = (
+    "...(context trimmed to fit the run budget: earlier tool results were "
+    "removed; the task statement and the newest steps remain above)..."
+)
+
+
+def trim_messages_for_context(
+    messages: list[dict[str, Any]],
+    max_chars: int | None = None,
+) -> list[dict[str, Any]]:
+    """Keep a run's message list inside a char budget WITHOUT corrupting the
+    assistant->tool pairing that OpenAI-compatible APIs require.
+
+    - System messages and the first user task message are never dropped, so
+      deep runs stay anchored to the request.
+    - The newest rounds are kept first (the active working window).
+    - Tool blocks (an assistant message with tool_calls + its following tool
+      messages) are trimmed only as a whole unit, so the message array stays
+      API-valid after trimming.
+    - If anything was dropped, one short marker message is inserted right after
+      the head so the model knows earlier context was truncated.
+    """
+    if not messages:
+        return list(messages)
+    budget = CONTEXT_BUDGET_CHARS if max_chars is None else int(max_chars)
+    total = sum(_msg_cost(m) for m in messages)
+    if total <= budget:
+        return list(messages)
+
+    head: list[int] = []
+    for i, m in enumerate(messages):
+        if m.get("role") == "system":
+            head.append(i)
+    first_user = next(
+        (i for i, m in enumerate(messages) if m.get("role") == "user"), None
+    )
+    if first_user is not None and first_user not in head:
+        head.append(first_user)
+    head_set = set(head)
+    tail_budget = max(0, budget - sum(_msg_cost(messages[i]) for i in head))
+
+    kept: list[int] = []
+    kept_set: set[int] = set()
+    size = 0
+    i = len(messages) - 1
+    while i >= 0 and size < tail_budget:
+        if i in head_set:
+            i -= 1
+            continue
+        m = messages[i]
+        if m.get("role") == "tool":
+            # Whole-block atomicity: owning assistant + all of its tool messages.
+            block: list[int] = []
+            j = i
+            while j >= 0 and messages[j].get("role") == "tool":
+                block.append(j)
+                j -= 1
+            if (
+                j >= 0
+                and messages[j].get("role") == "assistant"
+                and messages[j].get("tool_calls")
+            ):
+                block.append(j)
+            block_cost = sum(_msg_cost(messages[k]) for k in block)
+            if size + block_cost <= tail_budget:
+                for k in block:
+                    if k not in kept_set:
+                        kept.append(k)
+                        kept_set.add(k)
+                size += block_cost
+            i = j
+            continue
+        if m.get("role") == "assistant" and m.get("tool_calls"):
+            # Its tool block is kept (or dropped) as a unit, never alone.
+            i -= 1
+            continue
+        cost = _msg_cost(m)
+        if size + cost <= tail_budget:
+            kept.append(i)
+            kept_set.add(i)
+            size += cost
+        i -= 1
+
+    final_idx = sorted(set(head + kept))
+    if len(final_idx) == len(messages):
+        return list(messages)
+    trimmed = [messages[k] for k in final_idx]
+    cut = len(head)  # right after the never-dropped head
+    trimmed.insert(cut, {"role": "system", "content": CONTEXT_TRIM_MARKER})
+    return trimmed
+
+
+def parse_tool_arguments(raw: Any, tool_name: str = "") -> dict[str, Any] | None:
+    """Best-effort repair of an LLM tool arguments payload.
+
+    Returns the dict to execute with, or None when the payload cannot be
+    salvaged (the caller then skips the call and reports the raw text instead
+    of silently running the tool with empty arguments).
+
+    Handles: empty payload -> {}; dict pass-through (native tool_calls); JSON
+    wrapped in code fences / backticks; and a body that contains one balanced
+    {...} region. Non-dict JSON (bare string/list) is wrapped as {"value": ...}.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if raw is None:
+        return {}
+    s = str(raw).strip()
+    if not s:
+        return {}
+    if s.startswith("```"):
+        s = s.strip("`").strip()
+        if s.lower().startswith("json"):
+            s = s[4:].strip()
+    elif s.startswith("`") and s.endswith("`"):
+        s = s[1:-1].strip()
+    try:
+        obj = json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    else:
+        return obj if isinstance(obj, dict) else {"value": obj}
+    start = s.find("{")
+    end = s.rfind("}")
+    if 0 <= start < end:
+        try:
+            obj = json.loads(s[start : end + 1])
+        except json.JSONDecodeError:
+            return None
+        return obj if isinstance(obj, dict) else {"value": obj}
+    return None
+
+
+_CONTEXT_OVERFLOW_MARKERS = (
+    "context length",
+    "context_length",
+    "maximum context",
+    "max context",
+    "context window",
+    "token limit",
+    "token_limit",
+    "too many tokens",
+    "input is too long",
+    "prompt is too long",
+)
 
 class AgentEvent:
     def __init__(self, event_type: str, data: Any):
@@ -903,7 +1064,15 @@ class TitanAgent:
         messages: list[dict[str, Any]],
         iteration: int
     ) -> AsyncGenerator[AgentEvent, None]:
-        """Executes all tool_calls inside `response` IN PARALLEL and streams events. Mutates `messages` in place."""
+        """Executes all tool_calls inside `response` IN PARALLEL and streams
+        events. Mutates `messages` in place.
+
+        Phase 10: calls whose arguments cannot be parsed as JSON are SKIPPED
+        (never executed with empty arguments). The raw payload is reported back
+        to the model so it can resend a valid call. Every tool_call_id still
+        receives exactly one follow-up tool message, keeping the assistant->tool
+        pairing valid for the next model request.
+        """
         assistant_msg = {
             "role": "assistant",
             "content": response.content or "",
@@ -913,28 +1082,29 @@ class TitanAgent:
 
         parsed = []
         for tool_call in response.tool_calls:
-            fn = tool_call.get("function", {})
+            fn = tool_call.get("function", {}) if isinstance(tool_call, dict) else {}
             t_name = fn.get("name", "")
-            t_args_raw = fn.get("arguments", "{}")
-            if isinstance(t_args_raw, str):
-                try:
-                    t_args = json.loads(t_args_raw)
-                except json.JSONDecodeError:
-                    t_args = {}
-            else:
-                t_args = t_args_raw
+            t_args = parse_tool_arguments(fn.get("arguments", "{}"), t_name)
             parsed.append((tool_call, t_name, t_args))
 
         # Emit all scheduled tool_call events first
         for tool_call, t_name, t_args in parsed:
             yield AgentEvent("tool_call", {"name": t_name, "arguments": t_args})
 
-        if len(parsed) > 1:
-            yield AgentEvent("status", f"Running {len(parsed)} tools in parallel...")
-        else:
-            yield AgentEvent("status", f"Running tool: {parsed[0][1]}...")
+        runnable = [p for p in parsed if p[2] is not None]
+        skipped = [p for p in parsed if p[2] is None]
 
-        # Execute all tools concurrently
+        if len(runnable) > 1:
+            yield AgentEvent("status", f"Running {len(runnable)} tools in parallel...")
+        elif runnable:
+            yield AgentEvent("status", f"Running tool: {runnable[0][1]}...")
+        elif skipped:
+            yield AgentEvent(
+                "status",
+                f"Skipping {len(skipped)} tool call(s) with unparsable arguments.",
+            )
+
+        # Execute all runnable tools concurrently
         async def _run_one(tool_call, t_name, t_args):
             try:
                 result = await self.execute_tool_unified(t_name, t_args)
@@ -942,17 +1112,93 @@ class TitanAgent:
             except (RuntimeError, OSError, ValueError) as e:
                 return tool_call, t_name, f"Error: {e!s}"
 
-        results = await asyncio.gather(*(_run_one(*p) for p in parsed))
+        results = await asyncio.gather(*(_run_one(*p) for p in runnable))
+        result_map = {id(r[0]): r[2] for r in results}
 
-        # Emit results and append tool messages in original order
-        for tool_call, t_name, result in results:
-            yield AgentEvent("tool_result", {"name": t_name, "result": result})
+        # Emit results and append tool messages in ORIGINAL call order, so every
+        # tool_call_id gets exactly one follow-up message.
+        for tool_call, t_name, t_args in parsed:
+            if t_args is None:
+                raw = ""
+                if isinstance(tool_call, dict):
+                    raw = str(tool_call.get("function", {}).get("arguments", ""))
+                result = (
+                    "Skipped: tool arguments could not be parsed as valid JSON. "
+                    f"Raw arguments (truncated): {raw[:400]!r}"
+                )
+                yield AgentEvent("tool_result", {"name": t_name, "result": result})
+            else:
+                result = result_map.get(id(tool_call), "Error: tool call vanished.")
+                yield AgentEvent("tool_result", {"name": t_name, "result": result})
             messages.append({
                 "role": "tool",
-                "tool_call_id": tool_call.get("id", f"call_{iteration}"),
+                "tool_call_id": (
+                    tool_call.get("id", f"call_{iteration}")
+                    if isinstance(tool_call, dict) else f"call_{iteration}"
+                ),
                 "name": t_name,
                 "content": str(result)
             })
+
+    async def _chat_with_recovery(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ) -> tuple[Any, list[dict[str, Any]], list[str]]:
+        """Robust model call for one loop iteration.
+
+        Returns (response, working_messages, status_notes).
+
+        Phase 10 hardening:
+        - Transient network errors (aiohttp.ClientError / OSError / timeouts)
+          retry with linear backoff up to LLM_TRANSIENT_RETRIES — a single
+          hiccup no longer kills an entire deep run.
+        - Context-length errors trigger an automatic trim_messages_for_context
+          pass + one retry, so an over-budget run degrades gracefully to a
+          usable window instead of dying mid-task.
+        - API-level failures (401/403/...) and context errors that trimming
+          cannot fix still fail fast.
+        """
+        working = list(messages)
+        notes: list[str] = []
+        transient = (aiohttp.ClientError, OSError, asyncio.TimeoutError)
+        overflow_left = 6  # bounded halving loop on repeated context overflows
+
+        for attempt in range(LLM_TRANSIENT_RETRIES + 1):
+            try:
+                response = await self.llm.chat_completion(working, tools=tools)
+                return response, working, notes
+            except transient as e:
+                if attempt >= LLM_TRANSIENT_RETRIES:
+                    raise
+                notes.append(
+                    f"LLM transient error, retrying ({attempt + 1}/"
+                    f"{LLM_TRANSIENT_RETRIES}): {e!s}"
+                )
+                await asyncio.sleep(0.75 * (attempt + 1))
+            except RuntimeError as e:
+                lowered = str(e).lower()
+                if not any(marker in lowered for marker in _CONTEXT_OVERFLOW_MARKERS):
+                    raise
+                if overflow_left <= 0:
+                    raise
+                overflow_left -= 1
+                # Progressive halving: shrink to ~half the current size on every
+                # overflow, because we do not know the provider's real window.
+                # Bounded retries guarantee termination while still landing under
+                # it for reasonable windows.
+                current = sum(_msg_cost(m) for m in working)
+                target = max(512, current // 2)
+                trimmed = trim_messages_for_context(working, max_chars=target)
+                if len(trimmed) < len(working):
+                    working = trimmed
+                    notes.append(
+                        "Context overflow detected - trimmed older tool "
+                        f"rounds to ~{len(trimmed)} messages and retrying."
+                    )
+                    continue
+                raise
+        raise RuntimeError("LLM unreachable after all retries.")  # pragma: no cover
 
     async def run_task(
         self,
@@ -1166,10 +1412,17 @@ class TitanAgent:
             iteration += 1
             yield AgentEvent("step_start", {"step": iteration, "max_steps": max_steps})
 
+            # Phase 10: keep the in-run window inside the configured budget
+            # proactively (a no-op until the context actually exceeds it), so
+            # long runs never fight the provider window one step too late.
+            messages = trim_messages_for_context(messages)
+
             available_tools = self._build_tools_list()
 
             try:
-                response = await self.llm.chat_completion(messages, tools=available_tools)
+                response, messages, chat_notes = await self._chat_with_recovery(
+                    messages, available_tools
+                )
             except (RuntimeError, OSError, aiohttp.ClientError) as e:
                 err_msg = f"Error connecting to LLM: {e!s}"
                 yield AgentEvent("error", err_msg)
@@ -1179,6 +1432,8 @@ class TitanAgent:
                     steps_done=iteration, status="error",
                 )
                 return
+            for note in chat_notes:
+                yield AgentEvent("status", note)
 
             # Yield thoughts if any
             if response.thoughts:

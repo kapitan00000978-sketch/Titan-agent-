@@ -2,6 +2,54 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🔧 Phase 10 — HARNESS HARDENING (context resilience, tool-arg repair, LLM recovery)
+
+Three weaknesses in the classic run loop were hardened, each verified with
+deterministic tests — no model-level claims, these are pure harness guarantees.
+
+### 1. Context budget trimming (`trim_messages_for_context`)
+Long / deep runs grew an unbounded `messages` list (assistant + tool results
+appended every step) — 25–48+ steps of big tool outputs eventually blew the
+provider window and killed the whole run. Now:
+- Configurable budget **`TITAN_CONTEXT_BUDGET_CHARS`** (default 200 000 chars).
+- Applied **proactively at every loop iteration** (no-op until the budget is
+  actually exceeded).
+- **Never drops** the system prompt or the first user task message (the task
+  head survives so deep runs stay anchored).
+- **Keeps the newest rounds first** (the active working window).
+- Trims tool blocks **atomically** (assistant with `tool_calls` + its tool
+  messages together), so the message array always stays API-valid.
+- Inserts a one-line marker so the model knows earlier context was truncated.
+
+### 2. Tool-call argument repair (`parse_tool_arguments`)
+Previously an unparsable arguments payload silently became `{}` — the tool ran
+**with empty arguments** (a no-op at best, a destructive call at worst) and the
+model's intent was lost. Now the payload is best-effort repaired (empty → `{}`,
+dict pass-through, code-fence/backtick stripping, one balanced `{...}` region,
+non-dict JSON wrapped as `{"value": ...}`) and if it genuinely cannot be parsed
+the call is **skipped** with the raw payload reported back to the model so it
+can resend. Every `tool_call_id` still receives exactly one tool message, so
+the assistant→tool pairing stays valid on the next request.
+
+### 3. LLM call recovery (`_chat_with_recovery`)
+Any transient network error or context-length failure used to kill the run
+immediately. Now:
+- Transient errors (`aiohttp.ClientError` / `OSError` / timeouts) retry with
+  linear backoff, bounded by **`TITAN_LLM_TRANSIENT_RETRIES`** (default 2).
+- Context-length errors trigger **progressive halving**: the context is shrunk
+  to ~half its current size and retried (bounded, ≤ 6 shrinks), because we do
+  not know the provider's real window — over-budget runs degrade gracefully
+  instead of dying mid-task.
+- API-level failures (401/403/...) still fail fast.
+
+### Verification
+- `tests/test_hardening.py` — **12 deterministic tests** (trim no-op / head+tail
+  / block atomicity / no orphan tools; parse valid/invalid/non-dict; emit
+  skip-with-feedback and order preservation; transient retry recovery; all-
+  retries-exhausted clean failure; overflow halving; overflow recovery
+  end-to-end through `run_task`).
+- Full suite: **329 passed, 1 skipped**; ruff clean on all touched files.
+
 ## 🔧 Phase 9B — OBSIDIAN INTEGRATION (`obsidian-mcp@2`)
 
 Titan can now read and write an **Obsidian vault** through its MCP layer.

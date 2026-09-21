@@ -93,6 +93,16 @@ DAEMON_MAX_CONCURRENT = int(os.getenv("TITAN_DAEMON_CONCURRENCY", "1"))
 # enforced for every LLM call (backend providers and the Puter browser path).
 TOKEN_RATE_LIMIT_PER_SEC = int(os.getenv("TITAN_TOKEN_RATE_LIMIT", "214000"))
 
+# ---- Phase 10: harness hardening -----------------------------------------
+# In-run message budget in characters. When the living context of a run exceeds
+# it, the oldest tool rounds are trimmed (whole assistant->tool blocks) so long
+# / deep runs never blow the provider window. Rough heuristic: 1 token ~= 4 chars.
+CONTEXT_BUDGET_CHARS = int(os.getenv("TITAN_CONTEXT_BUDGET_CHARS", "200000"))
+# Bounded retries for TRANSIENT LLM network errors only (aiohttp.ClientError /
+# OSError / timeouts). API-level failures (401/403/...) and context-length
+# errors that trimming cannot fix still fail fast. 0 disables retries.
+LLM_TRANSIENT_RETRIES = int(os.getenv("TITAN_LLM_TRANSIENT_RETRIES", "2"))
+
 # ---- Phase 8: FULL ACCESS — remove every capability boundary ----
 # TITAN_FULL_ACCESS=1    -> step caps lifted, tool/command timeouts raised,
 #                           approval gates auto-granted, download size cap and
