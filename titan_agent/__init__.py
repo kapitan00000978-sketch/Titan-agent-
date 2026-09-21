@@ -6,6 +6,7 @@ from .llm_client import LLMClient
 from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .skills import Skill, SkillRegistry
+from .telegram import TelegramError, TelegramManager
 from .tools import ToolRegistry
 
-__all__ = ["LLMClient", "MCPManager", "MemoryManager", "Skill", "SkillRegistry", "TitanAgent", "ToolRegistry"]
+__all__ = ["LLMClient", "MCPManager", "MemoryManager", "Skill", "SkillRegistry", "TelegramError", "TelegramManager", "TitanAgent", "ToolRegistry"]

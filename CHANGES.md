@@ -354,3 +354,50 @@ limits.
 Note: a raw `urllib` probe against the same endpoint got HTTP 401 "Invalid API key"
 and HTTP 403 Cloudflare 1010 — both are WAF-related, not key problems; the key is
 confirmed valid through Titan's own client (browser-style headers).
+
+## 🆕 Telegram account manager — user-consented (Block 6, 2026)
+
+The agent can now manage the **user's own Telegram accounts** (add via one-time
+code, list, read own dialogs, send only to an allowlist) — built around an
+explicit safety model:
+
+- **Consent gate:** nothing works unless `TITAN_TELEGRAM_ENABLED=true` in `.env`
+  (default `false`). Disabled ⇒ every tool answers "Telegram control is disabled".
+- **Credentials:** `TITAN_TELEGRAM_API_ID` / `TITAN_TELEGRAM_API_HASH` from
+  https://my.telegram.org → API development tools. The agent cannot invent the
+  user's phone or one-time code — login always starts from the user's own number
+  and is only completed with the code the **user** received and shared.
+- **Send allowlist:** messages go out **only** to targets listed in
+  `TITAN_TELEGRAM_SEND_ALLOWLIST` (comma-separated). Empty ⇒ read-only; a refusal
+  happens *before* any connection. No broadcast / mass-messaging tooling exists.
+- **PII hygiene:** phone numbers and usernames are masked in every output
+  (`+998 ** *** ** 67`); `api_hash` is never printed; sessions live in
+  `workspace/telegram_sessions/` (git-ignored), never in the repo.
+
+Files touched:
+- **`titan_agent/telegram.py`** (new, ~330 lines): `TelegramManager` — consent
+  gates (`enabled`, `has_credentials`, `send_allowlist`), login flow
+  (`login_start` → `login_confirm` with user code), `list_accounts`, `status`,
+  `send_message` (allowlist-checked before connecting), `recent_messages`
+  (read-only, masked senders), `whoami`, `logout`; Telethon imported lazily so the
+  app runs even without it installed.
+- **`titan_agent/config.py`**: `TITAN_TELEGRAM_ENABLED / _API_ID / _API_HASH /
+  _SEND_ALLOWLIST`.
+- **`titan_agent/agent.py`**: 7 agent tools (`telegram_status`, `telegram_accounts`,
+  `telegram_login_start`, `telegram_login_confirm`, `telegram_send`,
+  `telegram_recent`, `telegram_logout`) in the live tool catalog + dispatch; every
+  `TelegramError` is surfaced as a friendly "Telegram: …" message.
+- **`titan_agent/server.py`**: REST API — `GET /api/telegram/{status,accounts,recent}`,
+  `POST /api/telegram/{login/start, login/confirm, send, logout}` (all error-wrapped).
+- **`titan_agent/__init__.py`**: exports `TelegramManager`, `TelegramError`.
+- **`.env` / `.env.example`**: new opt-in block (disabled by default).
+- **`requirements.txt`**: `telethon>=1.34.0` (installed).
+- **`pytest.ini`** (new): `testpaths = tests`, `norecursedirs = workspace …` — stray
+  agent scratch files can no longer break collection.
+- **`tests/test_telegram.py`** (new, 10 tests): consent gate, allowlist parsing +
+  pre-network refusal, PII masking, status shape, agent-dispatch paths — all
+  deterministic, no network.
+
+Verified: `python -m pytest -q` → **72 passed** (62 + 10 new); server restarted on
+`127.0.0.1:7860`; `GET /api/telegram/status` reports `enabled: false` until the user
+opts in via `.env`.

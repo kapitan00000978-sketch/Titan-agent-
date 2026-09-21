@@ -52,3 +52,13 @@ MAX_ITERATIONS = int(os.getenv("TITAN_MAX_ITERATIONS", "25"))
 # (token bucket). 214,000/s is effectively invisible in production but fully
 # enforced for every LLM call (backend providers and the Puter browser path).
 TOKEN_RATE_LIMIT_PER_SEC = int(os.getenv("TITAN_TOKEN_RATE_LIMIT", "214000"))
+
+# ---- Telegram account manager (opt-in, consent-gated) ----
+# TITAN_TELEGRAM_ENABLED must be 'true' for ANY Telegram tool to work.
+# API creds come from https://my.telegram.org -> API development tools.
+# Sending is only allowed to targets listed in TITAN_TELEGRAM_SEND_ALLOWLIST
+# (comma-separated usernames or ids); empty = read-only.
+TITAN_TELEGRAM_ENABLED = os.getenv("TITAN_TELEGRAM_ENABLED", "false").lower() in ("true", "1", "yes")
+TITAN_TELEGRAM_API_ID = os.getenv("TITAN_TELEGRAM_API_ID", "")
+TITAN_TELEGRAM_API_HASH = os.getenv("TITAN_TELEGRAM_API_HASH", "")
+TITAN_TELEGRAM_SEND_ALLOWLIST = os.getenv("TITAN_TELEGRAM_SEND_ALLOWLIST", "")

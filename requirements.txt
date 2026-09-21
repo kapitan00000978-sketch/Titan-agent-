@@ -9,3 +9,5 @@ ddgs>=9.0.0
 rich>=13.7.0
 websockets>=12.0
 colorama>=0.4.6
+# Optional: Telegram account manager (consent-gated; pip install telethon to enable)
+telethon>=1.34.0

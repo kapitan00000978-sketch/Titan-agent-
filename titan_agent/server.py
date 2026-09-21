@@ -16,6 +16,7 @@ from .llm_client import LLMClient
 from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .scheduler import CronScheduler
+from .telegram import TelegramError, TelegramManager
 from .tools import ToolRegistry
 
 @asynccontextmanager
@@ -44,8 +45,9 @@ app.add_middleware(
 mcp_manager = MCPManager(MCP_CONFIG_FILE)
 tool_registry = ToolRegistry(WORKSPACE_DIR)
 memory_manager = MemoryManager()
+telegram_manager = TelegramManager()
 llm_client = LLMClient()
-agent = TitanAgent(llm=llm_client, tools=tool_registry, mcp=mcp_manager, memory=memory_manager)
+agent = TitanAgent(llm=llm_client, tools=tool_registry, mcp=mcp_manager, memory=memory_manager, telegram=telegram_manager)
 
 async def _cron_runner(prompt: str, session_id: str, mode: str, effort: str) -> str:
     """Runner used by the cron scheduler: execute a prompt with the live agent
@@ -177,6 +179,58 @@ async def get_memory_vault(scope: str = ""):
 @app.get("/api/memory/handoffs")
 async def get_handoffs(status: str = "open"):
     return {"handoffs": memory_manager.list_handoffs(status=status or None)}
+
+# ---- Telegram account manager (consent-gated) ----
+class TelegramLoginStartRequest(BaseModel):
+    label: str
+    phone: str
+
+class TelegramLoginConfirmRequest(BaseModel):
+    label: str
+    code: str
+
+class TelegramSendRequest(BaseModel):
+    label: str
+    target: str
+    text: str
+
+class TelegramLogoutRequest(BaseModel):
+    label: str
+    delete: bool = False
+
+def _tg(resp_fn):
+    try:
+        return resp_fn()
+    except TelegramError as e:
+        return {"status": "error", "detail": str(e)}
+
+@app.get("/api/telegram/status")
+async def telegram_status():
+    return {"status": "success", "data": telegram_manager.status()}
+
+@app.get("/api/telegram/accounts")
+async def telegram_accounts():
+    return _tg(lambda: {"status": "success", "accounts": telegram_manager.list_accounts()})
+
+@app.post("/api/telegram/login/start")
+async def telegram_login_start(req: TelegramLoginStartRequest):
+    return _tg(lambda: {"status": "success", "data": telegram_manager.login_start(req.label, req.phone)})
+
+@app.post("/api/telegram/login/confirm")
+async def telegram_login_confirm(req: TelegramLoginConfirmRequest):
+    return _tg(lambda: {"status": "success", "data": telegram_manager.login_confirm(req.label, req.code)})
+
+@app.post("/api/telegram/send")
+async def telegram_send(req: TelegramSendRequest):
+    return _tg(lambda: {"status": "success", "data": telegram_manager.send_message(req.label, req.target, req.text)})
+
+@app.get("/api/telegram/recent")
+async def telegram_recent(label: str, limit: int = 10):
+    return _tg(lambda: {"status": "success", "messages": telegram_manager.recent_messages(label, limit=limit)})
+
+@app.post("/api/telegram/logout")
+async def telegram_logout(req: TelegramLogoutRequest):
+    return _tg(lambda: {"status": "success", "data": telegram_manager.logout(req.label, delete=req.delete)})
 
 class CronJobRequest(BaseModel):
     prompt: str

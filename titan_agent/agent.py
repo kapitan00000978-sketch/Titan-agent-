@@ -8,6 +8,7 @@ from .llm_client import LLMClient
 from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .skills import SkillRegistry
+from .telegram import TelegramError, TelegramManager
 from .tools import ToolRegistry
 
 TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI reasoning and execution engine, engineered to outperform classic agents (including Hermes-class and frontier-tier models) on real-world task completion.
@@ -37,6 +38,7 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - handoff_create / handoff_list / handoff_resolve — leave, read and close agent-to-agent handoff notes
 - skills_list — list available skill playbooks (Hermes-style reusable workflows)
 - skill_load — load the full text of a named skill playbook to follow it
+- telegram_status / telegram_accounts / telegram_login_start / telegram_login_confirm / telegram_send / telegram_recent / telegram_logout — user-consented Telegram account management (disabled unless TITAN_TELEGRAM_ENABLED=true; sending only to the .env allowlist)
 - mcp_* — tools exposed by connected MCP servers (filesystem, etc.)
 
 ### SKILLS:
@@ -159,13 +161,15 @@ class TitanAgent:
         tools: ToolRegistry | None = None,
         mcp: MCPManager | None = None,
         memory: MemoryManager | None = None,
-        skills: SkillRegistry | None = None
+        skills: SkillRegistry | None = None,
+        telegram: TelegramManager | None = None
     ):
         self.llm = llm or LLMClient()
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
         self.skills = skills or SkillRegistry()
+        self.telegram = telegram or TelegramManager()
         self.system_prompt = TITAN_SYSTEM_PROMPT
 
     def _build_memory_tool_definitions(self) -> list[dict[str, Any]]:
@@ -295,12 +299,113 @@ class TitanAgent:
             }
         ]
 
+    def _build_telegram_tool_definitions(self) -> list[dict[str, Any]]:
+        """Telegram account manager tools. Every tool is consent-gated: it refuses
+        to run unless TITAN_TELEGRAM_ENABLED=true in .env, and sending is limited
+        to TITAN_TELEGRAM_SEND_ALLOWLIST targets."""
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "telegram_status",
+                    "description": "Shows whether Telegram control is enabled, credentials are set, how many accounts are registered, and the send-allowlist. No secrets are ever shown.",
+                    "parameters": {"type": "object", "properties": {}, "required": []}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "telegram_accounts",
+                    "description": "Lists the user's registered Telegram account sessions (labels only, with masked phone/username). Never shows credentials.",
+                    "parameters": {"type": "object", "properties": {}, "required": []}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "telegram_login_start",
+                    "description": "Starts logging in a NEW Telegram account under a label: Telegram sends a one-time code to the given phone. Then call telegram_login_confirm with the code the USER received. Never guess the code — only use a code the user explicitly provides.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string", "description": "Short name for this account, e.g. 'work'."},
+                            "phone": {"type": "string", "description": "The user's phone number in international format, e.g. +998901234567."}
+                        },
+                        "required": ["label", "phone"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "telegram_login_confirm",
+                    "description": "Completes a telegram_login_start with the one-time code that Telegram sent to the user's phone and that the USER explicitly provided.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string", "description": "The same label used in telegram_login_start."},
+                            "code": {"type": "string", "description": "The one-time login code the user received and shared."}
+                        },
+                        "required": ["label", "code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "telegram_send",
+                    "description": "Sends a Telegram message from a registered account to ONE target. Works ONLY if the target is in TITAN_TELEGRAM_SEND_ALLOWLIST in .env — otherwise it is refused. Never used for broadcasting.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string", "description": "Account label."},
+                            "target": {"type": "string", "description": "Recipient username (e.g. 'titan_bot') or numeric id."},
+                            "text": {"type": "string", "description": "Message text."}
+                        },
+                        "required": ["label", "target", "text"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "telegram_recent",
+                    "description": "Read-only: returns the most recent messages from a registered account's own dialogs (senders masked).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string", "description": "Account label."},
+                            "limit": {"type": "integer", "description": "Max messages (default 10, max 25)."}
+                        },
+                        "required": ["label"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "telegram_logout",
+                    "description": "Removes a registered Telegram account session. Set delete=true to also log the account out of Telegram entirely.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string", "description": "Account label to remove."},
+                            "delete": {"type": "boolean", "description": "true = log out on Telegram too; default false = remove local session only."}
+                        },
+                        "required": ["label"]
+                    }
+                }
+            },
+        ]
+
     def _build_tools_list(self) -> list[dict[str, Any]]:
         all_tools = list(self.tools.get_tool_definitions())
         # Add memory tools (agent-level, routed through MemoryManager)
         all_tools.extend(self._build_memory_tool_definitions())
         # Add skill tools (agent-level, routed through SkillRegistry)
         all_tools.extend(self._build_skill_tool_definitions())
+        # Add Telegram tools (agent-level, consent-gated through TelegramManager)
+        all_tools.extend(self._build_telegram_tool_definitions())
         # Add MCP tools if connected
         all_tools.extend(self.mcp.get_all_tools())
         return all_tools
@@ -319,6 +424,11 @@ class TitanAgent:
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         for t in self._build_skill_tool_definitions():
+            fn = t.get("function", {})
+            params = fn.get("parameters", {}).get("properties", {})
+            param_hint = ", ".join(params.keys()) if params else "no params"
+            lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
+        for t in self._build_telegram_tool_definitions():
             fn = t.get("function", {})
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
@@ -402,10 +512,88 @@ class TitanAgent:
                 names = ", ".join(s["name"] for s in self.skills.list_skills()) or "none loaded"
                 return f"Unknown skill '{skill_name}'. Available: {names}"
             return skill.full_text()
+        if name.startswith("telegram_"):
+            try:
+                return self._dispatch_telegram(name, args)
+            except TelegramError as e:
+                return f"Telegram: {e}"
         if name.startswith("mcp_"):
             return await self.mcp.execute_tool(name, args)
         else:
             return await self.tools.execute_tool(name, args)
+
+    def _dispatch_telegram(self, name: str, args: dict[str, Any]) -> str:
+        """Consent-gated Telegram dispatch. Every call is wrapped by the caller
+        with TelegramError -> friendly message."""
+        tg = self.telegram
+        if name == "telegram_status":
+            s = tg.status()
+            allow = ", ".join(s["send_allowlist"]) or "(read-only — allowlist empty)"
+            state = "ENABLED" if s["enabled"] else "DISABLED (set TITAN_TELEGRAM_ENABLED=true in .env)"
+            creds = "set" if s["credentials_set"] else "MISSING (TITAN_TELEGRAM_API_ID / _HASH in .env)"
+            return (
+                f"Telegram control: {state}\n"
+                f"API credentials: {creds}\n"
+                f"Registered accounts: {s['sessions']}\n"
+                f"Send allowlist: {allow}\n"
+                f"Session dir: {s['session_dir']}"
+            )
+        if name == "telegram_accounts":
+            accs = tg.list_accounts()
+            if not accs:
+                return "No Telegram accounts registered yet. Use telegram_login_start to add one."
+            return "\n".join(
+                f"- {a['label']} | phone: {a['phone']} | username: {a['username']} (added {a.get('added','?')})"
+                for a in accs
+            )
+        if name == "telegram_login_start":
+            label = str(args.get("label", "")).strip()
+            phone = str(args.get("phone", "")).strip()
+            res = tg.login_start(label, phone)
+            return (
+                f"Login code requested for '{res['label']}'. "
+                f"IMPORTANT: ask the user for the code Telegram sent to their phone "
+                f"and call telegram_login_confirm(label='{res['label']}', code=...) — "
+                f"never guess or reuse a code."
+            )
+        if name == "telegram_login_confirm":
+            label = str(args.get("label", "")).strip()
+            code = str(args.get("code", "")).strip()
+            if not label or not code:
+                return "Error: telegram_login_confirm requires 'label' and 'code'."
+            res = tg.login_confirm(label, code)
+            return (
+                f"Account '{res['label']}' logged in (phone: {res['phone']}, "
+                f"username: {res['username']}). You can now use telegram_recent / "
+                f"telegram_send (allowlist-gated)."
+            )
+        if name == "telegram_send":
+            label = str(args.get("label", "")).strip()
+            target = str(args.get("target", "")).strip()
+            text = str(args.get("text", "")).strip()
+            if not label or not target or not text:
+                return "Error: telegram_send requires 'label', 'target' and 'text'."
+            res = tg.send_message(label, target, text)
+            return f"Sent {res['chars']} chars to @{res['target']} from '{res['label']}'."
+        if name == "telegram_recent":
+            label = str(args.get("label", "")).strip()
+            limit = int(args.get("limit", 10) or 10)
+            if not label:
+                return "Error: telegram_recent requires 'label'."
+            msgs = tg.recent_messages(label, limit=limit)
+            if not msgs:
+                return "No recent messages found for that account."
+            return "\n".join(
+                f"{m['n']}. [{m['date']}] {m['from']}: {m['text']}" for m in msgs
+            )
+        if name == "telegram_logout":
+            label = str(args.get("label", "")).strip()
+            delete = bool(args.get("delete", False))
+            if not label:
+                return "Error: telegram_logout requires 'label'."
+            res = tg.logout(label, delete=delete)
+            return f"Account '{res['label']}': {res['status']}."
+        return f"Unknown telegram tool '{name}'."
 
     async def _emit_tool_results(
         self,
