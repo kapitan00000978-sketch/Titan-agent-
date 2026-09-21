@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -290,9 +291,18 @@ class MCPManager:
             return {"mcpServers": {}}
 
     def _resolve_server_command(self, details: dict[str, Any], workspace_dir: Path) -> tuple[str, list[str], dict[str, str]]:
-        cmd = str(details.get("command", ""))
-        args = [str(a).replace("{WORKSPACE}", str(workspace_dir)).replace("{BASE_DIR}", str(workspace_dir.parent)) for a in details.get("args", [])]
-        cmd = cmd.replace("{WORKSPACE}", str(workspace_dir)).replace("{BASE_DIR}", str(workspace_dir.parent))
+        def _expand(s: str) -> str:
+            s = s.replace("{WORKSPACE}", str(workspace_dir)).replace("{BASE_DIR}", str(workspace_dir.parent))
+            # Expand any {ENV_VAR_NAME} token (args and command alike) so vault
+            # paths / keys can live in .env — e.g. --vault notes={OBSIDIAN_VAULT}.
+            # Missing vars become empty strings, mirroring the env-value policy:
+            # startup stays non-fatal and the server fails its own validation.
+            for m in re.findall(r"\{([A-Za-z_][A-Za-z0-9_]*)\}", s):
+                s = s.replace("{" + m + "}", os.environ.get(m, ""))
+            return s
+
+        cmd = _expand(str(details.get("command", "")))
+        args = [_expand(str(a)) for a in details.get("args", [])]
         # Expand {ENV_VAR_NAME} placeholders in env values from the process env
         # (e.g. {GITHUB_TOKEN}); missing vars become empty strings so the server
         # still launches and only auth-gated calls fail, never startup.

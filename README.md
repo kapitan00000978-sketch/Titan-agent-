@@ -186,6 +186,14 @@ One broken server never blocks the others — it is skipped and the healthy serv
 > fetch server is not needed (the old `@modelcontextprotocol/server-fetch` package was removed from npm,
 > just like `server-time` and `server-git`).
 
+- **📓 Obsidian**: `obsidian-mcp@2` (Node 22+) — works directly on your vault's Markdown files, so
+  **no plugin and no API key are needed, and Obsidian doesn't even have to be open**. Set
+  `OBSIDIAN_VAULT=<absolute vault path>` in `.env` (the server must point at an existing vault that
+  already contains an `.obsidian` directory). Tools land in the catalog as `mcp_obsidian_*`:
+  `read_note`, `create_note`, `edit_note`, `delete_note`, `move_note` (with backlink rewriting),
+  `search_vault`, tag tools, `list_vaults` and more — mutations are journaled/atomic with per-note
+  `etag` concurrency checks.
+
 ---
 
 ## 🧪 Tests

@@ -34,6 +34,10 @@
     "chrome-devtools": {
       "command": "npx",
       "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
+    "obsidian": {
+      "command": "npx",
+      "args": ["-y", "obsidian-mcp@2", "serve", "--vault", "notes={OBSIDIAN_VAULT}"]
     }
   }
 }

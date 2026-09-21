@@ -2,6 +2,30 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🔧 Phase 9B — OBSIDIAN INTEGRATION (`obsidian-mcp@2`)
+
+Titan can now read and write an **Obsidian vault** through its MCP layer.
+Unlike the old REST-plugin approach, `obsidian-mcp@2` works **directly on the
+vault's Markdown files** — no plugin, no API key, and Obsidian itself does not
+need to be open (only Node 22+ and a vault folder with an `.obsidian` dir).
+
+- `mcp_servers.json` gains an `obsidian` server: `npx -y obsidian-mcp@2 serve --vault notes={OBSIDIAN_VAULT}`.
+- `mcp_client.py` `_resolve_server_command()` now expands **`{ENV_VAR}` tokens
+  in `args`/`command`** (not just `env` values), so vault paths / keys can live
+  in `.env`. Missing vars become empty strings — startup stays non-fatal and the
+  server's own validation fails visibly, exactly like the `{GITHUB_TOKEN}` policy.
+- `.env`/`.env.example` gain `OBSIDIAN_VAULT=<absolute vault path>`.
+- Tools surface as `mcp_obsidian_*`: `read_note`, `create_note`, `edit_note`,
+  `delete_note`, `move_note` (backlink rewrite), `search_vault`, tag management,
+  `list_vaults` — 12 tools total, verified end-to-end.
+
+### Verification
+- `tests/test_mcp_extended.py` — **+3 deterministic tests** (obsidian entry in
+  config, `{ENV_VAR}` expansion in args, missing var → empty; 7 total in file).
+- **Real integration check** (not committed): a throwaway vault connected via
+  Titan's own `MCPManager` → 12 tools listed, `list_vaults` → `notes`,
+  `create_note` + `read_note` round-trip passed, file verified on disk.
+
 ## 🔧 Phase 9 — DEDICATED SUBAGENT STAFF
 
 Subagents stop being carbon copies of Titan: there is now a **staff of named

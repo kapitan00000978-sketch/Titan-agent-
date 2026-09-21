@@ -13,7 +13,7 @@ def test_extended_servers_present_in_config():
     cfg = json.loads(MCP_CONFIG_FILE.read_text(encoding="utf-8"))
     servers = cfg.get("mcpServers", {})
     for needed in ("filesystem", "memory", "sequential-thinking", "everything",
-                   "github", "fetch", "context7", "chrome-devtools"):
+                   "github", "fetch", "context7", "chrome-devtools", "obsidian"):
         assert needed in servers, f"missing MCP server: {needed}"
 
 
@@ -38,7 +38,7 @@ def test_env_placeholder_expansion(tmp_path, monkeypatch):
     }), encoding="utf-8")
     mgr = MCPManager(cfg_file)
     details = mgr.load_config()["mcpServers"]["github"]
-    cmd, args, env = mgr._resolve_server_command(details, tmp_path)
+    cmd, _args, env = mgr._resolve_server_command(details, tmp_path)
     assert cmd == "npx"
     assert env["GITHUB_TOKEN"] == "ghp_test_token_123"
 
@@ -60,3 +60,46 @@ def test_missing_env_var_becomes_empty_not_crash(tmp_path, monkeypatch):
     _, _, env = mgr._resolve_server_command(details, tmp_path)
     assert env["GITHUB_TOKEN"] == ""
     assert mgr.servers == {}  # nothing started, nothing crashed
+
+
+def test_arg_env_placeholder_expansion(tmp_path, monkeypatch):
+    monkeypatch.setenv("OBSIDIAN_VAULT", r"C:\Users\me\Documents\MyVault")
+    cfg_file = tmp_path / "mcp.json"
+    cfg_file.write_text(json.dumps({
+        "mcpServers": {
+            "obsidian": {
+                "command": "npx",
+                "args": ["-y", "obsidian-mcp@2", "serve", "--vault", "notes={OBSIDIAN_VAULT}"]
+            }
+        }
+    }), encoding="utf-8")
+    mgr = MCPManager(cfg_file)
+    details = mgr.load_config()["mcpServers"]["obsidian"]
+    cmd, args, _ = mgr._resolve_server_command(details, tmp_path)
+    assert cmd == "npx"
+    assert args == ["-y", "obsidian-mcp@2", "serve", "--vault", r"notes=C:\Users\me\Documents\MyVault"]
+
+
+def test_missing_arg_env_var_becomes_empty(tmp_path, monkeypatch):
+    monkeypatch.delenv("OBSIDIAN_VAULT", raising=False)
+    cfg_file = tmp_path / "mcp.json"
+    cfg_file.write_text(json.dumps({
+        "mcpServers": {
+            "obsidian": {
+                "command": "npx",
+                "args": ["-y", "obsidian-mcp@2", "serve", "--vault", "notes={OBSIDIAN_VAULT}"]
+            }
+        }
+    }), encoding="utf-8")
+    mgr = MCPManager(cfg_file)
+    details = mgr.load_config()["mcpServers"]["obsidian"]
+    _, args, _ = mgr._resolve_server_command(details, tmp_path)
+    assert args[-1] == "notes="
+
+
+def test_obsidian_config_uses_env_placeholder_for_vault():
+    cfg = json.loads(MCP_CONFIG_FILE.read_text(encoding="utf-8"))
+    obs = cfg["mcpServers"]["obsidian"]
+    assert obs["command"] == "npx"
+    assert "--vault" in obs["args"]
+    assert any("OBSIDIAN_VAULT" in a for a in obs["args"])
