@@ -2,6 +2,68 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🔧 Phase 11 — INTENT ROUTER + SPECIALIST ROSTER (12 sub-agents)
+
+The user's full wishlist of useful sub-agents exists now as real staff roles —
+**and** the routing logic itself is a first-class agent (`router`) with a
+deterministic, LLM-free engine exposed to the parent as `subagent_route`.
+
+### 1. Intent Router (`titan_agent/intent_router.py`)
+The "which sub-agent should do this" decision is now a pure, testable function:
+- `route_intent(task)` scores every staff role by keyword hits across the whole
+  roster, picks the **primary** role (ties broken by rule priority) and returns
+  **supporting** roles, so the parent can fan out a parallel team.
+- **Zero tokens / no model call** — deterministic keyword scoring, trivially
+  testable, never raises (empty/unknown → generalist).
+- The `router` staff role itself — "you route, you do not run" — read-only,
+  cannot mutate the workspace.
+- New tool `subagent_route(task)` renders `### INTENT ROUTE` plan (primary +
+  supporting + matched-keyword reason) so the parent checks routing before
+  delegating; `subagent_route` is in the agent prompt and in `_AGENT_SPAWNERS`.
+
+### 2. Roster: 6 → 17 roles
+All 12 requested specialists now exist as `Specialist` entries with persona,
+tuned run options and an enforced `ToolPolicy`:
+
+| Role | Requested as | Tool boundary |
+|---|---|---|
+| `security` | Security Auditor | read-only + scans; never writes/commits |
+| `test_writer` | Test Writer | writes tests + runs them; never commits |
+| `summarizer` | Context Summarizer | allowlisted read-only (files, RAG, web, memory) |
+| `memory_keeper` | Memory Manager | memory/handoff tools + read; no workspace writes |
+| `cost_watcher` | Cost/Token Watcher | read-only (files, git, memory) |
+| `triager` | Error Triager | read-only diagnose-and-route |
+| `doc_writer` | Doc Writer | writes docs only; never code/commit |
+| `changelogger` | Changelog Agent | git history + writes changelog; never commits |
+| `deployer` | Deploy Agent | runs pipelines/rollback; never commits |
+| `dependency_updater` | Dependency Updater | edits manifests + runs builds; never commits |
+| `router` | Intent Router | read-only assignment plans |
+
+Researcher still blocks `git_commit`; reviewer still allowlisted read-only.
+Aliases added: `audit`→security, `changelog`→changelogger, `deploy`→deployer,
+`docs`→doc_writer, `memory`→memory_keeper, `cost`→cost_watcher,
+`route`→router, `triage`→triager, `summary`→summarizer,
+`dependencies`→dependency_updater, `write_tests`→test_writer.
+
+### 3. Routing semantics worth knowing
+- "review the new login for SQL injection" → **security + reviewer**: the
+  Security-Auditor-vs-Code-Reviewer overlap resolves to security (safety rule
+  sits higher in the priority table), reviewer rides along as support.
+- "write unit tests for the login and update the README" → `test_writer`
+  primary, `doc_writer` supporting — multi-role tasks decompose cleanly.
+
+### Verification
+- `tests/test_intent_router.py` — **13 deterministic tests**: 20-case role map,
+  empty/unknown fallback, supporting-role extraction, security-over-reviewer
+  tie-break, reason/plan-text shape, rule→role integrity, all 11 new aliases,
+  `subagent_route` tool surface + catalog presence.
+- `tests/test_staff.py` — exact catalog set updated to the 16 non-generalist
+  roles; new `test_phase11_specialists_have_personas_and_policies`; prompt
+  + `subagent_roles` roster assertions extended.
+- Full suite: **340 passed, 1 skipped**; ruff clean on all touched files
+  (the only `tools.py` findings are 4 pre-existing ASYNC221 warnings on
+  Unix-only wmctrl code, present at HEAD).
+
 ## 🔧 Phase 10 — HARNESS HARDENING (context resilience, tool-arg repair, LLM recovery)
 
 Three weaknesses in the classic run loop were hardened, each verified with

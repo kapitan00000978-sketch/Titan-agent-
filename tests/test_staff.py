@@ -61,6 +61,30 @@ def test_specialists_have_personas_and_policies():
     assert "write_file" not in SPECIALISTS["reviewer"].allowed_tools
 
 
+def test_phase11_specialists_have_personas_and_policies():
+    """Phase 11 roster: every new role has a persona + sane tool boundaries."""
+    for rid in (
+        "security", "test_writer", "summarizer", "memory_keeper", "cost_watcher",
+        "triager", "doc_writer", "changelogger", "deployer", "dependency_updater",
+        "router",
+    ):
+        spec = SPECIALISTS[rid]
+        assert spec.persona.strip(), rid
+        assert spec.description, rid
+    assert "git_commit" in SPECIALISTS["security"].blocked_tools
+    assert "write_file" in SPECIALISTS["security"].blocked_tools
+    # Writers-of-docs/tests: may write to disk, but never commit.
+    for rid in ("test_writer", "doc_writer", "changelogger"):
+        assert "write_file" not in SPECIALISTS[rid].blocked_tools
+        assert "git_commit" in SPECIALISTS[rid].blocked_tools
+    # Read-only roles carry an allowlist.
+    for rid in ("summarizer", "memory_keeper", "cost_watcher"):
+        assert SPECIALISTS[rid].allowed_tools is not None
+    # The router must plan, not mutate.
+    assert "write_file" in SPECIALISTS["router"].blocked_tools
+    assert "git_commit" in SPECIALISTS["router"].blocked_tools
+
+
 # --------------------------------------------------------------------------
 # Role resolution + aliases
 # --------------------------------------------------------------------------
@@ -270,7 +294,13 @@ def test_staff_team_empty():
 def test_staff_catalog_lists_non_generalist_roles():
     catalog = staff_catalog()
     ids = {e["id"] for e in catalog}
-    assert ids == {"planner", "researcher", "coder", "reviewer", "tester"}
+    assert ids == {
+        "planner", "researcher", "coder", "reviewer", "tester",
+        # Phase 11 roster: quality, safety, memory, monitoring, docs, ops, router
+        "security", "test_writer", "summarizer", "memory_keeper", "cost_watcher",
+        "triager", "doc_writer", "changelogger", "deployer", "dependency_updater",
+        "router",
+    }
     for e in catalog:
         assert e["title"] and e["description"]
 
@@ -280,14 +310,21 @@ def test_tool_subagent_roles_returns_catalog():
 
     out = ToolRegistry().tool_subagent_roles()
     assert "DEDICATED SUBAGENT ROLES" in out
-    for rid in ("planner", "researcher", "coder", "reviewer", "tester"):
+    for rid in ("planner", "researcher", "coder", "reviewer", "tester",
+                "security", "test_writer", "summarizer", "memory_keeper",
+                "cost_watcher", "triager", "doc_writer", "changelogger",
+                "deployer", "dependency_updater", "router"):
         assert f"- {rid}: " in out
 
 
 def test_agent_prompt_mentions_staff_tools():
     from titan_agent.agent import TITAN_SYSTEM_PROMPT
 
-    for name in ("subagent_roles", "planner", "researcher", "coder", "reviewer", "tester"):
+    for name in ("subagent_roles", "subagent_route", "planner", "researcher",
+                 "coder", "reviewer", "tester", "security", "test_writer",
+                 "summarizer", "memory_keeper", "cost_watcher", "triager",
+                 "doc_writer", "changelogger", "deployer", "dependency_updater",
+                 "router"):
         assert name in TITAN_SYSTEM_PROMPT
 
 

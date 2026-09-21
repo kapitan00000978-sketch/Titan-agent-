@@ -46,8 +46,10 @@ searches the web live, and connects to any application or database through **Mod
      with **no human at the keyboard**.
    - **👥 Deep subagents + specialist staff**: `subagent_delegate` / `subagent_team` fan work out to
      independent child agents (fresh sessions / checkpoints), in parallel — now as **named roles**
-     (`planner`, `researcher`, `coder`, `reviewer`, `tester`) with per-role personas and enforced
-     tool policies; `subagent_roles` lists the roster.
+     (`planner`, `researcher`, `coder`, `reviewer`, `tester`, `security`, `test_writer`, `summarizer`,
+     `memory_keeper`, `cost_watcher`, `triager`, `doc_writer`, `changelogger`, `deployer`,
+     `dependency_updater`, `router`) with per-role personas and enforced tool policies;
+     `subagent_roles` lists the roster, `subagent_route` picks the right role(s) for any request.
 4. **🧠 Long-term Memory (SQLite)**:
    - Saves conversations and learned facts to SQLite and remembers them in future sessions (`memory_save` / `memory_search`).
    - **Auto recall**: every new task starts with the most relevant remembered facts already in context — the agent
@@ -82,6 +84,16 @@ searches the web live, and connects to any application or database through **Mod
     - Broken tool-call JSON is repaired or skipped with explicit feedback (never run with empty args).
     - Transient LLM network errors retry automatically, and context-overflow errors recover by
       progressively shrinking the window instead of killing the run.
+12. **🧭 Intent Router + Specialist Roster**:
+    - `subagent_route` — the routing logic itself as a deterministic, LLM-free engine: any incoming
+      request is mapped to a **primary staff role** (plus supporting roles) by keyword scoring, so the
+      parent picks the right specialist before delegating. Pure function → zero tokens, trivially testable.
+    - The staff roster grows to **17 roles** with the requested specialists: `security` (Security
+      Auditor), `test_writer` (Test Writer), `summarizer` (Context Summarizer), `memory_keeper`
+      (Memory Manager), `cost_watcher` (Cost/Token Watcher), `triager` (Error Triager), `doc_writer`
+      (Doc Writer), `changelogger` (Changelog Agent), `deployer` (Deploy Agent), `dependency_updater`
+      (Dependency Updater) and `router` (Intent Router) — each with its own persona, tuned run options
+      and enforced tool policy (read-only roles are allowlisted, writers may touch files but never commit).
 
 ---
 

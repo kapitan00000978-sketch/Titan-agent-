@@ -75,7 +75,9 @@ _WRITE_TOOLS: frozenset[str] = frozenset({
     "write_file", "delete_file", "git_commit", "start_http_server",
     "stop_http_server", "take_screenshot",
 })
-_AGENT_SPAWNERS: frozenset[str] = frozenset({"subagent_delegate", "subagent_team", "subagent_roles"})
+_AGENT_SPAWNERS: frozenset[str] = frozenset({
+    "subagent_delegate", "subagent_team", "subagent_roles", "subagent_route",
+})
 _TELEGRAM_WRITE: frozenset[str] = frozenset({"telegram_send", "telegram_login_confirm"})
 
 _GENERALIST = Specialist(
@@ -172,6 +174,190 @@ SPECIALISTS: dict[str, Specialist] = {
             strategy="auto",
             blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
         ),
+        # ---- Phase 11: quality / safety specialists ------------------------
+        Specialist(
+            id="security",
+            title="Security Auditor",
+            description="Audits code and dependencies for SQL injection, secret leaks, XSS/CSRF, known-vulnerable packages and other security defects. Pick for 'security audit ...', 'check for SQL injection ...', 'secret leak scan'.",
+            persona=(
+                "You are a SECURITY AUDITOR. Inspect the given code and manifests for\n"
+                "security defects: injection flaws, leaked secrets/credentials, XSS/CSRF,\n"
+                "insecure deserialization, known-vulnerable dependencies and trust-boundary\n"
+                "violations. Run scanners where useful (read-only). Report each finding with\n"
+                "file:line, severity and a concrete fix. You are read-only: never write,\n"
+                "delete or commit files."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="test_writer",
+            title="Test Writer",
+            description="Writes unit/integration tests for existing or newly written code and runs them to prove they pass. Pick for 'write tests for ...', 'add test coverage for ...'.",
+            persona=(
+                "You are a TEST WRITER. Examine the code under test, then write focused\n"
+                "unit/integration tests covering the happy path, edge cases and failure\n"
+                "modes. Use the project's existing test framework and conventions. Run the\n"
+                "tests to prove they pass; fix either the test or the (broken) code as\n"
+                "needed. You may write test files but must not commit or broadcast."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=frozenset({"git_commit"}) | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="summarizer",
+            title="Context Summarizer",
+            description="Compresses long conversations, files or project context into a short, token-efficient brief for other agents. Pick for 'summarize ...', 'condense this ...', 'too long'.",
+            persona=(
+                "You are a CONTEXT SUMMARIZER. Read the provided long context and produce a\n"
+                "tight, faithful summary that preserves decisions, key facts, open questions\n"
+                "and action items — aimed at a fresh agent that must continue the work with\n"
+                "minimal tokens. Keep it under a strict length target. You are read-only."
+            ),
+            mode="fast",
+            effort="low",
+            strategy="auto",
+            allowed_tools=frozenset({
+                "read_file", "list_files", "rag_search", "workspace_rag",
+                "web_search", "memory_search", "vault_list",
+            }),
+        ),
+        Specialist(
+            id="memory_keeper",
+            title="Memory Manager",
+            description="Maintains the long-term memory: saves decided facts (architecture, conventions, preferences) and recalls them for other agents. Pick for 'remember that ...', 'save this decision', 'what did we decide about ...'.",
+            persona=(
+                "You are the MEMORY MANAGER. Persist important decisions, conventions,\n"
+                "preferences and architectural facts into long-term memory so every future\n"
+                "agent recalls them. Confirm what you saved; when asked, recall relevant\n"
+                "facts and present them with their category and source. Prefer memory tools;\n"
+                "you may read files but not write to the workspace."
+            ),
+            mode="fast",
+            effort="low",
+            strategy="auto",
+            allowed_tools=frozenset({
+                "memory_save", "memory_search", "vault_list", "handoff_create",
+                "handoff_list", "read_file", "list_files",
+            }),
+        ),
+        Specialist(
+            id="cost_watcher",
+            title="Cost/Token Watcher",
+            description="Reports how many tokens and how much budget each agent/provider consumed, and flags overruns. Pick for 'token usage ...', 'how much did we spend ...', 'cost report'.",
+            persona=(
+                "You are the COST/TOKEN WATCHER. Gather and summarise token and cost usage\n"
+                "across runs and providers: per-agent totals, provider share and any limits\n"
+                "hit or approaching. Report a compact ledger and flag overruns. Read-only."
+            ),
+            mode="fast",
+            effort="low",
+            strategy="auto",
+            allowed_tools=frozenset({
+                "read_file", "list_files", "git_log", "git_status",
+                "memory_search", "vault_list",
+            }),
+        ),
+        Specialist(
+            id="triager",
+            title="Error Triager",
+            description="Classifies reported errors by severity (critical/minor) and decides which specialist should resolve each. Pick for 'triage this error ...', 'who should fix this?', 'how bad is this failure'.",
+            persona=(
+                "You are the ERROR TRIAGER. For each reported error: classify severity\n"
+                "(BLOCKER / HIGH / MEDIUM / LOW), root-cause category (code, infra, security,\n"
+                "dependency, config), and recommend the specialist role that should resolve\n"
+                "it. Give each item a one-line action. Read-only; you diagnose, you do not fix."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        # ---- Phase 11: documentation specialists ---------------------------
+        Specialist(
+            id="doc_writer",
+            title="Doc Writer",
+            description="Updates README/API docs and docstrings when code changes. Pick for 'update the README ...', 'document the new API', 'docs for ...'.",
+            persona=(
+                "You are the DOC WRITER. Keep documentation in sync with the code: read the\n"
+                "changed code, update the README, API/usage docs and docstrings to match the\n"
+                "new behaviour, with accurate examples. Write only documentation files; do\n"
+                "not change code and do not commit."
+            ),
+            mode="fast",
+            effort="medium",
+            strategy="auto",
+            blocked_tools=frozenset({"git_commit"}) | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="changelogger",
+            title="Changelog Agent",
+            description="Generates or updates CHANGELOG/CHANGES entries from git history. Pick for 'write a changelog ...', 'release notes for ...', 'what changed since ...'.",
+            persona=(
+                "You are the CHANGELOG AGENT. Read the git history (git_log/git_diff) since\n"
+                "the last release and produce a concise CHANGELOG.md entry grouped by type\n"
+                "(Added / Changed / Fixed / Removed / Security). Preserve the existing file's\n"
+                "format and order; write only the changelog file, never commit."
+            ),
+            mode="fast",
+            effort="medium",
+            strategy="auto",
+            blocked_tools=frozenset({"git_commit"}) | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        # ---- Phase 11: deploy / infra specialists --------------------------
+        Specialist(
+            id="deployer",
+            title="Deploy Agent",
+            description="Drives CI/CD pipelines, releases and rollbacks; reports deploy success/failure. Pick for 'deploy to staging ...', 'rollback the last release', 'run the pipeline'.",
+            persona=(
+                "You are the DEPLOY AGENT. Run the project's pipeline/deploy commands,\n"
+                "monitor the result, and on failure execute the rollback path if configured\n"
+                "or clearly state what failed and why. Verify the deploy actually succeeded\n"
+                "(health check / status) before reporting green. You may run commands and\n"
+                "write deploy scripts, but must not commit."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=frozenset({"git_commit"}) | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="dependency_updater",
+            title="Dependency Updater",
+            description="Checks for outdated/insecure packages and updates them safely (Dependabot-style). Pick for 'check for outdated dependencies ...', 'update the packages', 'bump this version'.",
+            persona=(
+                "You are the DEPENDENCY UPDATER. Inspect the dependency manifests, check for\n"
+                "outdated or insecure packages, and apply safe, minimal updates — pinning\n"
+                "versions, then run the tests/build to prove nothing broke. Report the before\n"
+                "/after version table and any breaking-change notes. You may edit manifests\n"
+                "but must not commit."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=frozenset({"git_commit"}) | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        # ---- Phase 11: the router itself -----------------------------------
+        Specialist(
+            id="router",
+            title="Intent Router",
+            description="Decides which specialist role(s) should handle an incoming request and returns the assignment plan. Pick for 'which agent should do this?', 'route this request', 'dispatch ...'.",
+            persona=(
+                "You are the INTENT ROUTER. Read the incoming request and decide which staff\n"
+                "specialist should carry it out: classify the intent, pick the primary role\n"
+                "and any supporting roles, and return a short assignment plan (what each\n"
+                "role should do and in what order). Do not execute the work yourself — you\n"
+                "route, you do not run."
+            ),
+            mode="fast",
+            effort="low",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
     ]
 }
 
@@ -194,6 +380,35 @@ _ROLE_ALIASES: dict[str, str] = {
     "testing": "tester",
     "qa": "tester",
     "verifier": "tester",
+    # Phase 11: routing + quality/safety/ops aliases
+    "route": "router",
+    "routing": "router",
+    "dispatcher": "router",
+    "audit": "security",
+    "security_audit": "security",
+    "vuln": "security",
+    "write_tests": "test_writer",
+    "test_writer": "test_writer",
+    "summary": "summarizer",
+    "summar": "summarizer",
+    "condense": "summarizer",
+    "memory": "memory_keeper",
+    "memory_manager": "memory_keeper",
+    "remember": "memory_keeper",
+    "cost": "cost_watcher",
+    "token_watcher": "cost_watcher",
+    "triage": "triager",
+    "docs": "doc_writer",
+    "documentation": "doc_writer",
+    "doc": "doc_writer",
+    "changelog": "changelogger",
+    "release_notes": "changelogger",
+    "deploy": "deployer",
+    "devops": "deployer",
+    "sre": "deployer",
+    "dependencies": "dependency_updater",
+    "dependency": "dependency_updater",
+    "dependabot": "dependency_updater",
 }
 
 

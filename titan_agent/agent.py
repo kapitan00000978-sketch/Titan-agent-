@@ -68,7 +68,8 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - take_screenshot — capture the primary screen to PNG (Windows)
 - self_update — git pull + pip install + run the test suite for the repo owning the workspace
 - task_enqueue / task_list / task_stats / task_cancel — the AUTONOMOUS TASK QUEUE: enqueue work for the daemon or other agents (priority, scheduling, retries)
-- subagent_delegate / subagent_team / subagent_roles — DEDICATED SUBAGENT STAFF: delegate sub-tasks to named specialists (planner, researcher, coder, reviewer, tester) — each with its own persona, tuned run options and enforced tool policy. List roles with subagent_roles; delegate with role= or fan out with subagent_team(tasks, roles).
+- subagent_delegate / subagent_team / subagent_roles — DEDICATED SUBAGENT STAFF: delegate sub-tasks to named specialists (planner, researcher, coder, reviewer, tester, security, test_writer, summarizer, memory_keeper, cost_watcher, triager, doc_writer, changelogger, deployer, dependency_updater, router) — each with its own persona, tuned run options and enforced tool policy. List roles with subagent_roles; delegate with role= or fan out with subagent_team(tasks, roles).
+- subagent_route — INTENT ROUTER: deterministic keyword routing that decides which specialist role(s) should handle an incoming task (primary + supporting + why). Call before delegating a big request.
 
 ### SKILLS:
 Relevant skill playbooks for the current task are auto-injected into your context

@@ -776,7 +776,7 @@ class ToolRegistry:
                 "type": "function",
                 "function": {
                     "name": "subagent_delegate",
-                    "description": "DEDICATED SUBAGENT: runs one sub-task with a named specialist (fresh session/checkpoint) and returns its final answer. Roles: planner, researcher, coder, reviewer, tester, generalist. Use to decompose a big task into isolated units of work with the right specialist per unit.",
+                    "description": "DEDICATED SUBAGENT: runs one sub-task with a named specialist (fresh session/checkpoint) and returns its final answer. Roles: planner, researcher, coder, reviewer, tester, security, test_writer, summarizer, memory_keeper, cost_watcher, triager, doc_writer, changelogger, deployer, dependency_updater, router, generalist. Use to decompose a big task into isolated units of work with the right specialist per unit.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -786,7 +786,7 @@ class ToolRegistry:
                             },
                             "role": {
                                 "type": "string",
-                                "description": "Specialist role: planner | researcher | coder | reviewer | tester | generalist (default generalist)."
+                                "description": "Specialist role: planner | researcher | coder | reviewer | tester | security | test_writer | summarizer | memory_keeper | cost_watcher | triager | doc_writer | changelogger | deployer | dependency_updater | router | generalist (default generalist)."
                             },
                             "label": {
                                 "type": "string",
@@ -813,7 +813,7 @@ class ToolRegistry:
                             "roles": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Optional list of specialist roles, one per task (planner/researcher/coder/reviewer/tester/generalist)."
+                                "description": "Optional list of specialist roles, one per task (planner/researcher/coder/reviewer/tester/security/test_writer/summarizer/memory_keeper/cost_watcher/triager/doc_writer/changelogger/deployer/dependency_updater/router/generalist)."
                             }
                         },
                         "required": ["tasks"]
@@ -828,6 +828,23 @@ class ToolRegistry:
                     "parameters": {
                         "type": "object",
                         "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "subagent_route",
+                    "description": "INTENT ROUTER: decides which specialist role(s) should handle an incoming task (primary + supporting roles + why). Deterministic keyword routing — no model call. Use before delegating a big request.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task": {
+                                "type": "string",
+                                "description": "The request to route to a specialist role."
+                            }
+                        },
+                        "required": ["task"]
                     }
                 }
             }
@@ -1878,3 +1895,11 @@ class ToolRegistry:
         return "### DEDICATED SUBAGENT ROLES\n" + "\n".join(
             f"- {e['id']}: {e['title']} — {e['description']}" for e in entries
         )
+
+    def tool_subagent_route(self, task: str) -> str:
+        from .intent_router import route_intent
+
+        if not task or not str(task).strip():
+            return "Error: task is required."
+        route = route_intent(str(task))
+        return "### INTENT ROUTE\n" + route.plan_text()
