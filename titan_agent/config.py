@@ -93,6 +93,51 @@ DAEMON_MAX_CONCURRENT = int(os.getenv("TITAN_DAEMON_CONCURRENCY", "1"))
 # enforced for every LLM call (backend providers and the Puter browser path).
 TOKEN_RATE_LIMIT_PER_SEC = int(os.getenv("TITAN_TOKEN_RATE_LIMIT", "214000"))
 
+# ---- Phase 8: FULL ACCESS — remove every capability boundary ----
+# TITAN_FULL_ACCESS=1    -> step caps lifted, tool/command timeouts raised,
+#                           approval gates auto-granted, download size cap and
+#                           HTTP-server port range removed, token rate-limiter
+#                           disabled, structured-reasoning step clamp lifted.
+# TITAN_ABSOLUTE_ACCESS=1 -> additionally lifts the two protection lines that
+#                           even FULL_ACCESS keeps: the destructive-command
+#                           deny floor (rm -rf / format / mkfs / shutdown) and
+#                           the SSRF private-network guard. Implies FULL_ACCESS.
+# Both can be toggled at runtime (web UI / API / CLI) via set_full_access().
+_FULL_ACCESS_OVERRIDE: bool | None = None
+
+
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "0").strip().lower() in ("1", "true", "yes")
+
+
+def full_access_enabled() -> bool:
+    """True when FULL (or ABSOLUTE) access is active.
+
+    Every limit site calls this at call-time (not import-time) so a mid-run
+    toggle takes effect immediately. The module override wins over the env.
+    """
+    if _FULL_ACCESS_OVERRIDE is not None:
+        return _FULL_ACCESS_OVERRIDE
+    return _env_flag("TITAN_FULL_ACCESS") or _env_flag("TITAN_ABSOLUTE_ACCESS")
+
+
+def absolute_access_enabled() -> bool:
+    """True only in ABSOLUTE mode — the destructive-deny floor and SSRF guard
+    are ALSO lifted (the last two protection lines)."""
+    if _FULL_ACCESS_OVERRIDE is not None:
+        return _FULL_ACCESS_OVERRIDE
+    return _env_flag("TITAN_ABSOLUTE_ACCESS")
+
+
+def set_full_access(on: bool | None) -> None:
+    """Runtime toggle (web UI / API / CLI) — no process restart needed.
+
+    ``True``/``False`` force the mode on/off; ``None`` clears the override so
+    the environment variables govern again (used to reset between tests).
+    """
+    global _FULL_ACCESS_OVERRIDE
+    _FULL_ACCESS_OVERRIDE = None if on is None else bool(on)
+
 # ---- Telegram account manager (opt-in, consent-gated) ----
 # TITAN_TELEGRAM_ENABLED must be 'true' for ANY Telegram tool to work.
 # API creds come from https://my.telegram.org -> API development tools.

@@ -16,8 +16,24 @@ try:
     from ddgs import DDGS
 except ImportError:
     from duckduckgo_search import DDGS
+from . import config as _cfg
 from .config import TASK_QUEUE_FILE, WORKSPACE_DIR
 from .core.guardrails.policy import PolicyEngine
+
+
+def _command_timeout(base: float) -> float:
+    """Command/process timeout in seconds.
+
+    Phase 8 FULL access removes the 45s command ceiling (and the 60s raw-run
+    default): long builds, big installs and slow network jobs are allowed to
+    run for up to 10 minutes before the watchdog intervenes.
+    """
+    return 600.0 if _cfg.full_access_enabled() else base
+
+
+def _subagent_worker_cap() -> int:
+    """Parallel subagent worker bound. Phase 8 FULL access raises 2 -> 8."""
+    return 8 if _cfg.full_access_enabled() else 2
 
 
 def _tokenize(text: str) -> list[str]:
@@ -812,6 +828,7 @@ class ToolRegistry:
     async def tool_execute_command(self, command: str, cwd: str = "") -> str:
         working_dir = self._resolve_path(cwd) if cwd else self.workspace
         working_dir.mkdir(parents=True, exist_ok=True)
+        timeout = _command_timeout(45.0)
         try:
             # Use powershell on windows
             shell_cmd = ["powershell", "-NoProfile", "-Command", command] if sys.platform == "win32" else ["bash", "-c", command]
@@ -821,7 +838,7 @@ class ToolRegistry:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=45.0)
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             out_str = stdout.decode('utf-8', errors='ignore')
             err_str = stderr.decode('utf-8', errors='ignore')
             res = []
@@ -832,7 +849,7 @@ class ToolRegistry:
             res.append(f"Exit code: {proc.returncode}")
             return "\n".join(res) if res else "Command executed with no output."
         except asyncio.TimeoutError:
-            return "Error: Command timed out after 45 seconds."
+            return f"Error: Command timed out after {timeout:.0f} seconds."
         except (OSError, RuntimeError) as e:
             return f"Command execution error: {e!s}"
 
@@ -1564,7 +1581,9 @@ class ToolRegistry:
         """Execute a command and return (exit_code, stdout, stderr) — no decoration.
 
         Used by self_heal so the repair loop can inspect raw output.
+        Phase 8: FULL access raises the ceiling to 10 minutes.
         """
+        timeout = _command_timeout(timeout) if _cfg.full_access_enabled() else (timeout or 60.0)
         working_dir = self._resolve_path(cwd) if cwd else self.workspace
         working_dir.mkdir(parents=True, exist_ok=True)
         shell_cmd = (
@@ -1603,14 +1622,21 @@ class ToolRegistry:
         return result.to_text()
 
     async def tool_download_file(self, url: str, dest: str = "") -> str:
-        """SSRF-guarded download of a public http(s) URL into the workspace."""
+        """SSRF-guarded download of a public http(s) URL into the workspace.
+
+        Phase 8: FULL access removes the 100 MB safety cap and raises the fetch
+        timeout to 2 minutes; ABSOLUTE access also skips the SSRF private-
+        network guard and allows any scheme urlopen supports.
+        """
         url = (url or "").strip()
-        if not url.lower().startswith(("http://", "https://")):
+        absolute = _cfg.absolute_access_enabled()
+        if not absolute and not url.lower().startswith(("http://", "https://")):
             return "Error: only http(s) URLs are allowed."
-        policy = PolicyEngine()
-        check = policy.check_network_target(url)
-        if check.decision == "deny":
-            return f"Error: refused to download private/loopback target ({url})."
+        if not absolute:
+            policy = PolicyEngine()
+            check = policy.check_network_target(url)
+            if check.decision == "deny":
+                return f"Error: refused to download private/loopback target ({url})."
         try:
             target = self._resolve_path(dest) if dest else self.workspace
             if dest and dest.lower().endswith("/"):
@@ -1620,15 +1646,17 @@ class ToolRegistry:
             fname = Path(url.split("?")[0].split("#")[0]).name or "download.bin"
             out_path = (target if target.is_dir() else self.workspace) / fname
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            req = urllib.request.Request(url, headers={"User-Agent": "Titan-Agent/7.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "Titan-Agent/8.0"})
+            fetch_timeout = 120.0 if _cfg.full_access_enabled() else 30.0
+            max_bytes = 2 * 1024 * 1024 * 1024 if _cfg.full_access_enabled() else 100 * 1024 * 1024
 
             def _fetch() -> bytes:
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                with urllib.request.urlopen(req, timeout=fetch_timeout) as resp:
                     return resp.read()
 
             data = await asyncio.to_thread(_fetch)
-            if len(data) > 100 * 1024 * 1024:
-                return "Error: download exceeds 100 MB safety limit."
+            if len(data) > max_bytes:
+                return f"Error: download exceeds {max_bytes // (1024 * 1024)} MB safety limit."
             out_path.write_bytes(data)
             return f"Downloaded {url}\nSaved: {out_path}\nSize: {len(data)} bytes"
         except (OSError, ValueError, urllib.error.URLError) as e:
@@ -1655,8 +1683,10 @@ class ToolRegistry:
         try:
             directory = self._resolve_path(directory) if directory else self.workspace
             port = int(port or 8000)
-            if not 1024 <= port <= 49151:
-                return "Error: port must be in 1024-49151."
+            # Phase 8: FULL access widens the allowed range to any valid port.
+            lo, hi = (1, 65535) if _cfg.full_access_enabled() else (1024, 49151)
+            if not lo <= port <= hi:
+                return f"Error: port must be in {lo}-{hi}."
             return self._start_server(port, directory)
         except (OSError, ValueError) as e:
             return f"Could not start HTTP server: {e!s}"
@@ -1802,6 +1832,7 @@ class ToolRegistry:
 
         if not tasks:
             return "Error: tasks list is required."
-        pool = SubagentPool(max_workers=min(2, len(tasks)))
+        # Phase 8: FULL access raises the parallel subagent bound 2 -> 8.
+        pool = SubagentPool(max_workers=min(_subagent_worker_cap(), len(tasks)))
         results = await pool.team([str(t) for t in tasks])
         return "\n\n".join(r.to_text() for r in results)

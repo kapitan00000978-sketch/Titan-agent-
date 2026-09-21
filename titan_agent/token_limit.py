@@ -9,7 +9,7 @@ import asyncio
 import time
 from typing import Any
 
-from .config import TOKEN_RATE_LIMIT_PER_SEC
+from .config import TOKEN_RATE_LIMIT_PER_SEC, full_access_enabled
 
 
 def estimate_tokens(
@@ -45,7 +45,11 @@ class TokenRateLimiter:
     production, but the accounting is real and testable with tiny rates.
     """
 
-    def __init__(self, tokens_per_sec: int = TOKEN_RATE_LIMIT_PER_SEC):
+    def __init__(self, tokens_per_sec: int = TOKEN_RATE_LIMIT_PER_SEC, disabled: bool | None = None):
+        # Phase 8: FULL access disables the throughput guardrail entirely
+        # (None = derive live from config so a runtime toggle applies even to
+        # an already-constructed limiter).
+        self.disabled = full_access_enabled() if disabled is None else bool(disabled)
         self.rate = int(tokens_per_sec)
         self.capacity = float(max(1, self.rate))
         self._tokens = self.capacity  # start with a full second of burst
@@ -62,6 +66,8 @@ class TokenRateLimiter:
 
         Returns the throttling wait in seconds (0.0 when under the cap).
         """
+        if self.disabled or full_access_enabled():
+            return 0.0
         if tokens <= 0:
             return 0.0
         async with self._lock:
@@ -90,6 +96,7 @@ class TokenRateLimiter:
 
     def stats(self) -> dict[str, Any]:
         return {
+            "disabled": self.disabled or full_access_enabled(),
             "cap_per_second": self.rate,
             "total_tokens_reserved": self.total_tokens_reserved,
             "calls": self.calls,

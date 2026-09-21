@@ -18,6 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from ...config import absolute_access_enabled, full_access_enabled
 from ..guardrails import Decision, PolicyEngine
 from ..reasoning.interfaces import IToolExecutor
 
@@ -216,16 +217,26 @@ class ToolRegistry(IToolExecutor):
             action, resource = "execute_command", str(args.get("command", ""))
         else:
             action, resource = tool_name, tool_name
-        decision = self.policy.check(action, resource, json.dumps(args, default=str))
+        # Phase 8: access mode is read at call-time so a runtime FULL/ABSOLUTE
+        # toggle takes effect mid-run (approvals auto-granted; denies stay in
+        # FULL, lifted only in ABSOLUTE).
+        full = full_access_enabled()
+        access = (
+            PolicyEngine.ACCESS_ABSOLUTE
+            if absolute_access_enabled()
+            else (PolicyEngine.ACCESS_FULL if full else PolicyEngine.ACCESS_NORMAL)
+        )
+        decision = self.policy.check(action, resource, json.dumps(args, default=str), access=access)
         if decision.decision == Decision.DENY:
             raise PermissionError(f"Blocked by policy: {decision.reasons}")
-        if decision.decision == Decision.REQUIRE_APPROVAL or spec.requires_approval:
+        if (decision.decision == Decision.REQUIRE_APPROVAL or spec.requires_approval) and not full:
             raise PermissionError(
                 f"Requires approval (tool={tool_name}): {decision.reasons}"
             )
 
-        # Sandbox: enforce workspace root for path arguments
-        if self.workspace:
+        # Sandbox: enforce workspace root for path arguments (lifted in FULL
+        # access — the agent may touch any path it can reach).
+        if self.workspace and not full:
             args = dict(args)
             for key in ("path", "cwd", "file_path", "dir"):
                 if key in args and isinstance(args[key], str):

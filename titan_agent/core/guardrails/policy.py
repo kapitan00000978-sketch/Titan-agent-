@@ -128,6 +128,14 @@ PRIVATE_IP_PATTERNS: list[re.Pattern] = [
 class PolicyEngine:
     """Evaluates actions against rules and logs all decisions."""
 
+    # Access modes: "normal" (guardrails fully enforced), "full" (approval
+    # gates auto-granted — capability limits gone, protection floor stays),
+    # "absolute" (the destructive-command deny floor and SSRF guard are lifted
+    # too). Chosen at call-time by every limit site from config flags.
+    ACCESS_NORMAL = "normal"
+    ACCESS_FULL = "full"
+    ACCESS_ABSOLUTE = "absolute"
+
     def __init__(
         self,
         rules: list[Rule] | None = None,
@@ -156,10 +164,17 @@ class PolicyEngine:
         action: str,
         resource: str = "*",
         content: str = "",
+        access: str = ACCESS_NORMAL,
     ) -> CheckResult:
-        """Evaluate an action and register the decision in the audit trail."""
+        """Evaluate an action and register the decision in the audit trail.
+
+        ``access`` selects how far guardrails apply: "full" treats every
+        require-approval rule as allowed (auto-grant — capability approvals are
+        lifted but destructive denies still stand); "absolute" also treats deny
+        rules as allowed. Prompt-injection content checks always apply.
+        """
         checks: list[CheckResult] = [
-            self._check_rules(action, resource),
+            self._check_rules(action, resource, access),
             self._check_content(content) if content else CheckResult(),
         ]
         # Merge: DENY wins, then REQUIRE_APPROVAL, else ALLOW
@@ -172,14 +187,15 @@ class PolicyEngine:
         action: str,
         resource: str = "*",
         content: str = "",
+        access: str = ACCESS_NORMAL,
     ) -> list[CheckResult]:
         """Return individual check results without merging (for telemetry)."""
         return [
-            self._check_rules(action, resource),
+            self._check_rules(action, resource, access),
             self._check_content(content) if content else CheckResult(),
         ]
 
-    def _check_rules(self, action: str, resource: str) -> CheckResult:
+    def _check_rules(self, action: str, resource: str, access: str = ACCESS_NORMAL) -> CheckResult:
         reasons: list[str] = []
         decision = Decision.ALLOW
         for rule in self.rules:
@@ -189,11 +205,16 @@ class PolicyEngine:
             if rule.resource != "*" and rule.resource != resource and not resource.startswith(rule.resource):
                 continue
             if rule.effect == "deny":
+                if access == self.ACCESS_ABSOLUTE:
+                    continue  # protection floor lifted
                 decision = Decision.DENY
                 reasons.append(f"rule: {rule.reason or rule.resource}")
-            elif rule.effect == "require_approval" and decision != Decision.DENY:
-                decision = Decision.REQUIRE_APPROVAL
-                reasons.append(f"rule: {rule.reason or rule.resource}")
+            elif rule.effect == "require_approval":
+                if access in (self.ACCESS_FULL, self.ACCESS_ABSOLUTE):
+                    continue  # auto-grant in full/absolute access
+                if decision != Decision.DENY:
+                    decision = Decision.REQUIRE_APPROVAL
+                    reasons.append(f"rule: {rule.reason or rule.resource}")
         return CheckResult(decision, reasons or None)
 
     def _check_content(self, content: str) -> CheckResult:
@@ -208,8 +229,13 @@ class PolicyEngine:
 
     # ---------- Network / SSRF ----------
 
-    def check_network_target(self, url: str) -> CheckResult:
-        """Block requests to private/loopback networks (SSRF guard)."""
+    def check_network_target(self, url: str, access: str = ACCESS_NORMAL) -> CheckResult:
+        """Block requests to private/loopback networks (SSRF guard).
+
+        Only lifted in ABSOLUTE access — FULL keeps this protection line.
+        """
+        if access == self.ACCESS_ABSOLUTE:
+            return CheckResult()
         host = url
         # Strip scheme/path crudely for host check
         m = re.match(r"^[a-z]+://([^/:?#]+)", url, re.IGNORECASE)

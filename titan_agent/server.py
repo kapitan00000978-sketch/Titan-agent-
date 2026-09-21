@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .agent import TitanAgent
-from .config import MCP_CONFIG_FILE, WORKSPACE_DIR
+from .config import MCP_CONFIG_FILE, WORKSPACE_DIR, full_access_enabled, set_full_access
 from .llm_client import LLMClient
 from .mcp_client import MCPManager
 from .memory import MemoryManager
@@ -165,7 +165,9 @@ async def get_config():
         "model": llm_client.model,
         "base_url": llm_client.base_url,
         "has_key": bool(llm_client.api_key),
-        "workspace": str(WORKSPACE_DIR)
+        "workspace": str(WORKSPACE_DIR),
+        # Phase 8: Full Access — all capability boundaries removed.
+        "full_access": full_access_enabled(),
     }
 
 class ConfigUpdateRequest(BaseModel):
@@ -173,6 +175,7 @@ class ConfigUpdateRequest(BaseModel):
     model: str
     api_key: str = ""
     base_url: str = ""
+    full_access: bool | None = None
 
 @app.post("/api/config")
 async def update_config(req: ConfigUpdateRequest):
@@ -182,7 +185,15 @@ async def update_config(req: ConfigUpdateRequest):
         api_key=req.api_key if req.api_key else None,
         base_url=req.base_url if req.base_url else None
     )
-    return {"status": "success", "provider": llm_client.provider, "model": llm_client.model}
+    # Phase 8: runtime Full Access toggle (no restart needed).
+    if req.full_access is not None:
+        set_full_access(req.full_access)
+    return {
+        "status": "success",
+        "provider": llm_client.provider,
+        "model": llm_client.model,
+        "full_access": full_access_enabled(),
+    }
 
 @app.get("/api/mcp/tools")
 async def get_mcp_tools():

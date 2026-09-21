@@ -2,6 +2,62 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🚀 Phase 8 — FULL ACCESS: every capability boundary removed
+
+`TITAN_FULL_ACCESS=1` makes Titan **truly unrestricted** — every limit that was
+ever placed on it is lifted when Full Access is on. This is the second half of
+"chegaralarni buz": **FULL_ACCESS removes all capability/comfort boundaries**,
+and a second flag **`TITAN_ABSOLUTE_ACCESS=1`** additionally drops the last two
+protection lines. Normal mode behaviour is byte-for-byte unchanged.
+
+### What FULL_ACCESS removes (all of it)
+- **Step budget** — `_compute_max_steps` returns no ceiling and a 4× larger
+  budget (run until the task is verifiably done, never a hard stop).
+- **Command timeout** — 45s → 10 minutes (`execute_command`), and the raw/self-
+  heal runner's 60s default is raised the same way.
+- **Approval gates** — `PolicyEngine` auto-grants every `require_approval` rule
+  (delete_file / screenshot), and the guarded `ToolRegistry` + `ToolBridge` pass
+  approvals without a human. Structured `hitl_timeout` no longer blocks.
+- **Structured-reasoning clamp** — the core engines' `min(max_steps, 30)` cap is
+  lifted to 1000 so `plan`/`react`/`tot` deep runs keep working too.
+- **Downloads** — `download_file` loses the 100 MB cap (→2 GB) and the fetch
+  timeout rises 30s → 2 min; the workspace-sandbox path check in the guarded
+  registry is lifted.
+- **HTTP server** — `start_http_server` accepts any port 1–65535.
+- **Token rate-limiter** — `TokenRateLimiter` is disabled (no throttling).
+- **Subagents** — `subagent_team` parallelism bound raised 2 → 8.
+- System prompt gets a **FULL ACCESS MODE ACTIVE** block so the model knows the
+  boundaries are gone and must still verify before reporting.
+
+### What still protects (unless you opt into ABSOLUTE)
+- **FULL_ACCESS keeps** the protection floor: destructive-command denies
+  (`rm -rf` / `format c:` / `mkfs` / `shutdown`) and the SSRF
+  private-network guard, plus prompt-injection phrase blocking.
+- **TITAN_ABSOLUTE_ACCESS=1** additionally lifts those denies and the SSRF
+  guard — the agent can reach destructive operations and internal networks it
+  asks for. This is an explicit extra opt-in, never implied by FULL_ACCESS.
+
+### Runtime toggle (no restart)
+- `config.py` — `full_access_enabled()` / `absolute_access_enabled()` read env at
+  call-time; `set_full_access(on|None)` forces/clears a module override.
+- `server.py` — `GET /api/config` reports `full_access`; `POST /api/config`
+  accepts `full_access: bool` and applies it live.
+
+### Files touched
+`config.py`, `core/guardrails/policy.py` (access modes on `check()` /
+`check_network_target()`), `structured.py` (ToolBridge auto-approve + clamp),
+`core/tools/registry.py` (approval/sandbox/deny per access), `agent.py`
+(budget + prompt), `tools.py` (`_command_timeout`, download, ports, subagents),
+`token_limit.py`, `server.py`, `.env.example`.
+
+### Verification
+- `tests/test_full_access.py` — **32 deterministic tests** (flags, budget,
+  policy modes, ToolBridge, guarded registry, timeouts, SSRF/scheme/size,
+  ports, subagent cap, rate limiter, structured clamp, API model).
+- Full suite: **288 passed, 1 skipped** (Windows-only screenshot branch).
+- `ruff check` clean on all touched files (only the 4 pre-existing `ASYNC221`
+  wmctrl warnings remain in the wider tree).
+
 ## 🚀 Phase 7 — Full Autonomy (completely independent operation)
 
 Five blocks that let Titan run on its own, stop/repair/retry by itself, and keep

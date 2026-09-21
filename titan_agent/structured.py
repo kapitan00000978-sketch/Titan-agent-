@@ -23,6 +23,7 @@ import logging
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Any
 
+from . import config as _cfg
 from .agent import AgentEvent
 from .core.guardrails.hitl import ApprovalStatus, HumanInTheLoop
 from .core.guardrails.policy import DEFAULT_RULES, Decision, PolicyEngine
@@ -114,14 +115,16 @@ class ToolBridge(IToolExecutor):
         policy_engine: PolicyEngine | None = None,
         hitl: HumanInTheLoop | None = None,
         hitl_timeout: float = 60.0,
-        auto_approve: bool = False,
+        auto_approve: bool | None = None,
     ):
         self.execute_fn = execute_fn
         self.get_tools_fn = get_tools_fn
         self.policy = policy_engine if policy_engine is not None else PolicyEngine(list(DEFAULT_RULES))
         self.hitl = hitl
         self.hitl_timeout = hitl_timeout
-        self.auto_approve = auto_approve
+        # Phase 8: in FULL/ABSOLUTE access every approval gate is auto-granted
+        # (None = derive from config so a runtime toggle applies immediately).
+        self.auto_approve = _cfg.full_access_enabled() if auto_approve is None else auto_approve
 
     async def execute(
         self,
@@ -130,11 +133,19 @@ class ToolBridge(IToolExecutor):
         context: dict[str, Any] | None = None,
     ) -> Any:
         if self.policy is not None:
-            decision = self.policy.check(tool_name, _resource_for(tool_name, args))
+            access = (
+                PolicyEngine.ACCESS_ABSOLUTE
+                if _cfg.absolute_access_enabled()
+                else (PolicyEngine.ACCESS_FULL if _cfg.full_access_enabled() else PolicyEngine.ACCESS_NORMAL)
+            )
+            decision = self.policy.check(tool_name, _resource_for(tool_name, args), access=access)
             if decision.decision == Decision.DENY:
                 why = "; ".join(decision.reasons) or "denied by policy"
                 return f"Error: blocked by safety policy ({why})."
-            if decision.decision == Decision.REQUIRE_APPROVAL and not await self._approve(tool_name, args, decision):
+            if (
+                decision.decision == Decision.REQUIRE_APPROVAL
+                and not await self._approve(tool_name, args, decision)
+            ):
                 why = "; ".join(decision.reasons) or "requires human approval"
                 return f"Error: approval required but not granted ({why})."
         return await self.execute_fn(tool_name, args or {})
@@ -355,7 +366,10 @@ class StructuredEngine:
     # ---------- Internals ----------
 
     def _build_config(self, max_steps: int, strategy: str) -> ReasoningConfig:
-        cfg = ReasoningConfig(max_steps=max(3, min(int(max_steps), 30)))
+        # Phase 8: FULL access lifts the 30-step structured-reasoning clamp so
+        # deep strategy runs also keep working until the task is done.
+        clamp = 1000 if _cfg.full_access_enabled() else 30
+        cfg = ReasoningConfig(max_steps=max(3, min(int(max_steps), clamp)))
         if strategy in ("plan", "tot"):
             cfg.max_plan_steps = 8
         if strategy == "tot":

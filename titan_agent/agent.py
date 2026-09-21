@@ -16,6 +16,7 @@ from .config import (
     MAX_STEPS_CAP,
     UNLIMITED_STEPS,
     WORKSPACE_DIR,
+    full_access_enabled,
 )
 from .core.memory.memory_system import MemorySystem
 from .core.memory.types import MemoryKind
@@ -167,6 +168,10 @@ def _compute_max_steps(mode: str, effort: str) -> int:
     (default 48 — the old hard clamp) and fully removable with
     TITAN_UNLIMITED_STEPS=1, so the agent can keep working until the task is
     provably done instead of stopping at an arbitrary number.
+
+    Phase 8 (FULL ACCESS): TITAN_FULL_ACCESS=1 removes the ceiling entirely AND
+    scales the base budget up 4x — no matter how long a task takes, Titan keeps
+    iterating (it must still VERIFY and produce a final answer).
     """
     base = MAX_ITERATIONS
     if mode in ("deep", "deep_search"):
@@ -176,6 +181,9 @@ def _compute_max_steps(mode: str, effort: str) -> int:
         e = "auto"
     multiplier = 1.0 if e == "auto" else EFFORT_MULTIPLIER.get(e, 1.0)
     steps = max(5, round(base * multiplier))
+    if full_access_enabled():
+        # No cap and a 4x larger budget: the agent runs until the task is done.
+        return max(steps, round(base * multiplier * 4))
     if UNLIMITED_STEPS:
         # No ceiling: still bounded by base*multiplier growth, but no 48 clamp.
         return steps
@@ -1004,6 +1012,18 @@ class TitanAgent:
         # Effort-level guidance (LOW/HIGH/ULTRA)
         if effort in EFFORT_PROMPTS:
             system_content += "\n\n" + EFFORT_PROMPTS[effort]
+        # Phase 8: Full Access mode — every capability boundary is removed.
+        if full_access_enabled():
+            system_content += (
+                "\n\n### FULL ACCESS MODE ACTIVE (TITAN_FULL_ACCESS=1)\n"
+                "Every capability boundary is removed for this run:\n"
+                "- No step budget limit — keep working until the task is VERIFIABLY complete.\n"
+                "- No 45s command timeout (up to 10 minutes per command).\n"
+                "- Approvals are auto-granted (delete_file / screenshot / ports / paths).\n"
+                "- Downloads have no 100 MB cap; token rate limiting is disabled.\n"
+                "- Subagent teams may run up to 8 workers in parallel.\n"
+                "Use the extra scope deliberately, and still VERIFY every claim with tools before reporting."
+            )
 
         messages = [{"role": "system", "content": system_content}]
         for msg in history:
