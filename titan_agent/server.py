@@ -2,8 +2,9 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
+import aiofiles
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -18,6 +19,7 @@ from .memory import MemoryManager
 from .scheduler import CronScheduler
 from .telegram import TelegramError, TelegramManager
 from .tools import ToolRegistry
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -49,11 +51,11 @@ telegram_manager = TelegramManager()
 llm_client = LLMClient()
 agent = TitanAgent(llm=llm_client, tools=tool_registry, mcp=mcp_manager, memory=memory_manager, telegram=telegram_manager)
 
-async def _cron_runner(prompt: str, session_id: str, mode: str, effort: str) -> str:
+async def _cron_runner(prompt: str, session_id: str, mode: str, effort: str, strategy: str = "auto", auto_commit: bool = False, resume: bool = False) -> str:
     """Runner used by the cron scheduler: execute a prompt with the live agent
     and return the final answer text (errors raise so the job is marked failed)."""
     final = ""
-    async for ev in agent.run_task(prompt, session_id=session_id, mode=mode, effort=effort):
+    async for ev in agent.run_task(prompt, session_id=session_id, mode=mode, effort=effort, strategy=strategy, auto_commit=auto_commit, resume=resume):
         if ev.type == "final_answer":
             final = (final + "\n\n" + ev.data).strip() if final else ev.data
         elif ev.type == "error":
@@ -71,8 +73,9 @@ app.mount("/static", StaticFiles(directory=str(WEB_UI_DIR)), name="static")
 async def root():
     index_file = WEB_UI_DIR / "index.html"
     if index_file.exists():
-        with open(index_file, "r", encoding="utf-8") as f:
-            return HTMLResponse(f.read())
+        async with aiofiles.open(index_file, "r", encoding="utf-8") as f:
+            content = await f.read()
+            return HTMLResponse(content)
     return HTMLResponse("<h1>Titan Agent Web UI loading...</h1>")
 
 class ChatRequest(BaseModel):
@@ -80,15 +83,18 @@ class ChatRequest(BaseModel):
     session_id: str = "web_session"
     mode: str = "fast"
     effort: str = "auto"
+    strategy: str = "auto"
+    auto_commit: bool = False
+    resume: bool = False
 
 @app.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest):
     async def event_generator():
         try:
-            async for ev in agent.run_task(req.message, session_id=req.session_id, mode=req.mode, effort=req.effort):
+            async for ev in agent.run_task(req.message, session_id=req.session_id, mode=req.mode, effort=req.effort, strategy=req.strategy, auto_commit=req.auto_commit, resume=req.resume):
                 payload = json.dumps(ev.to_dict())
                 yield f"data: {payload}\n\n"
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             err_payload = json.dumps({"type": "error", "data": str(e)})
             yield f"data: {err_payload}\n\n"
 
@@ -96,7 +102,7 @@ async def chat_stream(req: ChatRequest):
 
 class ToolExecuteRequest(BaseModel):
     tool_name: str
-    arguments: Dict[str, Any] = Field(default_factory=dict)
+    arguments: dict[str, Any] = Field(default_factory=dict)
 
 @app.post("/api/tools/execute")
 async def execute_tool_endpoint(req: ToolExecuteRequest):
@@ -235,7 +241,7 @@ async def telegram_logout(req: TelegramLogoutRequest):
 class CronJobRequest(BaseModel):
     prompt: str
     name: str = "cron job"
-    schedule: Dict[str, Any] = Field(default_factory=lambda: {"interval_minutes": 60})
+    schedule: dict[str, Any] = Field(default_factory=lambda: {"interval_minutes": 60})
     mode: str = "fast"
     effort: str = "auto"
     session_id: str = ""

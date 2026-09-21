@@ -1,12 +1,14 @@
 import asyncio
-import json
+import logging
 import re
-from typing import List, Dict, Any, Optional
+import urllib.request
+from typing import Any
+
 try:
     from ddgs import DDGS
 except ImportError:
     from duckduckgo_search import DDGS
-import urllib.request
+
 
 class DeepSearchEngine:
     """
@@ -18,7 +20,7 @@ class DeepSearchEngine:
         self.max_subqueries = max_subqueries
         self.max_pages_to_scrape = max_pages_to_scrape
 
-    async def _search_query(self, query: str, max_results: int = 4) -> List[Dict[str, str]]:
+    async def _search_query(self, query: str, max_results: int = 4) -> list[dict[str, str]]:
         loop = asyncio.get_running_loop()
         def _exec():
             results = []
@@ -30,8 +32,9 @@ class DeepSearchEngine:
                             "url": r.get("href", ""),
                             "snippet": r.get("body", "")
                         })
-            except Exception:
-                pass
+            except (RuntimeError, OSError) as e:
+                log = logging.getLogger(__name__)
+                log.debug("DDGS search failed for %s: %s", query, e)
             return results
         return await loop.run_in_executor(None, _exec)
 
@@ -50,11 +53,13 @@ class DeepSearchEngine:
                 text = re.sub(r'<[^>]+>', ' ', text)
                 clean_lines = [line.strip() for line in text.splitlines() if line.strip()]
                 return "\n".join(clean_lines)[:4000]
-            except Exception:
+            except (urllib.error.URLError, OSError, ValueError) as e:
+                log = logging.getLogger(__name__)
+                log.debug("Scrape failed for %s: %s", url, e)
                 return ""
         return await loop.run_in_executor(None, _exec)
 
-    async def run(self, topic: str) -> Dict[str, Any]:
+    async def run(self, topic: str) -> dict[str, Any]:
         """
         Executes a multi-angle deep search on a topic.
         """

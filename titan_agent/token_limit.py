@@ -7,14 +7,14 @@ and throttles any call that would burst over the cap.
 """
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .config import TOKEN_RATE_LIMIT_PER_SEC
 
 
 def estimate_tokens(
-    messages: List[Dict[str, Any]],
-    tools: Optional[List[Dict[str, Any]]] = None,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]] | None = None,
     max_output: int = 4096,
 ) -> int:
     """Rough token estimate for a chat request: ~4 chars per token.
@@ -88,7 +88,7 @@ class TokenRateLimiter:
             await asyncio.sleep(wait)
         return wait
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         return {
             "cap_per_second": self.rate,
             "total_tokens_reserved": self.total_tokens_reserved,

@@ -9,7 +9,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import titan_agent.telegram as tg_mod
-from titan_agent.telegram import TelegramError, TelegramManager, _mask_phone, _mask_username
+from titan_agent.telegram import (
+    TelegramError,
+    TelegramManager,
+    _mask_phone,
+    _mask_username,
+)
 
 
 def _manager(tmp_path, enabled=True, allowlist=""):
@@ -99,6 +104,7 @@ def test_send_allowlist_parsing(tmp_path):
 def test_agent_dispatch_telegram_status(tmp_path):
     """The agent tool path surfaces telegram_status without any network."""
     import asyncio
+
     from titan_agent.agent import TitanAgent
     _clear()
     agent = TitanAgent()  # construction does not start MCP/network
@@ -115,6 +121,7 @@ def test_agent_dispatch_telegram_status(tmp_path):
 
 def test_agent_dispatch_telegram_send_refusal(tmp_path):
     import asyncio
+
     from titan_agent.agent import TitanAgent
     m = _manager(tmp_path, enabled=True, allowlist="ok_user")
     # Reuse the same manager via a lightweight agent with overridden telegram

@@ -10,8 +10,8 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from titan_agent.config import MCP_CONFIG_FILE, WORKSPACE_DIR
 from titan_agent.agent import TitanAgent
+from titan_agent.config import MCP_CONFIG_FILE, WORKSPACE_DIR
 from titan_agent.mcp_client import MCPManager
 from titan_agent.memory import MemoryManager
 from titan_agent.tools import ToolRegistry
@@ -113,6 +113,7 @@ def test_memory_auto_recall(tmp_path):
 def test_run_task_auto_recalls_memory_into_system_prompt(tmp_path):
     """Fast-mode run_task seeds the system context with remembered facts."""
     import asyncio
+
     from titan_agent.agent import TitanAgent
     from titan_agent.llm_client import LLMResponse
     from titan_agent.memory import MemoryManager
@@ -173,6 +174,7 @@ def test_effort_levels_scale_budget():
 def test_run_task_effort_guidance(tmp_path):
     """Effort injects guidance into the prompt and controls forced reflection."""
     import asyncio
+
     from titan_agent.agent import TitanAgent
     from titan_agent.llm_client import LLMResponse
     from titan_agent.memory import MemoryManager
@@ -222,6 +224,7 @@ def test_token_rate_limit_default_is_214_k():
 def test_token_limiter_enforces_rate():
     """The token bucket actually throttles once the per-second budget is spent."""
     import asyncio
+
     from titan_agent.token_limit import TokenRateLimiter
 
     async def _run():
@@ -253,6 +256,7 @@ def test_estimate_tokens_returns_positive():
 def test_token_usage_endpoint_shape():
     """The /api/token-usage endpoint reports the 214k/s cap and live stats."""
     import asyncio
+
     from titan_agent import server
 
     data = asyncio.run(server.get_token_usage())
@@ -293,6 +297,7 @@ def test_unknown_tool_error():
 def test_llm_puter_provider_is_client_side():
     """Puter.js runs in the browser; the backend must reject server-side use."""
     import pytest
+
     from titan_agent.llm_client import LLMClient
     client = LLMClient(provider="puter", model="deepseek/deepseek-v4-pro")
     assert client.base_url == ""

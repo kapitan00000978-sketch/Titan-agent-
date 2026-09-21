@@ -14,15 +14,16 @@ SAFETY MODEL (user-consented on purpose):
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .config import (
-    WORKSPACE_DIR,
-    TITAN_TELEGRAM_ENABLED,
-    TITAN_TELEGRAM_API_ID,
     TITAN_TELEGRAM_API_HASH,
+    TITAN_TELEGRAM_API_ID,
+    TITAN_TELEGRAM_ENABLED,
     TITAN_TELEGRAM_SEND_ALLOWLIST,
+    WORKSPACE_DIR,
 )
 
 SESSION_DIR = WORKSPACE_DIR / "telegram_sessions"
@@ -60,10 +61,10 @@ class TelegramManager:
     provided for server endpoints if ever needed.
     """
 
-    def __init__(self, session_dir: Optional[Path] = None):
+    def __init__(self, session_dir: Path | None = None):
         self.session_dir = Path(session_dir or SESSION_DIR)
         self.session_dir.mkdir(parents=True, exist_ok=True)
-        self._pending: Dict[str, Any] = {}  # label -> TelethonClient during login
+        self._pending: dict[str, Any] = {}  # label -> TelethonClient during login
 
     # ------------------------------------------------------------------ info
     def enabled(self) -> bool:
@@ -72,7 +73,7 @@ class TelegramManager:
     def has_credentials(self) -> bool:
         return bool(TITAN_TELEGRAM_API_ID and TITAN_TELEGRAM_API_HASH)
 
-    def send_allowlist(self) -> List[str]:
+    def send_allowlist(self) -> list[str]:
         raw = (TITAN_TELEGRAM_SEND_ALLOWLIST or "").strip()
         if not raw:
             return []
@@ -108,16 +109,16 @@ class TelegramManager:
         safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in label)
         return self.session_dir / f"{safe}.meta.json"
 
-    def _read_meta(self, label: str) -> Dict[str, Any]:
+    def _read_meta(self, label: str) -> dict[str, Any]:
         try:
             return json.loads(self._meta_file(label).read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             return {}
 
-    def _write_meta(self, label: str, data: Dict[str, Any]) -> None:
+    def _write_meta(self, label: str, data: dict[str, Any]) -> None:
         self._meta_file(label).write_text(json.dumps(data), encoding="utf-8")
 
-    def _accounts(self) -> List[Dict[str, Any]]:
+    def _accounts(self) -> list[dict[str, Any]]:
         out = []
         if not self.session_dir.exists():
             return out
@@ -134,7 +135,7 @@ class TelegramManager:
             )
         return out
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         creds = self.has_credentials()
         allow = self.send_allowlist()
         return {
@@ -148,12 +149,12 @@ class TelegramManager:
             "session_dir": str(self.session_dir),
         }
 
-    def list_accounts(self) -> List[Dict[str, Any]]:
+    def list_accounts(self) -> list[dict[str, Any]]:
         self._require_enabled()
         return self._accounts()
 
     # ------------------------------------------------------------ login flow
-    def login_start(self, label: str, phone: str) -> Dict[str, Any]:
+    def login_start(self, label: str, phone: str) -> dict[str, Any]:
         """Ask the API to send a login code to `phone`. Consent: the phone
         belongs to the user; completing the flow below is their explicit act."""
         self._require_enabled()
@@ -167,7 +168,7 @@ class TelegramManager:
         )
         try:
             client.connect()
-        except Exception as e:  # pragma: no cover - network path
+        except OSError as e:  # pragma: no cover - network path
             raise TelegramError(f"Could not reach Telegram servers: {type(e).__name__}")
         self._pending[label.strip()] = client
         return {
@@ -179,7 +180,7 @@ class TelegramManager:
             ),
         }
 
-    def login_confirm(self, label: str, code: str) -> Dict[str, Any]:
+    def login_confirm(self, label: str, code: str) -> dict[str, Any]:
         """Complete login with the user-provided one-time code."""
         self._require_enabled()
         client = self._pending.pop(label, None)
@@ -189,13 +190,13 @@ class TelegramManager:
             )
         try:
             client.sign_in(code=str(code).strip())
-        except Exception as e:  # pragma: no cover - network path
+        except OSError as e:  # pragma: no cover - network path
             raise TelegramError(f"Login failed (wrong/expired code?): {type(e).__name__}")
         me = client.get_me()
         meta = {
             "phone": (me.phone or "") if me else "",
             "username": (me.username or "") if me else "",
-            "added": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+            "added": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
         self._write_meta(label, meta)
         client.disconnect()
@@ -207,7 +208,7 @@ class TelegramManager:
         }
 
     # ---------------------------------------------------------------- actions
-    def send_message(self, label: str, target: str, text: str) -> Dict[str, Any]:
+    def send_message(self, label: str, target: str, text: str) -> dict[str, Any]:
         """Send a message ONLY to an allowlisted target (user-consented safety)."""
         self._require_enabled()
         allow = self.send_allowlist()
@@ -233,7 +234,7 @@ class TelegramManager:
         finally:
             client.disconnect()
 
-    def recent_messages(self, label: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def recent_messages(self, label: str, limit: int = 10) -> list[dict[str, Any]]:
         """Read-only: last messages from the account's own dialogs (masked senders)."""
         self._require_enabled()
         client = self._open(label)
@@ -255,7 +256,7 @@ class TelegramManager:
         finally:
             client.disconnect()
 
-    def whoami(self, label: str) -> Dict[str, Any]:
+    def whoami(self, label: str) -> dict[str, Any]:
         """Own profile for this session (masked)."""
         self._require_enabled()
         client = self._open(label)
@@ -270,7 +271,7 @@ class TelegramManager:
         finally:
             client.disconnect()
 
-    def logout(self, label: str, delete: bool = False) -> Dict[str, Any]:
+    def logout(self, label: str, delete: bool = False) -> dict[str, Any]:
         self._require_enabled()
         sess = self._session_file(label)
         if not sess.exists():
@@ -284,7 +285,7 @@ class TelegramManager:
                     client.disconnect()
                 self._session_file(label).unlink(missing_ok=True)
                 self._meta_file(label).unlink(missing_ok=True)
-            except Exception:
+            except OSError:
                 self._session_file(label).unlink(missing_ok=True)
             return {"status": "deleted", "label": label}
         return {"status": "session_removed_locally", "label": label}
@@ -309,6 +310,6 @@ class TelegramManager:
         except TelegramError:
             client.disconnect()
             raise
-        except Exception as e:  # pragma: no cover - network path
+        except OSError as e:  # pragma: no cover - network path
             client.disconnect()
             raise TelegramError(f"Could not open session '{label}': {type(e).__name__}")

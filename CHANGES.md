@@ -2,6 +2,50 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🆕 OmniRoute provider (Phase 6 — 2026)
+
+**OmniRoute** — self-hosted AI gateway (`http://localhost:20128/v1`) with smart auto-routing.
+One key (`OMNI_API_KEY`) unlocks six virtual `auto*` models that route each request to the
+best available provider/model (self-hosted localhost gateway, verified live against the real
+localhost:20128 dashboard key):
+
+| CLI model | Routing intent |
+|---|---|
+| `auto` | balanced default |
+| `auto/coding` | code-first routing |
+| `auto/fast` | low-latency routing |
+| `auto/smart` | quality-first routing |
+| `auto/offline` | local/offline models only |
+| `auto/cheap` | cheapest available |
+
+- **`config.py`** — new `OMNI_API_KEY` / `OMNI_BASE_URL` (default `http://localhost:20128/v1`) /
+  `OMNI_MODEL` (default `auto`) + `OMNI_AUTO_MODELS` tuple. Provider precedence chain now
+  includes OmniRoute (after OpenRouter, before Kimi/GLM).
+- **`config_v2.py`** — `LLMSettings` gains `omni_base_url` / `omni_api_key` / `omni_model` fields.
+- **`llm_client.py`** — `omni` provider branch in `_setup_credentials` (OpenAI-compatible `/v1`
+  gateway). `chat_completion` raises a clear error if OmniRoute is not running.
+- **`.env`** — `OMNI_API_KEY` set to the live dashboard key; `TITAN_PROVIDER=omni`,
+  `TITAN_MODEL=auto` make OmniRoute the server-side default (Puter stays available for the
+  in-browser path but is no longer the hard default).
+- **`web_ui`** (`index.html` + `app.js`) — OmniRoute added to the provider dropdown and as a
+  launch option; `auto*` / `auto/coding` / `auto/fast` / `auto/smart` / `auto/offline` /
+  `auto/cheap` model chips added.
+- **Live proof** — every `auto*` model returned HTTP 200 chat completions from the real
+  gateway (`auto/offline` intentionally replies with an empty/offline response since no local
+  provider is registered); a headless run over `auto/coding` confirmed full end-to-end routing.
+- **Tests** — `tests/test_phase6_omni.py` (5 tests, pass) + the full suite: **225 passed.**
+
+**Terminal usage:**
+
+```
+python -m titan_agent.headless "Your task here" --provider omni --model auto --json --auto-commit
+python -m titan_agent.headless "Summarize the workspace" --provider omni --model auto/coding
+titan-headless "Fix the broken import" --provider omni --model auto/fast
+```
+
+Without `TITAN_PROVIDER=omni` in `.env`, use `--provider omni` explicitly (or set
+`TITAN_PROVIDER=omni` / `TITAN_MODEL=auto` in `.env` to make it the default).
+
 ## 🔴 Critical fixes
 
 ### 1. `titan_agent/server.py` — server would not start
@@ -401,3 +445,240 @@ Files touched:
 Verified: `python -m pytest -q` → **72 passed** (62 + 10 new); server restarted on
 `127.0.0.1:7860`; `GET /api/telegram/status` reports `enabled: false` until the user
 opts in via `.env`.
+
+## 🆕 Agent Core — Phase 1: foundation (2026)
+
+Production-grade foundation for the agent engine:
+
+- **`titan_agent/config_v2.py`** (new) — Pydantic Settings v2 based configuration:
+  nested `LLMSettings` / `ToolSettings` / `MemorySettings`, `.env` loading, validation errors
+  surfaced as `ConfigError`.
+- **`titan_agent/exceptions.py`** (new) — `ErrorCode` enum + `TitanError` hierarchy
+  (`LLMError`, `ToolError`, `ConfigError`, `MemoryError`, `AgentError`, `MCPError`,
+  `RouterError`): every error carries a **`details`** payload and a machine-readable
+  error code; `get_error_chain()` walks the cause chain; `is_retryable()` classifies
+  transient (429/network/timeouts) vs permanent failures; `wrap_error()` attaches
+  context. `LLMError` with status 429 is retryable.
+- **`titan_agent/di.py`** (new) — dependency injection: `ServiceRegistry` (typed services,
+  lazy singletons, override support), `ExecutionContext` (per-request context with
+  cancellation + metadata), `execution_context()` async context manager, `LifecycleManager`
+  (async startup/shutdown hooks), `cancelled()` cancellation check helper.
+- **`tests/test_phase1.py`** (new, 18 tests) — settings env override + secret masking,
+  exception chain/dict/retryability, DI override/scope, lifecycle ordering,
+  context cancellation.
+
+## 🆕 Agent Core — Phase 2: seven agent-competition patterns (2026)
+
+The strongest patterns from the 2026 agent comparison (Claude Code, Codex, Cursor,
+Copilot, Devin, Windsurf, OpenCode, Aider, Cline, Replit, Gemini CLI, Cody, Tabnine)
+integrated as a **modular, dependency-free core** under `titan_agent/core/`.
+Every module follows interface → implementation → tests → docs, with typed
+interfaces so engines and providers can be swapped.
+
+### 1. Reasoning — `core/reasoning/` (ReAct + Plan-and-Execute + ToT)
+- **`ReActEngine`** (`react.py`) — Think→Act→Observe loop: LLM decisions with native
+  tool calling (`complete_with_tools`) and structured-JSON text fallback; unknown/failed
+  tools become observations instead of crashing; periodic `Reflector` pass; steps capped
+  at `max_steps`; streaming support (`stream_reason`).
+- **`PlanExecutor`** (`planner.py`) — LLM-driven plan creation with tool awareness;
+  dependency-aware `Plan.get_ready_steps()`; `replan()` after failure preserving
+  completed steps; resilient JSON parsing.
+- **`ToTEngine`** + **`LLMEvaluator`** (`tot.py`) — Tree of Thoughts beam search:
+  branch (LLM generates distinct next-thoughts) → expand → evaluate (`IEvaluator`) →
+  prune top-k → early solution detection via `is_solution()`.
+- **`ReasoningConfig`** — max steps, observation/token caps, plan steps, retries,
+  reflection interval, ToT branching factor/depth (all bounded by pydantic validation).
+
+### 2. Memory — `core/memory/` (MemGPT/Mem0-style)
+- **`MemorySystem`** (`memory_system.py`) — SQLite-backed episodic / semantic /
+  procedural memory + **ephemeral working memory** (in-process, never persisted).
+- **Retrieval scoring** — composite: keyword overlap + recency decay `1/(1+days)`
+  + importance + access frequency; every returned record updates `access_count`.
+- **Consolidation** — repeated high-importance episodes become semantic facts
+  (deduplicated, importance boosted, `source_count` metadata).
+- **Lifecycle** — `forget()` (old + low-importance), `clear()`, `stats()`.
+- **File-lock safe** — every SQLite connection is context-managed and closed
+  (Windows safe: DB file deletable after use).
+
+### 3. Reflection — `core/reflection/` (Devin/Reflexion-style)
+- **`Reflector`** — LLM analyzes the reasoning trace → `insight` / `correction` /
+  `halt` / `confidence`; persists a **lesson** (procedural memory) when the tail of a
+  trace contained failures.
+- **`LessonStore`** — experience memory backed by `MemorySystem`
+  (kind=PROCEDURAL, scope="lessons"); relevant lessons are retrievable before
+  future runs.
+
+### 4. Orchestration — `core/orchestration/` (AutoGen/LangGraph-style)
+- **`AgentTeam`** — register typed agents by `AgentRole`
+  (supervisor/planner/researcher/coder/reviewer/tester/executor).
+- **Four coordination modes**: `SEQUENTIAL` (pipeline, fail-fast), `PARALLEL`
+  (fan-out via `asyncio.gather`), `CONSENSUS` (multiple agents vote, majority answer),
+  `SUPERVISOR` (lead decomposes → specialists work → lead synthesizes).
+- One agent failing never crashes the team (`AgentResult.ok` / `.error`).
+
+### 5. Guardrails — `core/guardrails/` (Constitutional AI + Cline-style HITL)
+- **`PolicyEngine`** — rule evaluation (allow / deny / require_approval) with
+  prefix-matched resources; prompt-injection phrase detection; SSRF protection
+  (private/loopback IP patterns); PII/secret pattern scanning; JSONL **audit trail**.
+- **`HumanInTheLoop`** — approval requests with async `wait()` + timeout → approved /
+  denied / timed_out / cancelled; audit of who decided what.
+
+### 6. Tools — `core/tools/` (Cursor/Codex-style tool composition + sandbox)
+- **`ToolRegistry`** — wraps any executor (`tools.ToolRegistry` shape:
+  `get_tool_definitions()` + `tool_*` handlers) behind the `IToolExecutor` interface.
+- **Discovery** — search tools by keyword / `ToolCategory` / risk ceiling
+  (`RiskLevel` classification from name+description heuristics).
+- **Policy gate** — every execution runs through `PolicyEngine`; command tools are
+  checked with the **command text as the resource** (so `rm -rf` → deny works).
+- **Sandbox** — path arguments are resolved inside the workspace; escapes raise
+  `PermissionError` (via `is_relative_to`).
+- **Composition** — `compose()` chains tool outputs into later inputs
+  (`{"$result": 0, "$path": "field"}` templates); `run_parallel()` fans out.
+
+### 7. Integration — verified wiring
+- `ToolRegistry` implements `IToolExecutor` → a `ReActEngine` drives policy-guarded
+  tools directly; a **policy denial surfaces as a failed ACT step** and the agent
+  recovers with an alternative tool (proven by test).
+- `Reflector` implements `IReflector` → plugs into `ReActEngine` reflection turns.
+- `LLMEvaluator` implements `IEvaluator` → plugs into `ToTEngine`.
+
+### Verified status
+- `python -m pytest tests -q` → **178 passed** (was 103 at the start of Phase 2)
+- `python -m ruff check titan_agent/core/` → **All checks passed**
+- `python -m ruff check titan_agent/` → only the 4 known `ASYNC221` warnings remain
+  (Unix-only `wmctrl` subprocess calls in `tools.py`, cosmetic by decision)
+- Temp script `fix_llm.py` removed.
+
+## 🆕 Agent Core — Phase 3: live-loop integration (2026)
+
+The Phase 2 core engines are now wired into the **production agent loop** instead of
+being standalone modules — the difference that matters head-to-head against the
+models/agents in the 2026 comparison (Claude Code, Codex, Devin, Cline, Aider, ...).
+
+### 1. Structured reasoning in `run_task` — `titan_agent/structured.py`
+- New `strategy` parameter on `TitanAgent.run_task`: `auto | plan | react | tot`.
+  `auto` keeps the classic prompt-driven loop byte-for-byte (backward compatible);
+  the other three run the Phase 2 core engines inside the live event stream.
+- `StructuredEngine` composes **PlanExecutor → ReActEngine** (plan), pure
+  structured **ReActEngine** (react) or **ToTEngine → ReActEngine** (tot: Tree-of-
+  Thoughts picks the best strategy, then real tools execute it).
+- `LLMBridge` adapts the production `LLMClient` to `ILLMProvider`; `ToolBridge`
+  adapts `execute_tool_unified` to `IToolExecutor`; `ReflectorAdapter` gives the
+  loop a live self-critique phase.
+- Streams the same `AgentEvent` shape as the classic loop (`plan`, `thought`,
+  `tool_call`, `tool_result`, `status`, `final_answer`, `error`) — Web UI and CLI
+  work unchanged; the final answer is saved to conversation memory.
+
+### 2. Policy guardrails in the live loop (Cline-style)
+- Every tool activation from a structured run passes through `PolicyEngine`
+  (`DEFAULT_RULES`): `deny` blocks the call, `require_approval` waits for a
+  `HumanInTheLoop` approval (auto-denies in autonomous mode), everything is
+  logged to the audit trail. A blocked tool surfaces as a failed ACT step and the
+  agent recovers via an alternative tool.
+
+### 3. Frontier-class open-weight providers — `config.py` / `llm_client.py`
+- **`kimi`** provider (Kimi K3 — Moonshot, `https://api.moonshot.cn/v1`,
+  default model `kimi-k3`) and **`glm`** provider (GLM-5.3 Flash — Zhipu,
+  `https://open.bigmodel.cn/api/paas/v4`, default model `glm-5.3-flash`),
+  both OpenAI-compatible. Default resolution precedence is now
+  OpenRouter → Kimi → GLM → DeepSeek → Groq → OpenAI → Ollama; behaviour is
+  unchanged until the new keys are set (`KIMI_API_KEY` / `GLM_API_KEY`).
+
+### 4. Headless / CI runner — `titan_agent/headless.py`
+- `python -m titan_agent.headless "task" --strategy plan --mode deep` runs a task
+  to completion non-interactively (Claude-Code-style) and exits 0 only if a final
+  answer was produced (`--json` prints the full event log incl. exit code).
+- `run_headless(...)` is the programmatic API; `build_agent()` mirrors the web
+  server's exact wiring.
+
+### 5. Server pass-through
+- `ChatRequest.strategy`, the SSE stream, and the cron runner all accept and
+  forward `strategy`, so scheduled jobs and the dashboard can opt into structured
+  reasoning.
+
+### Verified status
+- `python -m pytest tests -q` → **193 passed** (178 + 15 new Phase 3 tests)
+- `python -m ruff check` on all changed files → **All checks passed**
+- `python -m titan_agent.headless --help` → CLI parsing verified
+
+## 🆕 Agent Core — Phase 4: Git-first workflow + core memory in the live loop (2026)
+
+Phase 4 closes the two biggest gaps against the 2026 comparison set: **Aider's
+git-first auto-commit** and the **MemGPT/Mem0-style episodic memory** that
+Devin/Claude Code use to carry experience across sessions.
+
+### 1. Git-first workflow (Aider-style) — `titan_agent/gitops.py`
+- New `git_status`, `git_diff`, `git_commit` **tools** registered on every agent
+  run (listed in the live tool catalog, routed through `execute_tool_unified`):
+  the model can inspect the working tree and commit its own edits, exactly like
+  Aider's "every change lands as a commit" loop.
+- `git_commit` stages everything (`git add -A`) and commits; if the repo has no
+  identity it sets a **repo-local** author (`Titan Agent <titan@localhost>`,
+  overridable via `TITAN_GIT_NAME` / `TITAN_GIT_EMAIL`) — never touches global
+  config and never clobbers an existing global identity.
+- Blocking git calls run through `asyncio.to_thread`, so the event loop keeps
+  streaming; everything is fail-soft ("not a git repository" is a friendly string,
+  never an exception).
+
+### 2. Auto-commit at end of run (Aider's git-first default)
+- `TitanAgent.run_task(..., auto_commit=True)` (or `TITAN_GIT_AUTO_COMMIT=1` in
+  `.env`) commits workspace changes after a successful run with a subject derived
+  from the task (`agent: <first 72 chars>`).
+- The `TitanAgent` constructor takes `git_root` (defaults to the workspace) and
+  finds the repo root by walking up for `.git`.
+- Plumbed through `headless.py` (`--auto-commit` flag) and `server.py`
+  (`ChatRequest.auto_commit`, cron runner).
+
+### 3. Episodic core memory in the live loop (`core/memory` MemorySystem)
+- `TitanAgent` now owns a `MemorySystem` (lazily opened — construction never
+  touches disk; the file is `workspace/core_memory.db`, gitignored) with
+  `core_memory_path` for custom locations.
+- **Write:** every completed run (classic _and_ structured paths) records an
+  episodic memory via `_finalize_run`: task, result, mode, strategy, session —
+  the agent's own run history becomes machine-remembered context.
+- **Read:** before each run, `_core_recall_block` pulls relevant past runs/
+  lessons into the system prompt (both classic loop and structured contexts),
+  only when records exist — fresh stores leave prompts byte-identical.
+
+### 4. Honest status
+- `python -m pytest tests -q` → **208 passed** (193 + 15 new Phase 4 tests)
+- `python -m ruff check` on all changed files → **All checks passed**
+- Verified: headless import, `ChatRequest.auto_commit`, agent import, temp-repo
+  end-to-end auto-commit (real `git init` + commit in pytest tmp dirs).
+
+## 🆕 Agent Core — Phase 5: Devin-style checkpoints & resume (2026)
+
+The continuity that defines long-horizon autonomy — **Devin's checkpointed
+sessions** and **Claude Code's `--continue`/`--resume`** — is now native to
+Titan. An interrupted session resumes from the exact state it stopped at.
+
+### 1. `titan_agent/checkpoint.py` (new)
+- `RunCheckpoint` — serializable snapshot: session, task, mode/effort/strategy,
+  conversation messages (last 40), steps done, tools used, status
+  (`running | done | error`), final answer.
+- `CheckpointStore` — SQLite, one row per session, Windows file-lock-safe;
+  `save` (upsert) / `load` / `list` (newest first) / `delete` / `stats`.
+
+### 2. Always-on checkpointing in `run_task`
+- Run start → `running`; after every tool step → messages + steps + tools saved
+  (main loop and reflection pass); on error → `error`; on completion → `done`
+  with final answer (classic _and_ structured `plan`/`react`/`tot` runs).
+
+### 3. Resume — `run_task(..., resume=True)`
+- A `done` session **replays its saved final answer without any LLM call**.
+- An interrupted session restores its conversation and emits
+  `Resuming session 'X' from checkpoint (N steps done, last status: ...)`, then
+  continues the classic loop from where it stopped.
+- No checkpoint → resume is a no-op (zero behaviour change).
+- Honest: structured strategies re-plan on resume (their state is in-memory);
+  the classic loop is restored verbatim (proven end-to-end: crash → error
+  checkpoint → resume → done).
+
+### 4. Plumbing
+- `headless.py --resume` (CLI), `run_headless(..., resume=...)`,
+  `ChatRequest.resume` (SSE) + cron runner.
+
+### 5. Verified status
+- `python -m pytest tests -q` → **220 passed** (208 + 12 new Phase 5 tests)
+- `python -m ruff check` on all changed files → **All checks passed**
+- End-to-end crash→resume→done proof runs green; CLI `--help` shows `--resume`.

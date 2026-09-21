@@ -1,8 +1,10 @@
-import sys
 import asyncio
+import sys
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from .tools import ToolRegistry
+
 
 class DeepCoderEngine:
     """
@@ -47,9 +49,9 @@ class DeepCoderEngine:
     async def execute_coding_cycle(
         self,
         task_name: str,
-        files_to_create: Dict[str, str],
-        test_script_content: Optional[str] = None
-    ) -> Dict[str, Any]:
+        files_to_create: dict[str, str],
+        test_script_content: str | None = None
+    ) -> dict[str, Any]:
         """
         Executes a deep coding cycle:
         1. Writes files
@@ -57,7 +59,7 @@ class DeepCoderEngine:
         3. Runs tests
         4. Reports verification status
         """
-        results = {
+        results: dict[str, Any] = {
             "task": task_name,
             "created_files": [],
             "syntax_checks": {},

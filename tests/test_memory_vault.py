@@ -1,11 +1,10 @@
 """Memory Vault scope + handoff tests (Block 3: Hermes Memory Vault pattern)."""
 import sys
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from titan_agent.memory import MemoryManager, VALID_SCOPES
+from titan_agent.memory import VALID_SCOPES, MemoryManager
 
 
 def test_vault_scoped_write_and_search(tmp_path):

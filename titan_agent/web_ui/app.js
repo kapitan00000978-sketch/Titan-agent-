@@ -117,10 +117,10 @@ function setupEventListeners() {
   saveSettingsBtn.addEventListener("click", saveConfig);
   document.getElementById("scan-local-btn").addEventListener("click", scanLocalModels);
 
-  // Puter Quick Model Chips
+  // Quick Model Chips (Puter default; data-provider overrides, e.g. OmniRoute)
   document.querySelectorAll(".model-chip").forEach(btn => {
     btn.addEventListener("click", () => {
-      providerSelect.value = "puter";
+      providerSelect.value = btn.dataset.provider || "puter";
       modelInput.value = displayModel(btn.dataset.model);
       apiKeyInput.value = "";
     });

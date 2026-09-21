@@ -3,7 +3,7 @@ import re
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import BASE_DIR
 
@@ -19,7 +19,7 @@ def _tokens(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9][a-z0-9_\-']*", str(text).lower()))
 
 
-def _normalize_scope(scope: Optional[str]) -> str:
+def _normalize_scope(scope: str | None) -> str:
     s = (scope or "global").strip().lower()
     return s if s in VALID_SCOPES else "global"
 
@@ -120,7 +120,7 @@ class MemoryManager:
             return messages
 
     # ------------------------------------------------------------ Knowledge
-    def remember_fact(self, key: str, value: str, category: str = "general", scope: Optional[str] = None):
+    def remember_fact(self, key: str, value: str, category: str = "general", scope: str | None = None):
         if scope:
             # Scoped Memory Vault write (e.g. project/team/user)
             self.vault_remember(scope, key, value, category)
@@ -134,7 +134,7 @@ class MemoryManager:
             """, (category, key, value, time.time()))
             conn.commit()
 
-    def search_knowledge(self, query: str, limit: int = 5, scope: Optional[str] = None) -> list[dict[str, str]]:
+    def search_knowledge(self, query: str, limit: int = 5, scope: str | None = None) -> list[dict[str, str]]:
         if scope:
             return self.vault_search(query, limit=limit, scope=scope)
         with self._get_conn() as conn:
@@ -197,7 +197,7 @@ class MemoryManager:
             """, (scope, key, category, value, time.time()))
             conn.commit()
 
-    def vault_search(self, query: str, limit: int = 5, scope: Optional[str] = None) -> list[dict[str, str]]:
+    def vault_search(self, query: str, limit: int = 5, scope: str | None = None) -> list[dict[str, str]]:
         with self._get_conn() as conn:
             cursor = conn.cursor()
             if scope:
@@ -214,7 +214,7 @@ class MemoryManager:
                 """, (f"%{query}%", f"%{query}%", limit))
             return [{"scope": r[0], "category": r[1], "key": r[2], "value": r[3]} for r in cursor.fetchall()]
 
-    def vault_list(self, scope: Optional[str] = None, limit: int = 100) -> list[dict[str, str]]:
+    def vault_list(self, scope: str | None = None, limit: int = 100) -> list[dict[str, str]]:
         with self._get_conn() as conn:
             cursor = conn.cursor()
             if scope:
@@ -235,9 +235,10 @@ class MemoryManager:
                 VALUES (?, ?, ?, 'open', ?)
             """, (_normalize_scope(scope), title, content, time.time()))
             conn.commit()
-            return cursor.lastrowid
+            rowid = cursor.lastrowid
+            return rowid if rowid is not None else 0
 
-    def list_handoffs(self, status: Optional[str] = None, limit: int = 50) -> list[dict[str, Any]]:
+    def list_handoffs(self, status: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         with self._get_conn() as conn:
             cursor = conn.cursor()
             if status:

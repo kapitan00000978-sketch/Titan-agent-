@@ -7,7 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from titan_agent.skills import SkillRegistry, _parse_front_matter
 
-
 SKILL_DIR = Path(__file__).parent / "test_skills_dir"
 
 

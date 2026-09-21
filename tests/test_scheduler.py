@@ -1,13 +1,13 @@
 """Cron scheduler tests (Block 2: Hermes-class scheduled jobs)."""
 import asyncio
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from titan_agent.scheduler import CronScheduler, _matches_cron, _parse_cron
 from datetime import datetime
+
+from titan_agent.scheduler import CronScheduler, _matches_cron, _parse_cron
 
 
 def test_parse_cron_star_and_ranges():

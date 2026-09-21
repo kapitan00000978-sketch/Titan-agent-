@@ -1,23 +1,34 @@
+import asyncio
 import json
+import logging
 import re
+from typing import Any
+
 import aiohttp
-from typing import List, Dict, Any, Optional
+
 from .config import (
-    DEFAULT_PROVIDER,
+    COMPLETIONS_API_KEY,
+    COMPLETIONS_BASE_URL,
+    DEEPSEEK_API_KEY,
     DEFAULT_MODEL,
+    DEFAULT_PROVIDER,
+    GLM_API_KEY,
+    GLM_BASE_URL,
+    GROQ_API_KEY,
+    KIMI_API_KEY,
+    KIMI_BASE_URL,
+    OLLAMA_BASE_URL,
+    OMNI_API_KEY,
+    OMNI_BASE_URL,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     OPENROUTER_API_KEY,
-    GROQ_API_KEY,
-    DEEPSEEK_API_KEY,
-    OLLAMA_BASE_URL,
-    COMPLETIONS_API_KEY,
-    COMPLETIONS_BASE_URL,
 )
 from .token_limit import TokenRateLimiter, estimate_tokens
 
+
 class LLMResponse:
-    def __init__(self, content: str = "", tool_calls: Optional[List[Dict[str, Any]]] = None, thoughts: str = ""):
+    def __init__(self, content: str = "", tool_calls: list[dict[str, Any]] | None = None, thoughts: str = ""):
         self.content = content or ""
         self.tool_calls = tool_calls or []
         self.thoughts = thoughts or ""
@@ -30,7 +41,7 @@ class LLMResponse:
         }
 
 class LLMClient:
-    def __init__(self, provider: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, provider: str | None = None, model: str | None = None):
         self.provider = provider or DEFAULT_PROVIDER
         self.model = model or DEFAULT_MODEL
         self._setup_credentials()
@@ -47,6 +58,19 @@ class LLMClient:
         elif self.provider == "deepseek":
             self.base_url = "https://api.deepseek.com/v1"
             self.api_key = DEEPSEEK_API_KEY
+        elif self.provider == "kimi":
+            # Kimi K3 (Moonshot) — frontier-class open-weight model, OpenAI-compatible.
+            self.base_url = KIMI_BASE_URL
+            self.api_key = KIMI_API_KEY
+        elif self.provider == "glm":
+            # GLM-5.3 Flash (Zhipu) — cheap strong brain, OpenAI-compatible.
+            self.base_url = GLM_BASE_URL
+            self.api_key = GLM_API_KEY
+        elif self.provider == "omni":
+            # OmniRoute — self-hosted AI gateway (localhost:20128) with smart
+            # auto-routing models (auto, auto/coding, auto/fast, ...).
+            self.base_url = OMNI_BASE_URL
+            self.api_key = OMNI_API_KEY
         elif self.provider == "ollama":
             self.base_url = f"{OLLAMA_BASE_URL}/v1"
             self.api_key = "ollama"
@@ -65,7 +89,7 @@ class LLMClient:
             self.base_url = OPENAI_BASE_URL
             self.api_key = OPENAI_API_KEY
 
-    def set_model(self, provider: str, model: str, api_key: Optional[str] = None, base_url: Optional[str] = None):
+    def set_model(self, provider: str, model: str, api_key: str | None = None, base_url: str | None = None):
         self.provider = provider
         self.model = model
         if api_key:
@@ -75,9 +99,9 @@ class LLMClient:
         else:
             self._setup_credentials()
 
-    @staticmethod
-    async def detect_local_models() -> Dict[str, List[str]]:
+    async def detect_local_models() -> dict[str, list[str]]:
         """Scans Ollama and LM Studio for local models."""
+        log = logging.getLogger(__name__)
         results = {"ollama": [], "lmstudio": []}
         async with aiohttp.ClientSession() as session:
             # Check Ollama
@@ -86,19 +110,19 @@ class LLMClient:
                     if resp.status == 200:
                         data = await resp.json()
                         results["ollama"] = [m["name"] for m in data.get("models", [])]
-            except Exception:
-                pass
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                log.debug("Ollama model detection failed: %s", e)
             # Check LM Studio
             try:
                 async with session.get("http://localhost:1234/v1/models", timeout=aiohttp.ClientTimeout(total=2)) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         results["lmstudio"] = [m["id"] for m in data.get("data", [])]
-            except Exception:
-                pass
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                log.debug("LM Studio model detection failed: %s", e)
         return results
 
-    def _extract_thoughts_and_tools(self, text: str) -> tuple[str, str, List[Dict[str, Any]]]:
+    def _extract_thoughts_and_tools(self, text: str) -> tuple[str, str, list[dict[str, Any]]]:
         thoughts = ""
         tool_calls = []
 
@@ -123,7 +147,7 @@ class LLMClient:
                             "arguments": json.dumps(parsed.get("arguments", parsed.get("parameters", {})))
                         }
                     })
-            except Exception:
+            except json.JSONDecodeError:
                 pass
 
         text = re.sub(r"<tool_call>.*?</tool_call>", "", text, flags=re.DOTALL | re.IGNORECASE).strip()
@@ -131,8 +155,8 @@ class LLMClient:
 
     async def chat_completion(
         self,
-        messages: List[Dict[str, Any]],
-        tools: Optional[List[Dict[str, Any]]] = None,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
         temperature: float = 0.6,
         max_tokens: int = 4096
     ) -> LLMResponse:
@@ -174,8 +198,7 @@ class LLMClient:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=180)) as resp:
+        async with aiohttp.ClientSession() as session, session.post(url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=180)) as resp:
                 if resp.status != 200:
                     err_body = await resp.text()
                     hint = ""

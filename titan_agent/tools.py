@@ -6,9 +6,8 @@ import shutil
 import subprocess
 import sys
 import urllib.request
-from math import log
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     from ddgs import DDGS
@@ -34,11 +33,11 @@ class WorkspaceRAG:
     CHUNK_SIZE = 900
     CHUNK_OVERLAP = 140
     MAX_FILE_BYTES = 512 * 1024
-    TEXT_SUFFIXES = {
+    TEXT_SUFFIXES: frozenset[str] = frozenset({
         ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".md", ".txt",
         ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".csv", ".xml",
         ".sql", ".sh", ".ps1", ".bat", ".env", ".log",
-    }
+    })
 
     def __init__(self, workspace: Path):
         self.workspace = Path(workspace)
@@ -56,7 +55,7 @@ class WorkspaceRAG:
                 if fpath.stat().st_size > self.MAX_FILE_BYTES:
                     continue
                 text = fpath.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
+            except OSError:
                 continue
             if not text.strip():
                 continue
@@ -82,7 +81,7 @@ class WorkspaceRAG:
         if not chunk_tokens or not query_tokens or avg_len <= 0:
             return 0.0
         dl = len(chunk_tokens)
-        freq: Dict[str, int] = {}
+        freq: dict[str, int] = {}
         for t in chunk_tokens:
             freq[t] = freq.get(t, 0) + 1
         score = 0.0
@@ -119,7 +118,7 @@ class WorkspaceRAG:
         candidates.sort(key=lambda c: c["score"], reverse=True)
         # Keep at most one chunk per file unless the file is clearly central.
         picked: list[dict[str, Any]] = []
-        per_file: Dict[str, int] = {}
+        per_file: dict[str, int] = {}
         for c in candidates:
             per_file[c["path"]] = per_file.get(c["path"], 0) + 1
             if per_file[c["path"]] <= 2 and len(picked) < max(top_k, 1):
@@ -407,6 +406,159 @@ class ToolRegistry:
                         "required": ["action"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "clipboard_get",
+                    "description": "Reads text from the system clipboard.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "clipboard_set",
+                    "description": "Writes text to the system clipboard.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {
+                                "type": "string",
+                                "description": "Text to put on the clipboard."
+                            }
+                        },
+                        "required": ["text"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "screenshot",
+                    "description": "Takes a screenshot of the entire screen or a specific monitor and returns it as base64 PNG.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "monitor": {
+                                "type": "integer",
+                                "description": "Monitor index (0 = primary, 1 = secondary, etc.). Default 0.",
+                                "default": 0
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "key_press",
+                    "description": "Simulates keyboard key presses (e.g. 'ctrl+c', 'enter', 'alt+tab', 'win+r').",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "keys": {
+                                "type": "string",
+                                "description": "Key combination to press (e.g. 'ctrl+c', 'enter', 'alt+tab', 'win+r', 'f5')."
+                            }
+                        },
+                        "required": ["keys"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mouse_click",
+                    "description": "Simulates a mouse click at the specified coordinates.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "x": {
+                                "type": "integer",
+                                "description": "X coordinate."
+                            },
+                            "y": {
+                                "type": "integer",
+                                "description": "Y coordinate."
+                            },
+                            "button": {
+                                "type": "string",
+                                "enum": ["left", "right", "middle"],
+                                "description": "Mouse button to click. Default 'left'.",
+                                "default": "left"
+                            },
+                            "double": {
+                                "type": "boolean",
+                                "description": "Whether to double-click. Default false.",
+                                "default": False
+                            }
+                        },
+                        "required": ["x", "y"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mouse_move",
+                    "description": "Moves the mouse cursor to the specified coordinates.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "x": {
+                                "type": "integer",
+                                "description": "X coordinate."
+                            },
+                            "y": {
+                                "type": "integer",
+                                "description": "Y coordinate."
+                            },
+                            "duration": {
+                                "type": "number",
+                                "description": "Duration in seconds for smooth movement. Default 0 (instant).",
+                                "default": 0
+                            }
+                        },
+                        "required": ["x", "y"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_windows",
+                    "description": "Lists all visible windows with their titles, handles, and process names.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "window_control",
+                    "description": "Controls a window: minimize, maximize, restore, close, or bring to front.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["minimize", "maximize", "restore", "close", "foreground"],
+                                "description": "Action to perform on the window."
+                            },
+                            "title": {
+                                "type": "string",
+                                "description": "Window title (partial match) or handle (HWND as string)."
+                            }
+                        },
+                        "required": ["action", "title"]
+                    }
+                }
             }
         ]
 
@@ -419,7 +571,7 @@ class ToolRegistry:
                 return await handler(**args)
             else:
                 return handler(**args)
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             return f"Tool execution failed for '{name}': {e!s}"
 
     async def tool_execute_command(self, command: str, cwd: str = "") -> str:
@@ -446,7 +598,7 @@ class ToolRegistry:
             return "\n".join(res) if res else "Command executed with no output."
         except asyncio.TimeoutError:
             return "Error: Command timed out after 45 seconds."
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             return f"Command execution error: {e!s}"
 
     def tool_read_file(self, path: str) -> str:
@@ -459,7 +611,7 @@ class ToolRegistry:
             with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
             return content if content else "(File is empty)"
-        except Exception as e:
+        except OSError as e:
             return f"Error reading file '{fpath}': {e!s}"
 
     def tool_write_file(self, path: str, content: str) -> str:
@@ -469,7 +621,7 @@ class ToolRegistry:
             with open(fpath, "w", encoding="utf-8") as f:
                 f.write(content)
             return f"Successfully wrote {len(content)} characters to {fpath}."
-        except Exception as e:
+        except OSError as e:
             return f"Error writing file '{fpath}': {e!s}"
 
     def tool_edit_file(self, path: str, target_text: str, replacement_text: str) -> str:
@@ -485,10 +637,10 @@ class ToolRegistry:
             with open(fpath, "w", encoding="utf-8") as f:
                 f.write(new_content)
             return f"Successfully updated '{fpath}'."
-        except Exception as e:
+        except OSError as e:
             return f"Error editing file '{fpath}': {e!s}"
 
-    def tool_list_directory(self, path: str = "") -> str:
+    def tool_list_directory(self, path: str | Path = "") -> str:
         target = self._resolve_path(path) if path else self.workspace
         if not target.exists():
             return f"Error: Directory '{target}' does not exist."
@@ -499,7 +651,7 @@ class ToolRegistry:
                 size = item.stat().st_size if item.is_file() else "-"
                 items.append(f"[{kind}] {item.name} ({size} bytes)")
             return "\n".join(items) if items else "(Directory is empty)"
-        except Exception as e:
+        except OSError as e:
             return f"Error listing directory '{target}': {e!s}"
 
     async def tool_web_search(self, query: str, max_results: int = 5) -> str:
@@ -512,7 +664,7 @@ class ToolRegistry:
                         results.append(f"Title: {r.get('title')}\nSnippet: {r.get('body')}\nURL: {r.get('href')}\n---")
                 return "\n".join(results) if results else "No results found."
             return await loop.run_in_executor(None, _search)
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             return f"Search error: {e!s}"
 
     async def tool_scrape_webpage(self, url: str) -> str:
@@ -531,7 +683,7 @@ class ToolRegistry:
                 clean_lines = [line.strip() for line in text.splitlines() if line.strip()]
                 return "\n".join(clean_lines)[:6000]
             return await loop.run_in_executor(None, _fetch)
-        except Exception as e:
+        except (urllib.error.URLError, OSError, RuntimeError) as e:
             return f"Scraping error for {url}: {e!s}"
 
     async def tool_python_eval(self, code: str) -> str:
@@ -548,7 +700,7 @@ class ToolRegistry:
             if stderr:
                 res.append(f"STDERR:\n{stderr.decode('utf-8', errors='ignore')}")
             return "\n".join(res) if res else "(Code executed with no output)"
-        except Exception as e:
+        except (OSError, RuntimeError, asyncio.TimeoutError) as e:
             return f"Python execution error: {e!s}"
 
     async def tool_deep_search(self, topic: str) -> str:
@@ -567,7 +719,7 @@ class ToolRegistry:
                 summary.append(f"**[{p['title']}]**: {p['content'][:800]}...\n")
         return "\n".join(summary)
 
-    async def tool_deep_coder(self, task_name: str, files: Dict[str, str], test_code: str = "") -> str:
+    async def tool_deep_coder(self, task_name: str, files: dict[str, str], test_code: str = "") -> str:
         from .deep_coder import DeepCoderEngine
         engine = DeepCoderEngine(self)
         res = await engine.execute_coding_cycle(task_name, files, test_code if test_code else None)
@@ -597,7 +749,7 @@ class ToolRegistry:
                 lines.append(f"\n**{r['path']}** (chunk {r['chunk_index']}, score {r['score']}):")
                 lines.append(r["snippet"])
             return "\n".join(lines)
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             return f"Workspace RAG error: {e!s}"
 
     def tool_launch_application(self, app_or_command: str) -> str:
@@ -607,11 +759,13 @@ class ToolRegistry:
             else:
                 subprocess.Popen(app_or_command, shell=True)
             return f"Launched application/command: '{app_or_command}'"
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             return f"Failed to launch application: {e!s}"
 
     def tool_system_info(self) -> str:
         """Reads live host environment facts (OS, CPU, RAM, disk, Python)."""
+        import logging
+        log = logging.getLogger(__name__)
         try:
             lines = []
             lines.append(f"OS: {platform.system()} {platform.release()} ({platform.version()})")
@@ -653,31 +807,33 @@ class ToolRegistry:
                     total_kb = int(meminfo.get("MemTotal", "0").split()[0])
                     avail_kb = int(meminfo.get("MemAvailable", "0").split()[0])
                     lines.append(f"RAM: {avail_kb/1048576:.1f} GB free / {total_kb/1048576:.1f} GB total")
-            except Exception as e:
+            except (OSError, ValueError) as e:
+                log.debug("RAM read failed: %s", e)
                 lines.append(f"RAM: read failed ({e})")
 
             # Disk on workspace drive
             try:
                 usage = shutil.disk_usage(str(self.workspace))
                 lines.append(f"Disk: {usage.free/(1024**3):.1f} GB free / {usage.total/(1024**3):.1f} GB total")
-            except Exception:
-                pass
+            except OSError as e:
+                log.debug("Disk usage failed: %s", e)
 
             # Software hints
             try:
-                node_ver = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=5).stdout.strip()
+                node_ver = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=5, check=False).stdout.strip()
                 lines.append(f"Node.js: {node_ver or 'not found'}")
-            except Exception:
-                pass
+            except (OSError, subprocess.SubprocessError) as e:
+                log.debug("Node version check failed: %s", e)
             try:
-                git_ver = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=5).stdout.strip()
+                git_ver = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=5, check=False).stdout.strip()
                 lines.append(f"Git: {git_ver or 'not found'}")
-            except Exception:
-                pass
+            except (OSError, subprocess.SubprocessError) as e:
+                log.debug("Git version check failed: %s", e)
 
             lines.append(f"Workspace: {self.workspace}")
             return "\n".join(lines)
-        except Exception as e:
+        except RuntimeError as e:
+            log.error("System info error: %s", e)
             return f"System info error: {e!s}"
 
     async def tool_manage_processes(self, action: str = "list", pattern: str = "") -> str:
@@ -763,5 +919,401 @@ class ToolRegistry:
                     return f"Error: unknown action '{action}' (use 'list' or 'kill')."
         except asyncio.TimeoutError:
             return "Error: process query timed out after 20 seconds."
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             return f"Manage processes error: {e!s}"
+
+    def tool_clipboard_get(self) -> str:
+        """Reads text from the system clipboard."""
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                ctypes.windll.user32.OpenClipboard(0)
+                try:
+                    if ctypes.windll.user32.IsClipboardFormatAvailable(13):  # CF_UNICODETEXT
+                        h_mem = ctypes.windll.user32.GetClipboardData(13)
+                        if h_mem:
+                            locked = ctypes.windll.kernel32.GlobalLock(h_mem)
+                            if locked:
+                                text = ctypes.wstring_at(locked)
+                                ctypes.windll.kernel32.GlobalUnlock(h_mem)
+                                return text
+                    return "(Clipboard empty or not text)"
+                finally:
+                    ctypes.windll.user32.CloseClipboard()
+            else:
+                # Unix: use xclip or xsel
+                for cmd in [["xclip", "-selection", "clipboard", "-o"], ["xsel", "-b"]]:
+                    try:
+                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=2, check=False)
+                        if result.returncode == 0 and result.stdout:
+                            return result.stdout
+                    except (OSError, subprocess.SubprocessError):
+                        continue
+                return "(Clipboard tools not available: install xclip or xsel)"
+        except RuntimeError as e:
+            return f"Clipboard read error: {e!s}"
+
+    def tool_clipboard_set(self, text: str) -> str:
+        """Writes text to the system clipboard."""
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                ctypes.windll.user32.OpenClipboard(0)
+                try:
+                    ctypes.windll.user32.EmptyClipboard()
+                    h_mem = ctypes.windll.kernel32.GlobalAlloc(0x0042, (len(text) + 1) * 2)  # GMEM_MOVEABLE
+                    if h_mem:
+                        locked = ctypes.windll.kernel32.GlobalLock(h_mem)
+                        if locked:
+                            ctypes.memmove(locked, text.encode("utf-16-le"), len(text) * 2 + 2)
+                            ctypes.windll.kernel32.GlobalUnlock(h_mem)
+                            ctypes.windll.user32.SetClipboardData(13, h_mem)  # CF_UNICODETEXT
+                            return f"Clipboard set ({len(text)} chars)"
+                    return "Failed to allocate clipboard memory"
+                finally:
+                    ctypes.windll.user32.CloseClipboard()
+            else:
+                # Unix: use xclip or xsel
+                for cmd in [["xclip", "-selection", "clipboard"], ["xsel", "-b", "-i"]]:
+                    try:
+                        proc = subprocess.run(cmd, input=text, text=True, timeout=2, capture_output=True, check=False)
+                        if proc.returncode == 0:
+                            return f"Clipboard set ({len(text)} chars)"
+                    except (OSError, subprocess.SubprocessError):
+                        continue
+                return "(Clipboard tools not available: install xclip or xsel)"
+        except RuntimeError as e:
+            return f"Clipboard write error: {e!s}"
+
+    def tool_screenshot(self, monitor: int = 0) -> str:
+        """Takes a screenshot of the specified monitor and returns base64 PNG."""
+        try:
+            if sys.platform == "win32":
+                import base64
+                import ctypes
+                from ctypes import wintypes
+                
+                user32 = ctypes.windll.user32
+                gdi32 = ctypes.windll.gdi32
+                
+                # Get monitor info
+                monitors = []
+                def enum_proc(hMonitor, hdcMonitor, lprcMonitor, dwData):
+                    monitors.append(hMonitor)
+                    return True
+                MONITORENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HMONITOR, wintypes.HDC, ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
+                user32.EnumDisplayMonitors(0, 0, MONITORENUMPROC(enum_proc), 0)
+                
+                if monitor >= len(monitors):
+                    return f"Error: Monitor {monitor} not found (only {len(monitors)} monitors)"
+                
+                h_mon = monitors[monitor]
+                mi = wintypes.MONITORINFO()
+                mi.cbSize = ctypes.sizeof(mi)
+                user32.GetMonitorInfoW(h_mon, ctypes.byref(mi))
+                
+                left, top, right, bottom = mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right, mi.rcMonitor.bottom
+                width = right - left
+                height = bottom - top
+                
+                hdc_screen = user32.GetDC(0)
+                hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
+                hbmp = gdi32.CreateCompatibleBitmap(hdc_screen, width, height)
+                old_bmp = gdi32.SelectObject(hdc_mem, hbmp)
+                
+                gdi32.BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, left, top, 0x00CC0020)  # SRCCOPY
+                
+                # Get bitmap bits
+                bmi = wintypes.BITMAPINFO()
+                bmi.bmiHeader.biSize = ctypes.sizeof(wintypes.BITMAPINFOHEADER)
+                bmi.bmiHeader.biWidth = width
+                bmi.bmiHeader.biHeight = -height  # negative for top-down
+                bmi.bmiHeader.biPlanes = 1
+                bmi.bmiHeader.biBitCount = 32
+                bmi.bmiHeader.biCompression = 0  # BI_RGB
+                
+                bits = ctypes.create_string_buffer(width * height * 4)
+                gdi32.GetDIBits(hdc_mem, hbmp, 0, height, bits, ctypes.byref(bmi), 0)
+                
+                # Convert to PNG using Python
+                import io
+
+                from PIL import Image
+                img = Image.frombuffer('RGBA', (width, height), bits.raw, 'raw', 'BGRA', 0, 1)
+                buf = io.BytesIO()
+                img.save(buf, format='PNG')
+                b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+                
+                gdi32.SelectObject(hdc_mem, old_bmp)
+                gdi32.DeleteObject(hbmp)
+                gdi32.DeleteDC(hdc_mem)
+                user32.ReleaseDC(0, hdc_screen)
+                
+                return f"data:image/png;base64,{b64}"
+            else:
+                # Unix: use scrot or maim
+                import base64
+                for cmd in [["scrot", "-u", "-"], ["maim", "-u"]]:
+                    try:
+                        result = subprocess.run(cmd, capture_output=True, timeout=5, check=False)
+                        if result.returncode == 0 and result.stdout:
+                            b64 = base64.b64encode(result.stdout).decode('ascii')
+                            return f"data:image/png;base64,{b64}"
+                    except (OSError, subprocess.SubprocessError):
+                        continue
+                return "(Screenshot tools not available: install scrot or maim)"
+        except RuntimeError as e:
+            return f"Screenshot error: {e!s}"
+
+    def tool_key_press(self, keys: str) -> str:
+        """Simulates keyboard key presses."""
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                import time
+                
+                user32 = ctypes.windll.user32
+                
+                # Parse key combination
+                key_map = {
+                    'ctrl': 0x11, 'control': 0x11,
+                    'alt': 0x12,
+                    'shift': 0x10,
+                    'win': 0x5B, 'windows': 0x5B,
+                    'enter': 0x0D, 'return': 0x0D,
+                    'tab': 0x09,
+                    'esc': 0x1B, 'escape': 0x1B,
+                    'space': 0x20,
+                    'up': 0x26, 'down': 0x28, 'left': 0x25, 'right': 0x27,
+                    'f1': 0x70, 'f2': 0x71, 'f3': 0x72, 'f4': 0x73,
+                    'f5': 0x74, 'f6': 0x75, 'f7': 0x76, 'f8': 0x77,
+                    'f9': 0x78, 'f10': 0x79, 'f11': 0x7A, 'f12': 0x7B,
+                    'a': 0x41, 'b': 0x42, 'c': 0x43, 'd': 0x44, 'e': 0x45,
+                    'f': 0x46, 'g': 0x47, 'h': 0x48, 'i': 0x49, 'j': 0x4A,
+                    'k': 0x4B, 'l': 0x4C, 'm': 0x4D, 'n': 0x4E, 'o': 0x4F,
+                    'p': 0x50, 'q': 0x51, 'r': 0x52, 's': 0x53, 't': 0x54,
+                    'u': 0x55, 'v': 0x56, 'w': 0x57, 'x': 0x58, 'y': 0x59, 'z': 0x5A,
+                    '0': 0x30, '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34,
+                    '5': 0x35, '6': 0x36, '7': 0x37, '8': 0x38, '9': 0x39,
+                }
+                
+                parts = [p.strip().lower() for p in keys.split('+')]
+                vk_codes = [key_map.get(p) for p in parts if p in key_map]
+                
+                if not vk_codes:
+                    return f"Error: Unknown keys in '{keys}'"
+                
+                # Press modifiers first
+                for vk in vk_codes[:-1]:
+                    user32.keybd_event(vk, 0, 0, 0)
+                    time.sleep(0.01)
+                
+                # Press main key
+                user32.keybd_event(vk_codes[-1], 0, 0, 0)
+                time.sleep(0.02)
+                user32.keybd_event(vk_codes[-1], 0, 2, 0)  # KEYEVENTF_KEYUP
+                
+                # Release modifiers
+                for vk in reversed(vk_codes[:-1]):
+                    user32.keybd_event(vk, 0, 2, 0)
+                    time.sleep(0.01)
+                
+                return f"Pressed: {keys}"
+            else:
+                # Unix: use xdotool
+                try:
+                    subprocess.run(["xdotool", "key", keys], timeout=3, check=False)
+                    return f"Pressed: {keys}"
+                except (OSError, subprocess.SubprocessError):
+                    return "(xdotool not installed)"
+        except RuntimeError as e:
+            return f"Key press error: {e!s}"
+
+    def tool_mouse_click(self, x: int, y: int, button: str = "left", double: bool = False) -> str:
+        """Simulates a mouse click at coordinates."""
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                import time
+                
+                user32 = ctypes.windll.user32
+                
+                # Move to position
+                user32.SetCursorPos(x, y)
+                time.sleep(0.02)
+                
+                button_map = {"left": (0x02, 0x04), "right": (0x08, 0x10), "middle": (0x20, 0x40)}
+                down, up = button_map.get(button, button_map["left"])
+                
+                def click_once():
+                    user32.mouse_event(down, 0, 0, 0, 0)
+                    time.sleep(0.02)
+                    user32.mouse_event(up, 0, 0, 0, 0)
+                
+                click_once()
+                if double:
+                    time.sleep(0.1)
+                    click_once()
+                
+                return f"Clicked {button} at ({x}, {y}){' (double)' if double else ''}"
+            else:
+                # Unix: use xdotool
+                try:
+                    btn_map = {"left": "1", "right": "3", "middle": "2"}
+                    btn = btn_map.get(button, "1")
+                    cmd = ["xdotool", "mousemove", str(x), str(y), "click"]
+                    if double:
+                        cmd.insert(-1, "--repeat")
+                        cmd.insert(-1, "2")
+                    else:
+                        cmd.append(btn)
+                    subprocess.run(cmd, timeout=3, check=False)
+                    return f"Clicked {button} at ({x}, {y})"
+                except (OSError, subprocess.SubprocessError):
+                    return "(xdotool not installed)"
+        except RuntimeError as e:
+            return f"Mouse click error: {e!s}"
+
+    def tool_mouse_move(self, x: int, y: int, duration: float = 0) -> str:
+        """Moves mouse cursor to coordinates."""
+        try:
+            import time
+            if sys.platform == "win32":
+                import ctypes
+                user32 = ctypes.windll.user32
+                if duration > 0:
+                    # Smooth move
+                    cur_x, cur_y = user32.GetCursorPos()
+                    steps = max(10, int(duration * 60))
+                    for i in range(1, steps + 1):
+                        t = i / steps
+                        nx = int(cur_x + (x - cur_x) * t)
+                        ny = int(cur_y + (y - cur_y) * t)
+                        user32.SetCursorPos(nx, ny)
+                        time.sleep(duration / steps)
+                else:
+                    user32.SetCursorPos(x, y)
+                return f"Moved mouse to ({x}, {y})"
+            else:
+                subprocess.run(["xdotool", "mousemove", str(x), str(y)], timeout=3, check=False)
+                return f"Moved mouse to ({x}, {y})"
+        except RuntimeError as e:
+            return f"Mouse move error: {e!s}"
+
+    async def tool_list_windows(self) -> str:
+        """Lists all visible windows."""
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                from ctypes import wintypes
+                
+                user32 = ctypes.windll.user32
+                
+                windows = []
+                
+                def enum_windows(hwnd, lparam):
+                    if user32.IsWindowVisible(hwnd):
+                        length = user32.GetWindowTextLengthW(hwnd)
+                        if length > 0:
+                            buff = ctypes.create_unicode_buffer(length + 1)
+                            user32.GetWindowTextW(hwnd, buff, length + 1)
+                            title = buff.value
+                            # Get process name
+                            pid = wintypes.DWORD()
+                            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                            try:
+                                import psutil
+                                proc = psutil.Process(pid.value)
+                                proc_name = proc.name()
+                            except RuntimeError:
+                                proc_name = f"PID:{pid.value}"
+                            windows.append(f"HWND:{hwnd} | {proc_name} | {title[:80]}")
+                    return True
+                
+                WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+                user32.EnumWindows(WNDENUMPROC(enum_windows), 0)
+                
+                return "\n".join(windows[:50]) if windows else "No visible windows"
+            else:
+                # Unix: use wmctrl
+                try:
+                    result = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True, timeout=3, check=False)
+                    if result.returncode == 0:
+                        return result.stdout[:3000]
+                    return "(wmctrl not available)"
+                except (OSError, subprocess.SubprocessError):
+                    return "(wmctrl not installed)"
+        except RuntimeError as e:
+            return f"List windows error: {e!s}"
+
+    async def tool_window_control(self, action: str, title: str) -> str:
+        """Controls a window: minimize, maximize, restore, close, or bring to front."""
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                from ctypes import wintypes
+                
+                user32 = ctypes.windll.user32
+                
+                target_hwnd = None
+                
+                # Try as HWND first
+                if title.isdigit():
+                    target_hwnd = wintypes.HWND(int(title))
+                    if not user32.IsWindow(target_hwnd):
+                        target_hwnd = None
+                
+                # Find by title if not found
+                if not target_hwnd:
+                    def enum_windows(hwnd, lparam):
+                        nonlocal target_hwnd
+                        if user32.IsWindowVisible(hwnd):
+                            length = user32.GetWindowTextLengthW(hwnd)
+                            if length > 0:
+                                buff = ctypes.create_unicode_buffer(length + 1)
+                                user32.GetWindowTextW(hwnd, buff, length + 1)
+                                if title.lower() in buff.value.lower():
+                                    target_hwnd = hwnd
+                                    return False  # Stop enumeration
+                        return True
+                    
+                    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+                    user32.EnumWindows(WNDENUMPROC(enum_windows), 0)
+                
+                if not target_hwnd:
+                    return f"Window not found: {title}"
+                
+                action_map = {
+                    "minimize": 6,      # SW_MINIMIZE
+                    "maximize": 3,      # SW_MAXIMIZE
+                    "restore": 9,       # SW_RESTORE
+                    "close": None,      # Special: send WM_CLOSE
+                    "foreground": None, # Special: SetForegroundWindow
+                }
+                
+                if action == "close":
+                    user32.PostMessageW(target_hwnd, 0x0010, 0, 0)  # WM_CLOSE
+                    return f"Sent close message to window: {title}"
+                elif action == "foreground":
+                    user32.SetForegroundWindow(target_hwnd)
+                    return f"Brought window to front: {title}"
+                elif action in action_map:
+                    user32.ShowWindow(target_hwnd, action_map[action])
+                    return f"Window {action}: {title}"
+                else:
+                    return f"Unknown action: {action}"
+            else:
+                # Unix: use wmctrl/xdotool
+                try:
+                    if action == "close":
+                        subprocess.run(["wmctrl", "-c", title], timeout=3, check=False)
+                    elif action in ("minimize", "maximize", "restore"):
+                        state_map = {"minimize": "-b add,iconic", "maximize": "-b add,maximized_vert,maximized_horz", "restore": "-b remove,maximized_vert,maximized_horz"}
+                        subprocess.run(["wmctrl", "-r", title, state_map[action]], timeout=3, check=False)
+                    elif action == "foreground":
+                        subprocess.run(["wmctrl", "-a", title], timeout=3, check=False)
+                    return f"Window {action}: {title}"
+                except (OSError, subprocess.SubprocessError):
+                    return "(wmctrl not installed)"
+        except RuntimeError as e:
+            return f"Window control error: {e!s}"

@@ -1,15 +1,28 @@
 import asyncio
 import json
+import logging
+import os
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 
-from .config import MAX_ITERATIONS
+import aiohttp
+
+from .checkpoint import MAX_MESSAGES as CHECKPOINT_MAX_MESSAGES
+from .checkpoint import CheckpointStore, RunCheckpoint
+from .config import MAX_ITERATIONS, WORKSPACE_DIR
+from .core.memory.memory_system import MemorySystem
+from .core.memory.types import MemoryKind
+from .gitops import auto_commit as git_auto_commit
+from .gitops import git_commit, git_diff, git_status
 from .llm_client import LLMClient
 from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .skills import SkillRegistry
 from .telegram import TelegramError, TelegramManager
 from .tools import ToolRegistry
+
+log = logging.getLogger(__name__)
 
 TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI reasoning and execution engine, engineered to outperform classic agents (including Hermes-class and frontier-tier models) on real-world task completion.
 
@@ -144,7 +157,7 @@ def _compute_max_steps(mode: str, effort: str) -> int:
     if e not in VALID_EFFORTS:
         e = "auto"
     multiplier = 1.0 if e == "auto" else EFFORT_MULTIPLIER.get(e, 1.0)
-    return max(5, min(int(round(base * multiplier)), 48))
+    return max(5, min(round(base * multiplier), 48))
 
 class AgentEvent:
     def __init__(self, event_type: str, data: Any):
@@ -162,7 +175,13 @@ class TitanAgent:
         mcp: MCPManager | None = None,
         memory: MemoryManager | None = None,
         skills: SkillRegistry | None = None,
-        telegram: TelegramManager | None = None
+        telegram: TelegramManager | None = None,
+        core_memory: MemorySystem | None = None,
+        core_memory_path: Path | str | None = None,
+        git_root: Path | str | None = None,
+        auto_commit: bool | None = None,
+        checkpoint: CheckpointStore | None = None,
+        checkpoint_path: Path | str | None = None
     ):
         self.llm = llm or LLMClient()
         self.tools = tools or ToolRegistry()
@@ -171,6 +190,50 @@ class TitanAgent:
         self.skills = skills or SkillRegistry()
         self.telegram = telegram or TelegramManager()
         self.system_prompt = TITAN_SYSTEM_PROMPT
+        # ---- Phase 4: MemGPT-style core memory + Git-first workflow ----
+        self._core_memory = core_memory
+        self._core_memory_loaded = core_memory is not None
+        self.core_memory_path = Path(core_memory_path) if core_memory_path else (WORKSPACE_DIR / "core_memory.db")
+        self.git_root = Path(git_root).resolve() if git_root else WORKSPACE_DIR
+        self._auto_commit = auto_commit if auto_commit is not None else (
+            os.getenv("TITAN_GIT_AUTO_COMMIT", "").strip().lower() in ("1", "true", "yes")
+        )
+        # ---- Phase 5: Devin-style session checkpoints / resume ----
+        self._checkpoint = checkpoint
+        self._checkpoint_loaded = checkpoint is not None
+        self.checkpoint_path = Path(checkpoint_path) if checkpoint_path else (WORKSPACE_DIR / "checkpoints.db")
+
+    @property
+    def core_memory(self) -> MemorySystem | None:
+        """Phase 4: episodic/semantic store, lazily opened on first use so
+        construction never touches disk (memory must never break the agent)."""
+        if self._core_memory_loaded:
+            return self._core_memory
+        self._core_memory_loaded = True
+        try:
+            self._core_memory = MemorySystem(self.core_memory_path)
+        except Exception as exc:  # noqa: BLE001 - memory is best-effort
+            log.warning("core memory unavailable: %s", exc)
+            self._core_memory = None
+        return self._core_memory
+
+    @property
+    def auto_commit(self) -> bool:
+        """Whether completed runs auto-commit workspace changes (Aider-style)."""
+        return self._auto_commit
+
+    @property
+    def checkpoint_store(self) -> CheckpointStore | None:
+        """Phase 5: Devin-style checkpoint store, lazily opened on first use."""
+        if self._checkpoint_loaded:
+            return self._checkpoint
+        self._checkpoint_loaded = True
+        try:
+            self._checkpoint = CheckpointStore(self.checkpoint_path)
+        except Exception as exc:  # noqa: BLE001 - checkpointing is best-effort
+            log.warning("checkpoint store unavailable: %s", exc)
+            self._checkpoint = None
+        return self._checkpoint
 
     def _build_memory_tool_definitions(self) -> list[dict[str, Any]]:
         return [
@@ -398,6 +461,41 @@ class TitanAgent:
             },
         ]
 
+    def _build_git_tool_definitions(self) -> list[dict[str, Any]]:
+        """Git tools — Aider-style git-first workflow (read-only + explicit commit)."""
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "git_status",
+                    "description": "Shows the current git working-tree state (modified/untracked files) for the workspace repository.",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "git_diff",
+                    "description": "Shows uncommitted changes (diff --stat) in the workspace repository.",
+                    "parameters": {"type": "object", "properties": {}, "required": []},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "git_commit",
+                    "description": "Commits all current workspace changes with a descriptive message (Aider-style git-first workflow). Use after writing or editing files.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "message": {"type": "string", "description": "Concise commit message describing the change."}
+                        },
+                        "required": ["message"],
+                    },
+                },
+            },
+        ]
+
     def _build_tools_list(self) -> list[dict[str, Any]]:
         all_tools = list(self.tools.get_tool_definitions())
         # Add memory tools (agent-level, routed through MemoryManager)
@@ -406,6 +504,8 @@ class TitanAgent:
         all_tools.extend(self._build_skill_tool_definitions())
         # Add Telegram tools (agent-level, consent-gated through TelegramManager)
         all_tools.extend(self._build_telegram_tool_definitions())
+        # Add Git tools (agent-level, Aider-style git-first workflow)
+        all_tools.extend(self._build_git_tool_definitions())
         # Add MCP tools if connected
         all_tools.extend(self.mcp.get_all_tools())
         return all_tools
@@ -433,6 +533,11 @@ class TitanAgent:
             params = fn.get("parameters", {}).get("properties", {})
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
+        for t in self._build_git_tool_definitions():
+            fn = t.get("function", {})
+            params = fn.get("parameters", {}).get("properties", {})
+            param_hint = ", ".join(params.keys()) if params else "no params"
+            lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         mcp_tools = self.mcp.get_all_tools()
         if mcp_tools:
             lines.append("\nMCP server tools:")
@@ -440,6 +545,129 @@ class TitanAgent:
                 fn = t.get("function", {})
                 lines.append(f"- {fn.get('name')}: {fn.get('description', '')}")
         return "\n".join(lines)
+
+    def _build_structured_context(self, user_input: str, mode: str, effort: str) -> str:
+        """System context for the Phase 3 structured engines: agent identity,
+        live tool catalog, auto-recalled facts and skill playbooks. Mirrors the
+        classic loop's system assembly so structured runs stay as informed."""
+        content = (
+            self.system_prompt
+            + "\n\n### LIVE TOOL CATALOG (all tools currently available):\n"
+            + self._build_tool_catalog_text()
+        )
+        recalled = self.memory.recall_relevant(user_input, limit=5)
+        if recalled:
+            content += "\n\n### REMEMBERED FACTS (from long-term memory, relevant to this request):\n"
+            for f in recalled:
+                content += f"- [{f['category']}] {f['key']}: {f['value']}\n"
+            content += "(Use these facts as true context; do not claim you read them fresh.)"
+        core_block = self._core_recall_block(user_input)
+        if core_block:
+            content += core_block
+        skill_block = self.skills.build_system_block(user_input)
+        if skill_block:
+            content += skill_block
+        if mode == "deep":
+            content += "\n\n" + DEEP_THINKING_PROMPT
+        elif mode == "deep_search":
+            content += "\n\n" + DEEP_SEARCH_PROMPT
+        if effort in EFFORT_PROMPTS:
+            content += "\n\n" + EFFORT_PROMPTS[effort]
+        return content
+
+    def _core_recall_block(self, query: str, limit: int = 3) -> str:
+        """Past runs & lessons from Phase 4 core memory. Empty unless records
+        exist, so the classic loop's prompt is untouched for fresh stores."""
+        mem = self.core_memory  # lazy open
+        if mem is None:
+            return ""
+        try:
+            hits = mem.recall(query, limit=limit)
+        except Exception as exc:  # noqa: BLE001 - recall must never break a run
+            log.debug("core recall failed: %s", exc)
+            return ""
+        if not hits:
+            return ""
+        lines = [f"- {r.content[:300]}" for r in hits]
+        return "\n\n### PAST RUNS & LESSONS (agent memory, relevant to this task):\n" + "\n".join(lines)
+
+    async def _finalize_run(
+        self,
+        session_id: str,
+        user_input: str,
+        final_text: str,
+        mode: str,
+        strategy: str,
+        auto_commit: bool,
+    ) -> None:
+        """After a completed run: record an episodic core-memory entry and,
+        when auto-commit is on, commit workspace changes (Aider-style)."""
+        if final_text:
+            mem = self.core_memory  # lazy open
+            if mem is not None:
+                try:
+                    mem.remember(
+                        content=f"task[{session_id}]: {user_input[:200]}\nresult: {final_text[:1200]}",
+                        kind=MemoryKind.EPISODIC,
+                        importance=0.4,
+                        scope="agent",
+                        metadata={"session": session_id, "mode": mode, "strategy": strategy},
+                    )
+                except Exception as exc:  # noqa: BLE001 - memory is best-effort
+                    log.warning("core memory write failed: %s", exc)
+        if auto_commit and final_text:
+            try:
+                await asyncio.to_thread(git_auto_commit, self.git_root, user_input)
+            except Exception as exc:  # noqa: BLE001 - commit must never kill the run
+                log.warning("auto-commit failed: %s", exc)
+
+    def _checkpoint_load(self, session_id: str) -> RunCheckpoint | None:
+        """Best-effort load of a session's checkpoint; never raises."""
+        store = self.checkpoint_store
+        if store is None:
+            return None
+        try:
+            return store.load(session_id)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("checkpoint load failed for %s: %s", session_id, exc)
+            return None
+
+    def _checkpoint_save(
+        self,
+        *,
+        session_id: str,
+        user_input: str,
+        mode: str,
+        effort: str,
+        strategy: str,
+        messages: list[dict[str, Any]],
+        steps_done: int = 0,
+        tools_used: list[str] | None = None,
+        status: str = "running",
+        final_answer: str | None = None,
+    ) -> None:
+        """Best-effort persist of the run's live state (always-on checkpointing)."""
+        store = self.checkpoint_store
+        if store is None:
+            return
+        try:
+            trimmed = list(messages)[-CHECKPOINT_MAX_MESSAGES:]
+            store.save(
+                RunCheckpoint(
+                    session_id=session_id,
+                    user_input=user_input,
+                    mode=mode,
+                    effort=effort,
+                    strategy=strategy,
+                    messages=trimmed,
+                    steps_done=int(steps_done),
+                    tools_used=[str(t) for t in (tools_used or [])],
+                    status=status,
+                    final_answer=final_answer,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 - checkpointing must never break a run
+            log.debug("checkpoint save failed for %s: %s", session_id, exc)
 
     async def execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
         if name == "memory_save":
@@ -517,10 +745,27 @@ class TitanAgent:
                 return self._dispatch_telegram(name, args)
             except TelegramError as e:
                 return f"Telegram: {e}"
+        if name.startswith("git_"):
+            return await self._dispatch_git(name, args)
         if name.startswith("mcp_"):
             return await self.mcp.execute_tool(name, args)
         else:
             return await self.tools.execute_tool(name, args)
+
+    async def _dispatch_git(self, name: str, args: dict[str, Any]) -> str:
+        """Aider-style git tools. Blocking git calls run in a worker thread so
+        the event loop keeps streaming."""
+        root = self.git_root
+        if name == "git_status":
+            return await asyncio.to_thread(git_status, root)
+        if name == "git_diff":
+            return await asyncio.to_thread(git_diff, root)
+        if name == "git_commit":
+            message = str(args.get("message", "")).strip()
+            if not message:
+                return "Error: git_commit requires a 'message'."
+            return await asyncio.to_thread(git_commit, root, message)
+        return f"Unknown git tool '{name}'."
 
     def _dispatch_telegram(self, name: str, args: dict[str, Any]) -> str:
         """Consent-gated Telegram dispatch. Every call is wrapped by the caller
@@ -617,7 +862,7 @@ class TitanAgent:
             if isinstance(t_args_raw, str):
                 try:
                     t_args = json.loads(t_args_raw)
-                except Exception:
+                except json.JSONDecodeError:
                     t_args = {}
             else:
                 t_args = t_args_raw
@@ -637,7 +882,7 @@ class TitanAgent:
             try:
                 result = await self.execute_tool_unified(t_name, t_args)
                 return tool_call, t_name, result
-            except Exception as e:
+            except (RuntimeError, OSError, ValueError) as e:
                 return tool_call, t_name, f"Error: {e!s}"
 
         results = await asyncio.gather(*(_run_one(*p) for p in parsed))
@@ -657,7 +902,10 @@ class TitanAgent:
         user_input: str,
         session_id: str = "default_session",
         mode: str = "fast",
-        effort: str = "auto"
+        effort: str = "auto",
+        strategy: str = "auto",
+        auto_commit: bool | None = None,
+        resume: bool = False
     ) -> AsyncGenerator[AgentEvent, None]:
         """
         Executes a user request with autonomous multi-step reasoning, tool execution,
@@ -665,12 +913,38 @@ class TitanAgent:
         mode: "fast" | "deep" | "deep_search"
         effort: "auto" | "low" | "medium" | "high" | "ultra" — scales the iteration
                 budget and rigor of the run ('auto' derives from the mode).
+        strategy: "auto" | "plan" | "react" | "tot" — Phase 3 structured reasoning.
+                'auto' keeps the classic prompt-driven loop (backward compatible);
+                'plan' builds a step plan then executes it; 'react' uses the
+                structured ReAct engine; 'tot' explores strategies with
+                Tree-of-Thoughts first, then executes with tools. All structured
+                strategies run the Phase 2 core engines with policy guardrails.
+        auto_commit: None = instance default (env TITAN_GIT_AUTO_COMMIT); True/False
+                overrides. When on, workspace changes are committed after a
+                successful run (Aider-style git-first workflow).
+        resume: when True (Devin/Claude-Code-style continuity), the run restores
+                this session's checkpoint (live messages + step count) and
+                continues from where it stopped. A session already marked done
+                returns its saved final answer instead of re-running.
         Yields AgentEvent objects for real-time streaming to Web UI / CLI.
         """
         if mode not in ("fast", "deep", "deep_search"):
             mode = "fast"
         raw_effort = effort or "auto"  # budget scaling needs to know if effort was explicit
         effort = _resolve_effort(effort, mode)
+        strategy = (strategy or "auto").strip().lower()
+        if strategy not in ("auto", "plan", "react", "tot"):
+            strategy = "auto"
+        auto_commit = self._auto_commit if auto_commit is None else auto_commit
+
+        # ---- Phase 5: a session already completed returns its saved result ----
+        if resume:
+            cp = self._checkpoint_load(session_id)
+            if cp is not None and cp.status == "done" and cp.final_answer:
+                yield AgentEvent("status", f"Session '{session_id}' already completed — returning saved result.")
+                yield AgentEvent("final_answer", cp.final_answer)
+                self.memory.add_message(session_id, "assistant", cp.final_answer)
+                return
 
         # Save user message to memory
         self.memory.add_message(session_id, "user", user_input)
@@ -694,6 +968,9 @@ class TitanAgent:
                 recall_block += f"- [{f['category']}] {f['key']}: {f['value']}\n"
             recall_block += "(Use these facts as true context; do not claim you read them fresh.)"
             system_content += recall_block
+        core_block = self._core_recall_block(user_input)
+        if core_block:
+            system_content += core_block
         # Auto-skill load: inject relevant Hermes-style playbooks for this task
         skill_block = self.skills.build_system_block(user_input)
         if skill_block:
@@ -711,7 +988,79 @@ class TitanAgent:
             m_dict = {"role": msg["role"], "content": msg["content"]}
             messages.append(m_dict)
 
+        # ---- Phase 5: Devin-style resume — restore the session's live state ----
+        if resume:
+            cp = self._checkpoint_load(session_id)
+            if cp is not None and cp.messages:
+                yield AgentEvent(
+                    "status",
+                    f"Resuming session '{session_id}' from checkpoint ({cp.steps_done} "
+                    f"steps done, last status: {cp.status}).",
+                )
+                messages = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in cp.messages
+                ][-CHECKPOINT_MAX_MESSAGES:]
+        # Always-on checkpointing (Devin-style): persist run state so an interrupted
+        # session can be resumed without losing work.
+        self._checkpoint_save(
+            session_id=session_id,
+            user_input=user_input,
+            mode=mode,
+            effort=effort,
+            strategy=strategy,
+            messages=messages,
+            steps_done=0,
+            status="running",
+        )
+
         max_steps = _compute_max_steps(mode, raw_effort)
+
+        # ---- Phase 3: structured reasoning (core engines) -------------------
+        # Explicit strategy (plan/react/tot) runs the Phase 2 core engines with
+        # policy guardrails. 'auto' keeps the classic loop below untouched.
+        if strategy != "auto":
+            yield AgentEvent("status", f"Structured reasoning engaged (strategy={strategy}, effort={effort}, max steps: {max_steps})")
+            structured_final = None
+            try:
+                from .structured import StructuredEngine
+                engine = StructuredEngine(
+                    self.llm,
+                    self.execute_tool_unified,
+                    self._build_tools_list,
+                    session_id=session_id,
+                )
+                structured_context = self._build_structured_context(user_input, mode, effort)
+                async for ev in engine.run(
+                    user_input,
+                    context=structured_context,
+                    strategy=strategy,
+                    max_steps=max_steps,
+                ):
+                    if ev.type == "final_answer":
+                        structured_final = ev.data
+                    if ev.type == "error":
+                        structured_final = None  # fall back below
+                        break
+                    yield ev
+            except (RuntimeError, OSError, ImportError, ValueError) as exc:
+                yield AgentEvent("error", f"Structured reasoning unavailable ({exc!s}); using standard loop.")
+            else:
+                if structured_final:
+                    # The final answer event was already streamed above; also save
+                    # it to the conversation so future turns have full context.
+                    self.memory.add_message(session_id, "assistant", structured_final)
+                    await self._finalize_run(
+                        session_id, user_input, structured_final, mode, strategy, auto_commit
+                    )
+                    self._checkpoint_save(
+                        session_id=session_id, user_input=user_input, mode=mode,
+                        effort=effort, strategy=strategy, messages=messages,
+                        steps_done=max_steps, status="done", final_answer=structured_final,
+                    )
+                    return
+                yield AgentEvent("error", "Structured reasoning finished without a final answer; using standard loop.")
+            # fall through to the standard loop below if structured failed
 
         # Deep Search mode: seed the context with an auto-researched dossier first
         if mode == "deep_search":
@@ -729,13 +1078,14 @@ class TitanAgent:
                     context_block += f"- {s.get('title', '')}: {s.get('url', '')}\n"
                 messages.append({"role": "system", "content": context_block})
                 yield AgentEvent("status", f"Dossier ready: {dossier['total_sources_found']} sources found.")
-            except Exception as e:
+            except (RuntimeError, OSError, ImportError) as e:
                 yield AgentEvent("status", f"Auto deep search unavailable: {e!s}")
 
         yield AgentEvent("status", f"Planning and analyzing the task... (effort: {effort}, max steps: {max_steps})")
 
         iteration = 0
         used_tools = False
+        run_tools: list[str] = []
         reflect_done = False
 
         while iteration < max_steps:
@@ -746,9 +1096,14 @@ class TitanAgent:
 
             try:
                 response = await self.llm.chat_completion(messages, tools=available_tools)
-            except Exception as e:
+            except (RuntimeError, OSError, aiohttp.ClientError) as e:
                 err_msg = f"Error connecting to LLM: {e!s}"
                 yield AgentEvent("error", err_msg)
+                self._checkpoint_save(
+                    session_id=session_id, user_input=user_input, mode=mode,
+                    effort=effort, strategy=strategy, messages=messages,
+                    steps_done=iteration, status="error",
+                )
                 return
 
             # Yield thoughts if any
@@ -758,8 +1113,21 @@ class TitanAgent:
             # If model produced tool calls, execute them (in parallel)
             if response.tool_calls:
                 used_tools = True
+                used_names = [
+                    str(tc.get("function", {}).get("name", "tool"))
+                    for tc in response.tool_calls
+                    if isinstance(tc, dict)
+                ]
+                run_tools.extend(used_names)
                 async for ev in self._emit_tool_results(response, messages, iteration):
                     yield ev
+
+                # Persist live state after each step (resume-safe)
+                self._checkpoint_save(
+                    session_id=session_id, user_input=user_input, mode=mode,
+                    effort=effort, strategy=strategy, messages=messages,
+                    steps_done=iteration, tools_used=used_names, status="running",
+                )
 
                 # Check if iterations limit reached
                 if iteration >= max_steps:
@@ -781,7 +1149,7 @@ class TitanAgent:
                 ]
                 try:
                     crit = await self.llm.chat_completion(critic_messages, tools=available_tools)
-                except Exception as e:
+                except (RuntimeError, OSError, aiohttp.ClientError) as e:
                     yield AgentEvent("error", f"Reflection pass error: {e!s}")
                     crit = None
 
@@ -792,6 +1160,11 @@ class TitanAgent:
                         # Reflection decided more work is needed — execute it
                         async for ev in self._emit_tool_results(crit, messages, iteration):
                             yield ev
+                        self._checkpoint_save(
+                            session_id=session_id, user_input=user_input, mode=mode,
+                            effort=effort, strategy=strategy, messages=messages,
+                            steps_done=iteration, status="running",
+                        )
                         if iteration >= max_steps:
                             yield AgentEvent("final_answer", f"Reached the maximum number of steps ({max_steps}). The latest state and results are preserved above.")
                             return
@@ -801,5 +1174,12 @@ class TitanAgent:
                         final_text = crit.content or final_text
 
             yield AgentEvent("final_answer", final_text)
+            await self._finalize_run(session_id, user_input, final_text, mode, strategy, auto_commit)
             self.memory.add_message(session_id, "assistant", final_text, thoughts=response.thoughts)
+            self._checkpoint_save(
+                session_id=session_id, user_input=user_input, mode=mode,
+                effort=effort, strategy=strategy, messages=messages,
+                steps_done=iteration, tools_used=run_tools,
+                status="done", final_answer=final_text,
+            )
             return

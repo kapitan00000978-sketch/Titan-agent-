@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,11 +19,36 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 # Completions.me — free OpenAI-compatible gateway (Claude Opus/GPT-5/Gemini/Grok free)
 COMPLETIONS_API_KEY = os.getenv("COMPLETIONS_API_KEY", "")
 COMPLETIONS_BASE_URL = os.getenv("COMPLETIONS_BASE_URL", "https://completions.me/api/v1")
+# Cheap frontier-class open-weight brains (2026 lineup): Kimi K3 (Moonshot),
+# GLM-5.3 Flash (Zhipu) — both OpenAI-compatible endpoints.
+KIMI_API_KEY = os.getenv("KIMI_API_KEY", "")
+KIMI_BASE_URL = os.getenv("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
+KIMI_MODEL = os.getenv("KIMI_MODEL", "kimi-k3")
+GLM_API_KEY = os.getenv("GLM_API_KEY", "")
+GLM_BASE_URL = os.getenv("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+GLM_MODEL = os.getenv("GLM_MODEL", "glm-5.3-flash")
+# OmniRoute — self-hosted AI gateway (localhost:20128) with smart auto-routing
+# virtual models: auto, auto/coding, auto/fast, auto/smart, auto/offline, auto/cheap.
+# It routes each request to the best available provider/model automatically.
+OMNI_API_KEY = os.getenv("OMNI_API_KEY", "")
+OMNI_BASE_URL = os.getenv("OMNI_BASE_URL", "http://localhost:20128/v1")
+OMNI_MODEL = os.getenv("OMNI_MODEL", "auto")
+OMNI_AUTO_MODELS = ("auto", "auto/coding", "auto/fast", "auto/smart", "auto/offline", "auto/cheap")
 
 # If an API key is present, default to that provider; otherwise seamlessly use local Ollama!
+# Precedence: OpenRouter -> OmniRoute -> Kimi K3 -> GLM-5.3 Flash -> DeepSeek -> Groq -> OpenAI -> Ollama.
 if OPENROUTER_API_KEY:
     DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "openrouter")
     DEFAULT_MODEL = os.getenv("TITAN_MODEL", "nousresearch/hermes-3-llama-3.1-405b:free")
+elif OMNI_API_KEY:
+    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "omni")
+    DEFAULT_MODEL = os.getenv("TITAN_MODEL", OMNI_MODEL)
+elif KIMI_API_KEY:
+    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "kimi")
+    DEFAULT_MODEL = os.getenv("TITAN_MODEL", KIMI_MODEL)
+elif GLM_API_KEY:
+    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "glm")
+    DEFAULT_MODEL = os.getenv("TITAN_MODEL", GLM_MODEL)
 elif DEEPSEEK_API_KEY:
     DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "deepseek")
     DEFAULT_MODEL = os.getenv("TITAN_MODEL", "deepseek-chat")

@@ -90,7 +90,12 @@ class MCPServerConnection:
             return True
         except asyncio.CancelledError:
             raise
-        except Exception as e:
+        except OSError as e:
+            print(f"[MCP] Failed to start server '{self.name}': {e}")
+            self.is_connected = False
+            await self.stop()
+            return False
+        except RuntimeError as e:
             print(f"[MCP] Failed to start server '{self.name}': {e}")
             self.is_connected = False
             await self.stop()
@@ -98,6 +103,9 @@ class MCPServerConnection:
 
     async def _teardown_process(self):
         """Kill/close the current process and its pipes (no-op if none)."""
+        import logging
+        log = logging.getLogger(__name__)
+        
         proc = self.process
         self.process = None
         if self._read_task:
@@ -106,8 +114,8 @@ class MCPServerConnection:
                 await asyncio.wait_for(self._read_task, timeout=3.0)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
-            except Exception:
-                pass
+            except RuntimeError as e:
+                log.debug("Error waiting for read task: %s", e)
             self._read_task = None
         if self._stderr_task:
             self._stderr_task.cancel()
@@ -115,8 +123,8 @@ class MCPServerConnection:
                 await asyncio.wait_for(self._stderr_task, timeout=3.0)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
-            except Exception:
-                pass
+            except RuntimeError as e:
+                log.debug("Error waiting for stderr task: %s", e)
             self._stderr_task = None
         for future in self._pending_requests.values():
             if not future.done():
@@ -130,17 +138,19 @@ class MCPServerConnection:
                         await asyncio.wait_for(proc.wait(), timeout=5.0)
                     except asyncio.TimeoutError:
                         proc.kill()
-            except Exception:
-                pass
+            except OSError as e:
+                log.debug("Error terminating process: %s", e)
             # Close pipes to avoid "unclosed transport" ResourceWarnings on Windows
             for pipe in (proc.stdin, proc.stdout, proc.stderr):
                 try:
-                    if pipe is not None:
+                    if pipe is not None and hasattr(pipe, "close"):
                         pipe.close()
-                except Exception:
-                    pass
+                except OSError as e:
+                    log.debug("Error closing pipe: %s", e)
 
     async def _listen_stdout(self, process: asyncio.subprocess.Process, gen: int):
+        import logging
+        log = logging.getLogger(__name__)
         try:
             while self.process is process and process.stdout:
                 try:
@@ -164,7 +174,8 @@ class MCPServerConnection:
                                     future.set_result(data.get("result", {}))
                     except json.JSONDecodeError:
                         pass
-                except Exception:
+                except (asyncio.CancelledError, RuntimeError, OSError) as e:
+                    log.debug("Listen stdout error: %s", e)
                     break
         finally:
             # Only the listener of the CURRENT process may flip the flag.
@@ -182,6 +193,8 @@ class MCPServerConnection:
 
     async def _drain_stderr(self, process: asyncio.subprocess.Process, gen: int):
         """Drain stderr continuously so the pipe never blocks the server."""
+        import logging
+        log = logging.getLogger(__name__)
         try:
             while self.process is process and process.stderr:
                 try:
@@ -193,10 +206,11 @@ class MCPServerConnection:
                         self._stderr_tail.append(text)
                         if len(self._stderr_tail) > STDERR_TAIL_LIMIT * 4:
                             del self._stderr_tail[: len(self._stderr_tail) - STDERR_TAIL_LIMIT * 4]
-                except Exception:
+                except (asyncio.CancelledError, OSError) as e:
+                    log.debug("Drain stderr error: %s", e)
                     break
-        except Exception:
-            pass
+        except RuntimeError as e:
+            log.debug("Drain stderr outer error: %s", e)
 
     async def send_request(self, method: str, params: dict[str, Any], timeout: float = DEFAULT_REQUEST_TIMEOUT) -> Any:
         if not self.process or not self.process.stdin:
@@ -272,7 +286,7 @@ class MCPManager:
         try:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             return {"mcpServers": {}}
 
     def _resolve_server_command(self, details: dict[str, Any], workspace_dir: Path) -> tuple[str, list[str], dict[str, str]]:
@@ -303,7 +317,7 @@ class MCPManager:
             print(f"[MCP] Server '{conn.name}' did not start (returned False).")
         except asyncio.TimeoutError:
             print(f"[MCP] Server '{conn.name}' timed out after {DEFAULT_START_TIMEOUT}s — skipped.")
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             print(f"[MCP] Failed to start server '{conn.name}': {e}")
         await conn.stop()
         return False
@@ -402,11 +416,11 @@ class MCPManager:
                     return f"Error: MCP Server '{s_name}' failed to restart."
                 self._tool_map = {}
                 _ = self.get_all_tools()
-            except Exception as e:
+            except (OSError, RuntimeError, asyncio.TimeoutError) as e:
                 return f"Error: MCP Server '{s_name}' could not restart: {e!s}"
         try:
             return await conn.call_tool(orig_name, arguments)
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             hint = conn.recent_stderr[:400]
             if hint:
                 return f"Error executing MCP tool '{orig_name}' on '{s_name}': {e!s}\nServer stderr (tail):\n{hint}"

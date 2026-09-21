@@ -15,9 +15,10 @@ import asyncio
 import json
 import os
 import time
-from datetime import datetime
+from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from .config import BASE_DIR
 
@@ -98,7 +99,7 @@ class CronScheduler:
             try:
                 data = json.loads(self.jobs_file.read_text(encoding="utf-8"))
                 self.jobs = {j["id"]: j for j in data.get("jobs", [])}
-            except Exception:
+            except (OSError, json.JSONDecodeError):
                 self.jobs = {}
 
     def _save(self):
@@ -213,7 +214,7 @@ class CronScheduler:
             job["last_status"] = "success"
             job["last_result"] = str(result)[:2000]
             job["last_duration_sec"] = round(time.time() - started, 2)
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             job["last_status"] = "error"
             job["last_result"] = f"ERROR: {e!s}"
             job["last_duration_sec"] = round(time.time() - started, 2)
@@ -224,7 +225,7 @@ class CronScheduler:
 
     # ----------------------------------------------------------- Loop
     async def _tick(self):
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         for job in self.jobs.values():
             if not job.get("enabled", True):
                 continue
@@ -237,11 +238,13 @@ class CronScheduler:
         if self._loop_task is not None and not self._loop_task.done():
             return
         async def _loop():
+            import logging
+            log = logging.getLogger(__name__)
             while True:
                 try:
                     await self._tick()
-                except Exception:
-                    pass
+                except RuntimeError as e:
+                    log.debug("Scheduler tick error: %s", e)
                 await asyncio.sleep(self.tick_seconds)
         self._loop_task = asyncio.create_task(_loop())
 
@@ -250,7 +253,7 @@ class CronScheduler:
             self._loop_task.cancel()
             try:
                 await self._loop_task
-            except (asyncio.CancelledError, Exception):
+            except (asyncio.CancelledError, RuntimeError):
                 pass
             self._loop_task = None
         # Wait for in-flight jobs to finish before exiting.

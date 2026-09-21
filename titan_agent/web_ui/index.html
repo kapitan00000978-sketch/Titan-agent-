@@ -181,6 +181,7 @@
           <div class="form-group">
             <label for="provider-select">LLM Provider</label>
             <select id="provider-select">
+              <option value="omni">🚀 OmniRoute (auto-routing — Claude/DeepSeek/GLM)</option>
               <option value="puter">🌐 Puter.js (DeepSeek V4 — Instant, No API Key)</option>
               <option value="ollama">🖥️ Ollama (Local Model on Your Computer)</option>
               <option value="openrouter">OpenRouter (DeepSeek, Claude, Llama 3)</option>
@@ -226,6 +227,19 @@
                 <button type="button" class="tiny-btn model-chip" data-model="gpt-4o-mini" style="color:#10b981;">💚 GPT-4o Mini</button>
                 <button type="button" class="tiny-btn model-chip" data-model="gemini-2.0-flash" style="color:#818cf8;">💎 Gemini 2.0 Flash</button>
                 <button type="button" class="tiny-btn model-chip" data-model="meta-llama/llama-3.3-70b-instruct" style="color:#c084fc;">🦙 Llama 3.3 70B</button>
+              </div>
+            </div>
+
+            <!-- Quick OmniRoute Auto-Model Chips -->
+            <div id="omni-quick-chips" style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:11px; color:var(--text-muted);">OmniRoute auto-routing — click to select:</span>
+              <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                <button type="button" class="tiny-btn model-chip" data-provider="omni" data-model="auto" style="color:#34d399;">🎯 auto (balanced)</button>
+                <button type="button" class="tiny-btn model-chip" data-provider="omni" data-model="auto/coding" style="color:#38bdf8;">🧑‍💻 auto/coding</button>
+                <button type="button" class="tiny-btn model-chip" data-provider="omni" data-model="auto/fast" style="color:#fbbf24;">⚡ auto/fast</button>
+                <button type="button" class="tiny-btn model-chip" data-provider="omni" data-model="auto/smart" style="color:#818cf8;">🔭 auto/smart</button>
+                <button type="button" class="tiny-btn model-chip" data-provider="omni" data-model="auto/offline" style="color:#f472b6;">🔋 auto/offline</button>
+                <button type="button" class="tiny-btn model-chip" data-provider="omni" data-model="auto/cheap" style="color:#a3e635;">💰 auto/cheap</button>
               </div>
             </div>
 

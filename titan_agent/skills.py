@@ -14,6 +14,7 @@ The agent auto-loads relevant skills for a task (lexical keyword match against
 the user's request) and can also pull any skill on demand via the `skill_load`
 and `skills_list` tools — the same pattern Hermes uses with its skills catalog.
 """
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -49,7 +50,7 @@ def _parse_front_matter(raw: str) -> dict[str, str] | None:
 class Skill:
     """A single skill: metadata plus the full markdown guidance body."""
 
-    def __init__(self, name: str, description: str, keywords: str, body: str, source: Path = None):
+    def __init__(self, name: str, description: str, keywords: str, body: str, source: Path | None = None):
         self.name = name
         self.description = description
         self.keywords = keywords
@@ -81,6 +82,7 @@ class SkillRegistry:
 
     def scan(self):
         """(Re)load every skill file found under the skills directory."""
+        log = logging.getLogger(__name__)
         found: dict[str, Skill] = {}
         if self.skills_dir.exists():
             for fpath in sorted(self.skills_dir.glob("*")):
@@ -90,7 +92,8 @@ class SkillRegistry:
                     continue
                 try:
                     raw = fpath.read_text(encoding="utf-8", errors="ignore")
-                except Exception:
+                except OSError as e:
+                    log.debug("Failed to read skill file %s: %s", fpath, e)
                     continue
                 meta = _parse_front_matter(raw)
                 body = re.sub(r"^---\s*\n.*?\n---\s*\n?", "", raw, flags=re.DOTALL).strip()

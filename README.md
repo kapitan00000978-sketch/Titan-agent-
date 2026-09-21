@@ -16,6 +16,9 @@ searches the web live, and connects to any application or database through **Mod
 ## 🚀 Key Advantages (Why it beats Hermes 3)
 
 1. **Multi-Model & Flexible (Multi-LLM Routing)**:
+   - **🚀 OmniRoute (default)** — self-hosted AI gateway (`localhost:20128`) with six `auto*` models that route each
+     request to the best available provider/model automatically (`auto`, `auto/coding`, `auto/fast`, `auto/smart`,
+     `auto/offline`, `auto/cheap`). One key, no per-provider fallback logic.
    - **Puter.js — 500+ models** (no key, runs directly in the browser): DeepSeek V4 Pro, Claude, GPT-4o, Llama and more
    - DeepSeek V4 Pro / Flash, Claude 3.7/3.5 Sonnet, GPT-4o / mini, Gemini 2.0 Flash
    - OpenAI GPT-4o / Claude 3.7 Sonnet (API keys optional)
