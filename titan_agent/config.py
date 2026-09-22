@@ -273,6 +273,20 @@ def tool_result_max_chars() -> int:
         return 4000
 
 
+# ---- Phase 37: dead-end early stop ------------------------------------------
+# When EVERY tool call in a batch fails (error return, malformed skip, or a
+# guard block) with no successful result at all, the run is probably grinding
+# on a broken path. After `TITAN_DEAD_END_WINDOW` (default 5) consecutive
+# all-failed tool batches the harness stops early with an explicit notice
+# instead of burning the remaining steps and token budget. 0 disables it.
+def dead_end_window() -> int:
+    """Consecutive all-failed tool batches tolerated before an early stop."""
+    try:
+        return max(0, int(os.getenv("TITAN_DEAD_END_WINDOW", "5")))
+    except (TypeError, ValueError):
+        return 5
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

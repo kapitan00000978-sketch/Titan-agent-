@@ -2,6 +2,61 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🧭 Phase 36–38 — SUBAGENT-FAILURE FUNNEL + DEAD-END EARLY STOP + GUARD DECISION LOG (trio #4)
+
+Three more levers at three levels:
+
+### 1. Tool level — delegated-subagent failures flow through the failure funnel (`tools.py`)
+- Subagent delegation is a TOOL like any other, but a FAILED/ERRORED child
+  previously came back inside a `### SUBAGENT […]` report that a weak parent
+  could mistake for proven work — and the failure never reached the harness's
+  failure accounting.
+- New `_subagent_result_text()` turns a failed/errored child into an
+  **Error-prefixed** result (status banner + the child's output + an explicit
+  `⚠ … UNPROVEN` warning): the uniform funnel now records it as a failed tool
+  execution — per-tool telemetry (`tool_stats`), the repeated-failure guard
+  (re-delegating the identical task eventually gets blocked), and the critic's
+  TOOL EVIDENCE snippet all see it. Successful delegations keep the exact
+  previous format.
+- Applied to both `tool_subagent_delegate` and every member of
+  `tool_subagent_team`.
+
+### 2. Harness level — dead-end early stop on consecutive all-failed tool batches (`agent.py`, `config.py`, `.env.example`)
+- When EVERY tool result in a batch is a failure (error return, malformed
+  skip, or guard block) there is no evidence of progress — but the classic
+  loop would grind on to `max_steps`, burning token budget on a broken path.
+- New `TITAN_DEAD_END_WINDOW` (default 5, `0` disables): after N consecutive
+  all-failed tool batches the run stops EARLY with an explicit
+  `⚠ Stopped early…` final answer (checkpoint saved as `done`), instead of
+  requesting another LLM turn.
+- `_record_batch_outcome()` feeds the streak from all three emission sites
+  (main loop, reflection, refine); ANY successful tool result resets it.
+- The streak is observable on the agent (`_consecutive_failed_batches`).
+
+### 3. Server level — guard decision log + reset endpoint (`agent.py`, `server.py`)
+- `execute_tool_unified` and the main-loop block site (`_run_one`) now record
+  every block into a capped per-run **decision log** (`_guard_actions`) plus
+  running totals (`_guard_totals`); malformed-blocks log too.
+- `GET /api/guard/state` gains `actions` (most recent first), `totals`, and a
+  `dead_end` section (window + current streak).
+- New `POST /api/guard/reset` clears the live agent's guard state
+  (counters, log, totals, streak) so an operator can give a stuck run a clean
+  slate; auth-protected like every `/api` route.
+
+### Verification
+- `tests/test_subagent_failure_funnel.py` — **6 deterministic tests**: failed
+  delegate reads as an Error with the UNPROVEN warning, crashed child reports
+  its error, success output unchanged, team failures marked per member, and a
+  live-funnel test proving the third identical delegation is blocked by the
+  repeated-failure guard (which also records `blocked_repeat`).
+- `tests/test_dead_end.py` — **6 deterministic tests**: default-window early
+  stop (the 6th LLM call is never made), env-configured window, success
+  resets the streak, disabled-by-env runs to completion with reflection, and
+  the streak is exposed on the agent.
+- `tests/test_guard_state.py` — **+5 tests** (9 total): actions/totals/dead-end
+  ride along, empty defaults, reset requires auth, reset clears live state.
+- Full suite: **504 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🧭 Phase 33–35 — BROKEN-CALL GUARD + CONTEXT FLOOD CONTROL + OBSERVABILITY (trio #3)
 
 Three more levers at three levels:

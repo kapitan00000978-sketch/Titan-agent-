@@ -36,6 +36,35 @@ def _subagent_worker_cap() -> int:
     return 8 if _cfg.full_access_enabled() else 2
 
 
+def _subagent_result_text(res: Any) -> str:
+    """Phase 36: render a delegated-subagent result for the parent's context.
+
+    Success keeps the classic report, but a FAILED or ERRORED child is turned
+    into an Error-prefixed result so the uniform tool funnel treats it as a
+    failed TOOL execution: it records in telemetry, increments the
+    repeated-failure guard keyed by (tool, task), and warns the critic via the
+    tool-evidence snippet. A weak parent must never treat a crashing child's
+    half-baked output as proven work — this makes the failure loud AND
+    self-reinforcing (re-delegating the identical task eventually gets blocked).
+    """
+    label = str(getattr(res, "label", "worker"))
+    if getattr(res, "error", None):
+        head = f"### SUBAGENT [{label}] - ERROR"
+        body = str(res.error)
+    elif getattr(res, "exit_code", 0) != 0:
+        head = f"### SUBAGENT [{label}] - FAILED (exit {res.exit_code})"
+        body = str(getattr(res, "final", "") or "(no output)")
+    else:
+        return res.to_text()
+    return (
+        f"Error: {head}\n{body}"
+        "\n"
+        "\u26a0 This delegated subagent FAILED - its output is UNPROVEN. "
+        "Do not present it as done work: verify the files/tests yourself, or "
+        "re-delegate with a corrected task."
+    )
+
+
 def _tokenize(text: str) -> list[str]:
     """Lowercase alphanumeric tokens for lightweight lexical ranking."""
     return re.findall(r"[a-z0-9][a-z0-9_\-']*", text.lower())
@@ -1912,7 +1941,7 @@ class ToolRegistry:
             return "Error: task is required."
         pool = StaffPool()
         res = await pool.run(str(role or "generalist"), str(task).strip(), label=label or "")
-        return res.to_text()
+        return _subagent_result_text(res)
 
     async def tool_subagent_team(
         self,
@@ -1929,7 +1958,7 @@ class ToolRegistry:
             [str(t) for t in tasks],
             roles=[str(r) for r in roles] if roles else None,
         )
-        return "\n\n".join(r.to_text() for r in results)
+        return "\n\n".join(_subagent_result_text(r) for r in results)
 
     def tool_subagent_roles(self) -> str:
         from .staff import staff_catalog

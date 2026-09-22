@@ -21,6 +21,7 @@ from .config import (
     WORKSPACE_DIR,
     auto_postcheck_enabled,
     cancel_on_tool_error,
+    dead_end_window,
     empty_final_guard_enabled,
     final_grounding_enabled,
     full_access_enabled,
@@ -51,6 +52,22 @@ from .tool_stats import TOOL_STATS, ToolStatsCollector
 from .tools import ToolRegistry
 
 log = logging.getLogger(__name__)
+
+
+def _is_failed_tool_result(content: str) -> bool:
+    """Phase 37: what counts as a NON-progress tool result for the dead-end
+    detector — an explicit error, a skipped/malformed call, or an empty
+    output. Any other tool content (file confirmations, search hits, command
+    output, successes) counts as progress."""
+    c = (content or "").strip()
+    if not c:
+        return True
+    return c.startswith(("Error", "Skipped:"))
+
+
+# Phase 38: the guard decision log is capped so an endless pathological run
+# cannot grow it without bound — oldest entries drop off first.
+_GUARD_ACTION_CAP = 200
 
 TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI reasoning and execution engine, engineered to outperform classic agents (including Hermes-class and frontier-tier models) on real-world task completion.
 
@@ -536,6 +553,13 @@ class TitanAgent:
         # Phase 33: repeated malformed-arguments state (per tool NAME). Always
         # exists so _emit_tool_results works standalone; run_task resets it.
         self._malformed_calls: dict[str, int] = {}
+        # Phase 37: consecutive all-failed tool batches (dead-end detector).
+        # Always exists so direct wrapper calls work standalone; run_task resets.
+        self._consecutive_failed_batches: int = 0
+        # Phase 38: per-run guard decision log + totals. Always exist so the
+        # wrapper records decisions even without run_task; run_task resets them.
+        self._guard_actions: list[dict[str, Any]] = []
+        self._guard_totals: dict[str, int] = {}
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
@@ -1205,6 +1229,40 @@ class TitanAgent:
             if m.get("role") == "tool"
         )
 
+    def _record_batch_outcome(
+        self, messages: list[dict[str, Any]], before_len: int
+    ) -> None:
+        """Phase 37: feed the dead-end detector one executed tool batch. A batch
+        counts as wasted when EVERY tool result in it failed (error, skip, or
+        guard block) — no evidence of progress. Consecutive wasted batches build
+        towards the early-stop window; any successful call resets the streak.
+        The slice of `messages` added since `before_len` are exactly the tool
+        results this batch produced (the harness wrote them itself)."""
+        added = messages[before_len:]
+        tool_msgs = [m for m in added if m.get("role") == "tool"]
+        if not tool_msgs:
+            return
+        failed = sum(
+            1
+            for m in tool_msgs
+            if _is_failed_tool_result(str(m.get("content") or ""))
+        )
+        if failed == len(tool_msgs):
+            self._consecutive_failed_batches = (
+                getattr(self, "_consecutive_failed_batches", 0) + 1
+            )
+        else:
+            self._consecutive_failed_batches = 0
+
+    def _record_guard_action(self, kind: str, tool: str, **extra: Any) -> None:
+        """Phase 38: append one entry to the per-run guard decision log (capped)
+        and bump the matching total, so operators can see what the harness
+        actually blocked and when, not just the current counter values."""
+        self._guard_actions.append({"kind": kind, "tool": tool, **extra})
+        if len(self._guard_actions) > _GUARD_ACTION_CAP:
+            del self._guard_actions[0]
+        self._guard_totals[kind] = self._guard_totals.get(kind, 0) + 1
+
     def _guard_key(self, t_name: str, t_args: dict[str, Any]) -> str:
         """Canonical identity of a tool call for the repeated-failure guard:
         tool name + sorted-key JSON of the arguments, so any argument change
@@ -1227,6 +1285,8 @@ class TitanAgent:
             gkey = self._guard_key(name, args)
             prior = self._guard_failures.get(gkey, 0)
             if prior >= repeat_guard_limit():
+                # Phase 38: log the decision so the guard's effect is visible.
+                self._record_guard_action("blocked_repeat", name, failures=prior)
                 return (
                     "Error: repeated tool failure guard — this exact call "
                     f"(tool='{name}') already failed {prior} times in this run. "
@@ -1519,6 +1579,12 @@ class TitanAgent:
                 key = self._guard_key(t_name, t_args)
                 prior = self._guard_failures.get(key, 0)
                 if prior >= repeat_guard_limit():
+                    # Phase 38: the main-loop block happens HERE (before the
+                    # wrapper is even reached), so the decision is logged here
+                    # to keep the guard action log complete.
+                    self._record_guard_action(
+                        "blocked_repeat", t_name, failures=prior
+                    )
                     return (
                         "ok", tool_call, t_name,
                         (
@@ -1608,6 +1674,11 @@ class TitanAgent:
                     count = self._malformed_calls.get(t_name, 0) + 1
                     self._malformed_calls[t_name] = count
                     if count >= malformed_guard_limit():
+                        # Phase 38: log the decision so the guard's effect is
+                        # visible to operators.
+                        self._record_guard_action(
+                            "blocked_malformed", t_name, skips=count
+                        )
                         result = (
                             "Error: repeated malformed-arguments guard — this "
                             f"tool (tool='{t_name}') has now been sent {count} "
@@ -2003,11 +2074,49 @@ class TitanAgent:
         # Phase 33: per-run repeated malformed-arguments counters, keyed by
         # tool NAME. Reset on every run_task.
         self._malformed_calls: dict[str, int] = {}
+        # Phase 37: per-run consecutive all-failed tool batches (dead-end
+        # detector streak). Reset on every run_task.
+        self._consecutive_failed_batches = 0
+        # Phase 38: per-run guard decision log + totals. Reset on every run_task.
+        self._guard_actions: list[dict[str, Any]] = []
+        self._guard_totals: dict[str, int] = {}
         grounded = False  # Phase 20: zero-tool answers get exactly ONE verification pass
 
         while iteration < max_steps:
             iteration += 1
             yield AgentEvent("step_start", {"step": iteration, "max_steps": max_steps})
+
+            # Phase 37: dead-end early stop. When the last N tool batches ALL
+            # failed (errors, skips, guard blocks — no successful result), the
+            # model is grinding on a broken path; stop now with an explicit
+            # notice instead of burning the remaining steps and token budget.
+            window = dead_end_window()
+            if (
+                window > 0
+                and self._consecutive_failed_batches >= window
+                and iteration > 1
+            ):
+                final_text = (
+                    f"⚠ Stopped early: the last {window} tool batch(es) failed "
+                    "completely (only errors, skipped calls and guard blocks — "
+                    "no successful tool result). Continuing would waste the "
+                    "remaining steps on the same broken path. The run state and "
+                    "partial results above are preserved."
+                )
+                yield AgentEvent(
+                    "status",
+                    "Dead end detected: "
+                    f"{self._consecutive_failed_batches} consecutive tool "
+                    "batches with no successful result — stopping early.",
+                )
+                self._checkpoint_save(
+                    session_id=session_id, user_input=user_input, mode=mode,
+                    effort=effort, strategy=strategy, messages=messages,
+                    steps_done=iteration, tools_used=["dead_end_stop"],
+                    status="done", final_answer=final_text,
+                )
+                yield AgentEvent("final_answer", final_text)
+                return
 
             # Phase 10: keep the in-run window inside the configured budget
             # proactively (a no-op until the context actually exceeds it), so
@@ -2060,8 +2169,12 @@ class TitanAgent:
                     if isinstance(tc, dict)
                 ]
                 run_tools.extend(used_names)
+                _before_batch = len(messages)
                 async for ev in self._emit_tool_results(response, messages, iteration):
                     yield ev
+                # Phase 37: feed the dead-end detector this batch's outcome
+                # (all-failed batches build the streak, any success resets it).
+                self._record_batch_outcome(messages, _before_batch)
 
                 # Persist live state after each step (resume-safe)
                 self._checkpoint_save(
@@ -2180,8 +2293,12 @@ class TitanAgent:
                         yield AgentEvent("thought", crit.thoughts)
                     if crit.tool_calls:
                         # Reflection decided more work is needed — execute it
+                        _before_batch = len(messages)
                         async for ev in self._emit_tool_results(crit, messages, iteration):
                             yield ev
+                        # Phase 37: reflection-grinding counts toward the same
+                        # dead-end streak as main-loop batches.
+                        self._record_batch_outcome(messages, _before_batch)
                         self._checkpoint_save(
                             session_id=session_id, user_input=user_input, mode=mode,
                             effort=effort, strategy=strategy, messages=messages,
@@ -2231,10 +2348,14 @@ class TitanAgent:
                                 yield AgentEvent("thought", refined.thoughts)
                             if refined.tool_calls:
                                 refine_handoff = True
+                                _before_batch = len(messages)
                                 async for ev in self._emit_tool_results(
                                     refined, messages, iteration
                                 ):
                                     yield ev
+                                # Phase 37: refinement work counts toward the
+                                # same dead-end streak as every other batch.
+                                self._record_batch_outcome(messages, _before_batch)
                                 break
                             if refined.content:
                                 final_text = refined.content or final_text

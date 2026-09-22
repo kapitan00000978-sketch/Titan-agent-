@@ -550,6 +550,7 @@ async def guard_state():
     """Per-run repeated-failure + malformed-arguments guard counters and the
     effective config."""
     from .config import (
+        dead_end_window,
         malformed_guard_enabled,
         malformed_guard_limit,
         repeat_guard_enabled,
@@ -558,6 +559,11 @@ async def guard_state():
 
     counters = dict(getattr(agent, "_guard_failures", {}) or {})
     malformed = dict(getattr(agent, "_malformed_calls", {}) or {})
+    # Phase 38: guard decision log (most recent first) + totals and the
+    # dead-end detector streak, so the endpoint shows what the harness BLOCKED
+    # and why, not just the current counters.
+    actions = list(reversed(getattr(agent, "_guard_actions", []) or []))[:50]
+    totals = dict(getattr(agent, "_guard_totals", {}) or {})
     return {
         "enabled": repeat_guard_enabled(),
         "limit": repeat_guard_limit(),
@@ -580,7 +586,29 @@ async def guard_state():
                 )[:50]
             ],
         },
+        "actions": actions,
+        "totals": totals,
+        "dead_end": {
+            "window": dead_end_window(),
+            "consecutive_failed_batches": int(
+                getattr(agent, "_consecutive_failed_batches", 0) or 0
+            ),
+        },
     }
+
+
+@app.post("/api/guard/reset")
+async def guard_reset():
+    """Phase 38: clear the live agent's per-run guard state (repeated-failure
+    counters, malformed counters, decision log and totals) so an operator can
+    give a stuck run a clean slate after fixing the underlying cause. The next
+    run_task still resets everything fresh on its own."""
+    agent._guard_failures = {}
+    agent._malformed_calls = {}
+    agent._guard_actions = []
+    agent._guard_totals = {}
+    agent._consecutive_failed_batches = 0
+    return {"ok": True}
 
 # ---- Phase 12: attach Bearer-token auth to every API route -------------------
 # The liveness check (/health) and the web-UI shell (/) stay public; every
