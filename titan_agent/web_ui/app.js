@@ -87,6 +87,90 @@ function promptForApiKey() {
   }
 }
 
+// ---------- Phase 19: live HITL approvals panel ----------
+// Polls pending approval requests and lets an operator approve/deny inline.
+// A failed poll pauses for 60s instead of re-prompting for the API key on
+// every tick (a bad key would otherwise spam dialogs every 5 seconds).
+let _hitlNextPoll = 0;
+
+async function fetchHITLPending(force) {
+  const now = Date.now();
+  if (!force && now < _hitlNextPoll) return;
+  const listEl = document.getElementById("hitl-requests");
+  const countEl = document.getElementById("hitl-count");
+  try {
+    const token = getApiKey();
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch("/api/hitl/pending", { headers });
+    if (!res.ok) {
+      _hitlNextPoll = now + 60000;
+      if (res.status === 401) promptForApiKey();
+      throw new Error("HTTP " + res.status);
+    }
+    _hitlNextPoll = 0;
+    const data = await res.json();
+    const pending = (data && data.pending) || [];
+    if (countEl) countEl.textContent = String(pending.length);
+    if (!listEl) return;
+    if (!pending.length) {
+      listEl.innerHTML = '<div class="empty-hint">No pending approvals</div>';
+      return;
+    }
+    listEl.innerHTML = pending.map((req) => {
+      const id = escapeHtml(req.request_id);
+      const action = escapeHtml(req.action);
+      const resource = escapeHtml(req.resource || "*");
+      const reason = escapeHtml(req.reason);
+      const details = req.details && typeof req.details === "object"
+        ? escapeHtml(JSON.stringify(req.details)).slice(0, 160)
+        : "";
+      return (
+        '<div class="approval-item" data-id="' + id + '">' +
+          '<div class="approval-head">' +
+            '<span class="approval-action">' + action + '</span>' +
+            '<span class="approval-status">pending</span>' +
+          '</div>' +
+          '<div class="approval-resource" title="' + resource + '">' + resource + '</div>' +
+          (reason ? '<div class="approval-reason">' + reason + '</div>' : "") +
+          (details ? '<div class="approval-details">' + details + '</div>' : "") +
+          '<div class="approval-actions">' +
+            '<button class="tiny-btn approve-btn" onclick="decideHITL(' +
+            "'" + id + "','approve'" + ')">✓ Approve</button>' +
+            '<button class="tiny-btn deny-btn" onclick="decideHITL(' +
+            "'" + id + "','deny'" + ')">✕ Deny</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  } catch (e) {
+    if (listEl) listEl.innerHTML =
+      '<div class="empty-hint">Approvals unavailable: ' +
+      escapeHtml(String((e && e.message) || e)) + '</div>';
+  }
+}
+
+async function decideHITL(requestId, decision) {
+  try {
+    const token = getApiKey();
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch("/api/hitl/decide", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ decision, request_id: requestId, by: "web-ui" }),
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      alert("HITL " + decision + " failed: " +
+        ((detail && detail.detail) || res.status));
+    }
+  } catch (e) {
+    alert("HITL " + decision + " failed: " + ((e && e.message) || e));
+  }
+  fetchHITLPending(true);
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
   // Phase 12: if no API key is cached, prompt for it on first load so the very
@@ -99,6 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchMcpTools();
   fetchWorkspaceFiles();
   setupEventListeners();
+  fetchHITLPending();                    // Phase 19: live approvals panel
+  setInterval(fetchHITLPending, 5000);   // (poll pauses for 60s after failures)
 });
 
 // ---------- Model name helpers ----------

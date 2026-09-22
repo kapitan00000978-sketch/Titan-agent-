@@ -167,6 +167,19 @@
             <div class="empty-hint">No files created yet</div>
           </div>
         </div>
+
+        <!-- Phase 19: live human-in-the-loop approvals -->
+        <div class="panel-section approvals-section">
+          <div class="section-title">
+            <span class="icon">🛂</span>
+            <h3>Approvals</h3>
+            <span class="badge-count" id="hitl-count">0</span>
+            <button class="tiny-btn" onclick="fetchHITLPending(true)">Refresh</button>
+          </div>
+          <div class="approvals-list" id="hitl-requests">
+            <div class="empty-hint">No pending approvals</div>
+          </div>
+        </div>
       </aside>
     </div>
 

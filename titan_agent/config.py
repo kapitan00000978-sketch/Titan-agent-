@@ -104,6 +104,28 @@ def provider_default_model(provider: str) -> str | None:
         "lmstudio": "local-model",
     }.get(provider)
 
+# ---- Phase 17: bounded parallel tool execution -------------------------
+# Tool calls produced in one model turn run concurrently, but capped by the
+# semaphore below so terminal-heavy batches stay predictable. 1 = fully serial.
+# With TITAN_CANCEL_ON_TOOL_ERROR=1 the batch stops as soon as any tool fails
+# and the remaining in-flight calls are cancelled (useful when later tools
+# consume earlier outputs). Both are read at CALL time (not import time) so
+# tests and the runtime can tune them on the fly.
+def parallel_tool_calls() -> int:
+    """Max tool executions running concurrently within a single model turn."""
+    try:
+        return max(1, int(os.getenv("TITAN_PARALLEL_TOOL_CALLS", "4")))
+    except (TypeError, ValueError):
+        return 4
+
+
+def cancel_on_tool_error() -> bool:
+    """Cancel remaining in-flight tool calls as soon as any tool fails."""
+    return os.getenv("TITAN_CANCEL_ON_TOOL_ERROR", "0").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

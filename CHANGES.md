@@ -2,6 +2,66 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🚀 Phase 17 — BOUNDED PARALLEL TOOL EXECUTION
+
+Tool calls that a single model turn emits now run concurrently but inside a
+hard cap, and no single tool failure can crash the run anymore.
+
+### 1. Concurrency cap (`titan_agent/config.py`)
+- `TITAN_PARALLEL_TOOL_CALLS` (default `4`) bounds the number of tool calls
+  executing simultaneously per model turn (an `asyncio.Semaphore`); `1` =
+  fully serial. Read at call time so tests/runtime can tune it live.
+- `TITAN_CANCEL_ON_TOOL_ERROR` (default `0`): when `1`, as soon as any tool
+  fails the remaining in-flight calls are cancelled and reported as
+  cancelled — useful when later tools consume earlier outputs.
+
+### 2. Crash isolation (`titan_agent/agent.py` `_emit_tool_results`)
+- Every tool call is now wrapped so ANY exception (not just RuntimeError /
+  OSError / ValueError) becomes an ordinary `Error (Type): msg` tool result —
+  one crashing tool never aborts its siblings or the whole run.
+- Original reporting order is preserved: every tool_call_id still gets
+  exactly one follow-up tool message, keeping the assistant->tool pairing
+  valid for the next model request.
+- Added 6 deterministic tests (`tests/test_parallel_tools.py`): bounded
+  watermark, serial mode, crash isolation, cancel-on-failure, and
+  report-all-results default mode.
+
+## 🧠 Phase 18 — CONTEXT COMPACTION (Claude-Code-style compact)
+
+Over-budget run windows no longer silently drop their middle: the trimmed
+region is summarized by the LLM and kept as a compact background block.
+
+- `compact_messages_for_context()` — new async trim that, when a summarizer is
+  available and something was actually dropped, replaces the
+  `CONTEXT_TRIM_MARKER` with a `system` "background summary" block (kept
+  exactly 1:1 so the assistant->tool pairing is never disturbed).
+- `TitanAgent._summarize_context()` — condenses dropped messages (≤14k chars)
+  into a ≤700-char factual summary via `self.llm`; ANY failure returns `None`
+  and the run falls back to the legacy marker trim — compaction can never
+  break a run.
+- Wired into the proactive per-iteration trim and the overflow-handling path
+  in `_chat_with_recovery`; under-budget runs never call the summarizer, so
+  the common path costs nothing.
+- Added 8 deterministic tests (`tests/test_compaction.py`) including an
+  end-to-end overflow run that finishes with the summary block in place.
+
+## 🛂 Phase 19 — LIVE HITL APPROVALS PANEL IN WEB UI
+
+The web cockpit now shows pending human-approval requests and lets an
+operator approve/deny them inline — making the Phase 14 HITL gate actually
+usable from the dashboard.
+
+- `index.html`: new "Approvals" sidebar section with a live pending-count
+  badge and a Refresh button.
+- `app.js`: `fetchHITLPending()` polls `/api/hitl/pending` every 5s and
+  renders each request (action, resource, reason, details) with Approve/Deny
+  buttons that POST `/api/hitl/decide` (`decision/request_id/by`). Failed
+  polls pause for 60s instead of re-prompting the API key on every tick;
+  all dynamic fields are escaped before innerHTML injection.
+- `style.css`: styled the panel (items, status pill, approve/deny buttons).
+- Added 3 structural tests (`tests/test_webui_hitl.py`) asserting the panel
+  markup, endpoint wiring, polling guard and escaping.
+
 ## 🔧 Phase 16 — DOCKER PACKAGING
 
 Ship the web dashboard / API server as a container: one `docker build`, one

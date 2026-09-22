@@ -18,7 +18,9 @@ from .config import (
     MAX_STEPS_CAP,
     UNLIMITED_STEPS,
     WORKSPACE_DIR,
+    cancel_on_tool_error,
     full_access_enabled,
+    parallel_tool_calls,
 )
 from .core.guardrails.hitl import ApprovalStatus, HumanInTheLoop
 from .core.guardrails.policy import Decision, PolicyEngine
@@ -297,6 +299,64 @@ def trim_messages_for_context(
     cut = len(head)  # right after the never-dropped head
     trimmed.insert(cut, {"role": "system", "content": CONTEXT_TRIM_MARKER})
     return trimmed
+
+
+async def compact_messages_for_context(
+    messages: list[dict[str, Any]],
+    summarizer: Any = None,
+    max_chars: int | None = None,
+) -> list[dict[str, Any]]:
+    """Phase 18: trim an over-budget run window AND, when a summarizer is
+    available, condense the dropped region into a compact background block
+    instead of discarding it (Claude-Code-style compact).
+
+    - Nothing dropped -> returns a copy with no changes and NEVER calls the
+      summarizer, so an under-budget run costs nothing extra.
+    - ``summarizer`` is None, raises, or returns empty -> exact legacy
+      behavior (the ``CONTEXT_TRIM_MARKER`` message), so the plain trim stays
+      backward compatible and compaction can never break a run.
+    - Otherwise the marker is replaced by a ``system`` background block that
+      carries the summary; the assistant->tool pairing is never disturbed.
+
+    ``summarizer`` is an async callable ``(dropped_messages) -> str``.
+    """
+    trimmed = trim_messages_for_context(messages, max_chars=max_chars)
+    if len(trimmed) >= len(messages) or summarizer is None:
+        return trimmed
+    kept = {id(m) for m in trimmed}
+    dropped = [m for m in messages if id(m) not in kept]
+    if not dropped:
+        return trimmed
+    try:
+        summary = await summarizer(dropped)
+    except asyncio.CancelledError:
+        raise
+    except Exception:  # noqa: BLE001 - compaction must never break a run
+        return trimmed
+    if not summary or not str(summary).strip():
+        return trimmed
+    block = {
+        "role": "system",
+        "content": (
+            "[Background: earlier context was compacted for the provider "
+            "window.]\n" + str(summary).strip()
+        ),
+    }
+    out: list[dict[str, Any]] = []
+    marker_seen = False
+    for m in trimmed:
+        if (
+            not marker_seen
+            and m.get("role") == "system"
+            and CONTEXT_TRIM_MARKER in str(m.get("content") or "")
+        ):
+            out.append(block)
+            marker_seen = True
+            continue
+        out.append(m)
+    if not marker_seen:
+        out.insert(0, block)
+    return out
 
 
 def parse_tool_arguments(raw: Any, tool_name: str = "") -> dict[str, Any] | None:
@@ -1165,16 +1225,76 @@ class TitanAgent:
                 f"Skipping {len(skipped)} tool call(s) with unparsable arguments.",
             )
 
-        # Execute all runnable tools concurrently
+        # Execute all runnable tools concurrently inside a parallelism cap
+        # (Phase 17). Every tool call is FULLY isolated: a crashing tool
+        # returns its error as an ordinary tool result and never aborts its
+        # siblings or the run. With TITAN_CANCEL_ON_TOOL_ERROR=1 the batch
+        # stops as soon as any tool fails and in-flight siblings are cancelled.
+        limit = parallel_tool_calls()
+        cancel_on_fail = cancel_on_tool_error()
+        semaphore = asyncio.Semaphore(max(1, limit))
+
         async def _run_one(tool_call, t_name, t_args):
             try:
                 result = await self.execute_tool_unified(t_name, t_args)
-                return tool_call, t_name, result
-            except (RuntimeError, OSError, ValueError) as e:
-                return tool_call, t_name, f"Error: {e!s}"
+                return ("ok", tool_call, t_name, result)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - crash isolation: one bad
+                # tool must never kill the whole batch or the run
+                return ("error", tool_call, t_name,
+                        f"Error ({type(exc).__name__}): {exc!s}")
 
-        results = await asyncio.gather(*(_run_one(*p) for p in runnable))
-        result_map = {id(r[0]): r[2] for r in results}
+        async def _limited(p):
+            async with semaphore:
+                return await _run_one(*p)
+
+        pending = {asyncio.ensure_future(_limited(p)): p for p in runnable}
+        finished: dict[asyncio.Future, tuple] = {}
+        cancelled_calls: list[tuple] = []
+        failed_tool: str | None = None
+
+        # NOTE: asyncio.wait returns a plain SET of pending futures, so we keep
+        # the future->meta mapping in `pending` and re-derive the wait set each
+        # round instead of overwriting the dict (Phase 17).
+        while pending and not failed_tool:
+            done, _ = await asyncio.wait(
+                list(pending), return_when=asyncio.FIRST_COMPLETED
+            )
+            for fut in done:
+                finished[fut] = await fut
+                pending.pop(fut, None)
+            if cancel_on_fail:
+                for fut in done:
+                    if finished[fut][0] == "error":
+                        failed_tool = finished[fut][2]
+                        break
+            if failed_tool:
+                drain = list(pending)
+                for fut in drain:
+                    fut.cancel()
+                if drain:
+                    await asyncio.gather(*drain, return_exceptions=True)
+                cancelled_calls = [meta for meta in pending.values()]
+                pending.clear()
+
+        result_map = {
+            id(tool_call): result
+            for _status, tool_call, _name, result in finished.values()
+        }
+        if cancelled_calls:
+            result_map.update({
+                id(tool_call): (
+                    f"Error: cancelled - sibling tool '{failed_tool}' failed "
+                    "before this call ran."
+                )
+                for tool_call, _name, _args in cancelled_calls
+            })
+            yield AgentEvent(
+                "status",
+                f"Cancelled {len(cancelled_calls)} remaining tool call(s) "
+                f"after '{failed_tool}' failed.",
+            )
 
         # Emit results and append tool messages in ORIGINAL call order, so every
         # tool_call_id gets exactly one follow-up message.
@@ -1200,6 +1320,34 @@ class TitanAgent:
                 "name": t_name,
                 "content": str(result)
             })
+
+    async def _summarize_context(self, dropped: list[dict[str, Any]]) -> str | None:
+        """Phase 18: condense dropped messages into a short background summary.
+
+        Returns None on ANY failure so callers fall back to the plain trim
+        marker — compaction can never break or slow a run beyond one bounded
+        summarizer call.
+        """
+        try:
+            text = "\n".join(
+                str(m.get("content") or "") for m in dropped
+            )[:14000]
+            prompt = (
+                "You are compacting an agent run's working context for a "
+                "smaller provider window. Summarize ONLY what was done earlier "
+                "and the important facts/results/state the agent still needs, "
+                "in at most 700 characters of plain text. Do not introduce new "
+                "information.\n\n" + text
+            )
+            resp = await self.llm.chat_completion(
+                [{"role": "user", "content": prompt}], tools=[]
+            )
+            content = (resp.content or "").strip() if resp else ""
+            return content or None
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - summarization is best-effort
+            return None
 
     async def _chat_with_recovery(
         self,
@@ -1250,7 +1398,11 @@ class TitanAgent:
                 # it for reasonable windows.
                 current = sum(_msg_cost(m) for m in working)
                 target = max(512, current // 2)
-                trimmed = trim_messages_for_context(working, max_chars=target)
+                trimmed = await compact_messages_for_context(
+                    working,
+                    summarizer=self._summarize_context,
+                    max_chars=target,
+                )
                 if len(trimmed) < len(working):
                     working = trimmed
                     notes.append(
@@ -1481,7 +1633,9 @@ class TitanAgent:
             # Phase 10: keep the in-run window inside the configured budget
             # proactively (a no-op until the context actually exceeds it), so
             # long runs never fight the provider window one step too late.
-            messages = trim_messages_for_context(messages)
+            messages = await compact_messages_for_context(
+                messages, summarizer=self._summarize_context
+            )
 
             available_tools = self._build_tools_list()
 
