@@ -212,6 +212,19 @@ def objective_reanchor_enabled() -> bool:
     )
 
 
+# ---- Phase 26: bounded auto post-check for edit runs ------------------------
+# After a run that actually WROTE or EDITED files, one extra bounded model
+# iteration is injected before finalizing: re-read the changed files, run the
+# relevant verification, and only then ship the final answer. Bounded to one
+# pass per run and only fires when write/edit tools were used, so read-only
+# runs are byte-for-byte unchanged.
+def auto_postcheck_enabled() -> bool:
+    """Verify edited files + tests before finalizing (default on)."""
+    return os.getenv("TITAN_AUTO_POSTCHECK", "1").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

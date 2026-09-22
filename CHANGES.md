@@ -2,6 +2,51 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🧭 Phase 25–27 — MULTI-LEVEL STRENGTHENING (context + harness + tool funnel)
+
+Three levers at three different levels, shipped together:
+
+### 1. Context level — evidence-aware critique (`agent.py`)
+- The reflection/critic prompt now receives a deterministic `#### TOOL
+  EVIDENCE` block built from the REAL tool round-trips already in the
+  conversation: each tool message's name + result snippet (first 12), plus a
+  deduplicated `Files written/edited: …` list extracted from `write_file` /
+  `edit_file` / `deep_coder` arguments.
+- The weak critic argues against facts instead of vibes — zero extra LLM
+  calls, only the reflection prompt content changes (call counts unchanged).
+
+### 2. Harness level — bounded auto post-check for edit runs (`agent.py`, `config.py`, `.env.example`)
+- New `TITAN_AUTO_POSTCHECK` (default `1`). When a run ACTUALLY wrote/edited
+  files, exactly ONE bounded verification turn is injected before finalizing:
+  the enclosing system message tells the model to re-read the changed files,
+  run the relevant tests/build/checks, report real output, and fix+re-verify
+  if anything is red, then end with a "Verified:" note.
+- Reads final answer verification into tool-using runs — previously only
+  zero-tool runs got a grounding pass. Read-only runs and runs with the
+  feature disabled are byte-for-byte unchanged; bounded to one pass (`postcheck_done`).
+
+### 3. Tool-funnel level — repeated-failure guard everywhere (`agent.py`, `tests/test_repeat_guard.py`)
+- The Phase 23 guard counter moved INTO `execute_tool_unified`, the single
+  funnel every tool execution goes through (classic loop, structured engines
+  via `ToolBridge`, cron, queue, direct calls). One shared per-run counter,
+  no double counting: `_run_one` only blocks, the wrapper counts
+  (error-strings and exceptions alike, success forgives, state resets per run).
+- Classic-loop behavior is unchanged (_run_one still emits `"ok"` status for
+  blocked calls so cancel-on-failure never cascades); repeat-guard tests now
+  patch `_execute_tool_unified` so the wrapper/guard stay live.
+
+### Verification
+- `tests/test_evidence_critique.py` — **3 deterministic tests**: critic prompt
+  carries the evidence block after a tool round-trip; written file paths are
+  extracted into the block; paths are deduplicated.
+- `tests/test_postcheck.py` — **4 deterministic tests**: edit runs get exactly
+  one post-check pass (status + prompt delivered + extra LLM call), read-only
+  runs skip it, disabled-by-env, and the post-check round may itself use tools.
+- `tests/test_repeat_guard.py` — **+3 Phase 27 tests** (9 total): direct
+  wrapper calls blocked after limit, exceptions count then block, disabled
+  pass-through — plus the existing tests now prove single-counting end-to-end.
+- Full suite: **468 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🧭 Phase 24 — TASK RE-ANCHORING AFTER CONTEXT COMPACTION
 
 Long runs lose the ORIGINAL objective when old messages get compacted — worst

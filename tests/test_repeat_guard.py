@@ -63,7 +63,7 @@ async def _run(llm, tmp_path, fake_exec=None, session="g"):
         core_memory_path=tmp_path / "g_core.db",
     )
     if fake_exec is not None:
-        agent.execute_tool_unified = fake_exec
+        agent._execute_tool_unified = fake_exec  # Phase 27: keep wrapper+guard live
     events, finals = await _run_on_agent(agent, session)
     return (finals[0] if finals else None), events, agent
 
@@ -194,3 +194,70 @@ def test_guard_state_resets_each_run(tmp_path):
     results2 = _tool_results(events2)
     assert results2[0].startswith("Error: connection timeout")
     assert "repeated tool failure guard" not in results2[0]
+
+
+# --------------------------------------------------------------------------
+# Phase 27: the guard lives in execute_tool_unified, so it protects EVERY
+# tool-execution path — classic loop, structured engines (ToolBridge), cron,
+# queue and direct calls — with ONE shared per-run counter.
+# --------------------------------------------------------------------------
+
+
+def _bare_agent(tmp_path):
+    agent = TitanAgent(
+        llm=_QueuedLLM([]),
+        memory=MemoryManager(tmp_path / "g.db"),
+        core_memory_path=tmp_path / "g_core.db",
+    )
+    agent._guard_failures = {}
+    return agent
+
+
+def test_guard_blocks_direct_wrapper_calls(tmp_path):
+    """Even without the classic loop the wrapper blocks the third identical
+    failing call — structured engines / cron / direct calls are protected."""
+    fake_exec = _FailingExec()
+    agent = _bare_agent(tmp_path)
+    agent._execute_tool_unified = fake_exec
+    results = [
+        asyncio.run(agent.execute_tool_unified("web_fetch", {"url": "http://x/a"}))
+        for _ in range(3)
+    ]
+    assert fake_exec.executed == 2            # two real attempts
+    assert results[0] == "Error: connection timeout"
+    assert results[1] == "Error: connection timeout"
+    assert "repeated tool failure guard" in results[2]
+
+
+def test_guard_wrapper_exception_counts_then_blocks(tmp_path):
+    """Exceptions (not just error-string returns) increment the same counter;
+    the third identical attempt is blocked before the tool even runs."""
+
+    class _ExplodingExec:
+        def __init__(self):
+            self.executed = 0
+
+        async def __call__(self, name, args):
+            self.executed += 1
+            raise RuntimeError("boom")
+
+    agent = _bare_agent(tmp_path)
+    agent._execute_tool_unified = _ExplodingExec()
+    for _ in range(2):
+        try:
+            asyncio.run(agent.execute_tool_unified("read_file", {"path": "x"}))
+        except RuntimeError:
+            pass
+    result = asyncio.run(agent.execute_tool_unified("read_file", {"path": "x"}))
+    assert "repeated tool failure guard" in result
+
+
+def test_guard_disabled_direct_calls(tmp_path, monkeypatch):
+    """Disabling the guard restores the raw pass-through on direct calls."""
+    monkeypatch.setenv("TITAN_REPEAT_GUARD", "0")
+    fake_exec = _FailingExec()
+    agent = _bare_agent(tmp_path)
+    agent._execute_tool_unified = fake_exec
+    for _ in range(3):
+        asyncio.run(agent.execute_tool_unified("web_fetch", {"url": "http://x/a"}))
+    assert fake_exec.executed == 3            # never blocked

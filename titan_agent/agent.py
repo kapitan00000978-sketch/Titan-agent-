@@ -19,6 +19,7 @@ from .config import (
     MAX_STEPS_CAP,
     UNLIMITED_STEPS,
     WORKSPACE_DIR,
+    auto_postcheck_enabled,
     cancel_on_tool_error,
     final_grounding_enabled,
     full_access_enabled,
@@ -135,6 +136,23 @@ REFINE_PROMPT = """A dedicated reviewer just critiqued your work and produced a 
 - Then output the corrected FINAL polished answer to the user (in their language, markdown, complete and precise).
 
 Do not repeat the history — output only the final answer (or the tool call needed to finish the job).
+"""
+
+# Tools that mutate the workspace; their use is the trigger for the bounded
+# post-check pass (Phase 26).
+WRITE_TOOL_NAMES = ("write_file", "edit_file", "deep_coder")
+
+# Phase 26: one bounded verification turn before finalizing when files were
+# written/edited — the classic weak-model failure is claiming "done" without
+# ever re-reading what it wrote or running the tests.
+POSTCHECK_PROMPT = """You just edited files in the workspace. Before you finalize, VERIFY the work you claim is done:
+
+- Re-read the file(s) you wrote/edited (read_file) and confirm the changes are actually on disk and correct.
+- If the task involves tests, builds or checks, RUN the relevant verification command (e.g. `python -m pytest tests -q`, a build, or a lint) and report the REAL output.
+- If verification reveals a problem, FIX it with more tool calls, then re-verify.
+Then output the FINAL answer to the user (in their language, markdown, complete and precise), ending with a short "Verified:" note listing exactly what you checked and the real result.
+
+Do not repeat the history — output the verification tool call(s) you need, or the final answer.
 """
 
 ORIGINAL_TASK_MARKER = "## ORIGINAL TASK (re-anchored)"
@@ -1082,6 +1100,53 @@ class TitanAgent:
             log.debug("approval gate failed for %s: %s", name, exc)
             return None
 
+    def _build_tool_evidence(self, messages: list[dict[str, Any]], limit: int = 12) -> str:
+        """Phase 25: a deterministic list of what ACTUALLY happened with tools,
+        built from the real tool round-trips already in the conversation and fed
+        to the critic so it argues against facts instead of vibes. No LLM call,
+        no parsing heuristics beyond the message shape the harness itself wrote."""
+        files: list[str] = []
+        for m in messages:
+            for tc in m.get("tool_calls") or []:
+                fn = tc.get("function") or {}
+                if fn.get("name") in WRITE_TOOL_NAMES:
+                    try:
+                        parsed = json.loads(str(fn.get("arguments") or "{}"))
+                        path = parsed.get("path") or parsed.get("file")
+                        if path:
+                            files.append(str(path))
+                    except (TypeError, ValueError):
+                        pass
+        lines: list[str] = []
+        for m in messages:
+            if m.get("role") != "tool":
+                continue
+            tname = str(m.get("name") or "")
+            if not tname:
+                continue
+            snippet = str(m.get("content") or "").replace("\n", " ").strip()
+            if len(snippet) > 200:
+                snippet = snippet[:200] + "…"
+            lines.append(f"- {tname}: {snippet or '(no output)'}")
+        parts = [
+            "\n#### TOOL EVIDENCE - facts that actually happened this run:",
+            "\n".join(lines[:limit]) if lines else "(no tool results yet)",
+        ]
+        if files:
+            parts.append(
+                "Files written/edited: " + ", ".join(dict.fromkeys(files))
+            )
+        return "\n".join(parts)
+
+    def _run_used_write_tool(self, messages: list[dict[str, Any]]) -> bool:
+        """Phase 26: did this run write or edit files? Scans the real tool
+        round-trips (recent writes always survive compaction)."""
+        return any(
+            str(m.get("name") or "") in WRITE_TOOL_NAMES
+            for m in messages
+            if m.get("role") == "tool"
+        )
+
     def _guard_key(self, t_name: str, t_args: dict[str, Any]) -> str:
         """Canonical identity of a tool call for the repeated-failure guard:
         tool name + sorted-key JSON of the arguments, so any argument change
@@ -1093,11 +1158,23 @@ class TitanAgent:
         return f"{t_name}\x00{canonical}"
 
     async def execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
-        # Phase 22: telemetry wrapper. Every tool execution — classic loop,
-        # structured strategies, cron, queue, direct calls — funnels through
-        # here, so the shared collector records success/failure, latency and
-        # output size without changing any caller's behavior (exceptions still
-        # propagate exactly as before; the record happens first).
+        # Phase 22 + 27: telemetry + repeated-failure guard wrapper. EVERY tool
+        # execution funnel — classic loop, structured engines (ToolBridge),
+        # cron, queue, direct calls — goes through here, so one shared collector
+        # and one shared guard counter govern all of them.
+        guarded = repeat_guard_enabled()
+        gkey = None
+        prior = 0
+        if guarded:
+            gkey = self._guard_key(name, args)
+            prior = self._guard_failures.get(gkey, 0)
+            if prior >= repeat_guard_limit():
+                return (
+                    "Error: repeated tool failure guard — this exact call "
+                    f"(tool='{name}') already failed {prior} times in this run. "
+                    "Change the arguments, use a different tool, or verify the "
+                    "prerequisites first."
+                )
         start = time.monotonic()
         try:
             result = await self._execute_tool_unified(name, args)
@@ -1109,6 +1186,8 @@ class TitanAgent:
                 error=type(exc).__name__,
                 output_chars=0,
             )
+            if guarded:
+                self._guard_failures[gkey] = prior + 1
             raise
         ok = not (isinstance(result, str) and result.startswith("Error"))
         self.tool_stats.record(
@@ -1118,6 +1197,11 @@ class TitanAgent:
             error=None if ok else "tool_error",
             output_chars=len(result) if isinstance(result, str) else 0,
         )
+        if guarded:
+            if ok:
+                self._guard_failures.pop(gkey, None)  # success forgives
+            else:
+                self._guard_failures[gkey] = prior + 1  # single counting point
         return result
 
     async def _execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
@@ -1365,11 +1449,14 @@ class TitanAgent:
         semaphore = asyncio.Semaphore(max(1, limit))
 
         async def _run_one(tool_call, t_name, t_args):
-            # Phase 23: repeated identical-failure guard — the SAME call that
-            # already failed `limit` times is skipped (not executed) and the
-            # model is told to change approach. A blocked call returns "ok"
-            # with an error text so cancel-on-failure does NOT cascade-cancel
-            # healthy siblings in the same batch.
+            # Phase 23 + 27: repeated identical-failure guard — the SAME call
+            # that already failed `limit` times in this run is skipped (not
+            # executed) and the model is told to change approach. Counting
+            # happens ONCE, inside execute_tool_unified (Phase 27), so the
+            # classic loop and the structured engines (ToolBridge) share one
+            # counter. A blocked call returns "ok" with an error text so
+            # cancel-on-failure does NOT cascade-cancel healthy siblings in
+            # the same batch.
             if repeat_guard_enabled():
                 key = self._guard_key(t_name, t_args)
                 prior = self._guard_failures.get(key, 0)
@@ -1383,19 +1470,6 @@ class TitanAgent:
                             "or verify the prerequisites first."
                         ),
                     )
-                try:
-                    result = await self.execute_tool_unified(t_name, t_args)
-                    status = "ok"
-                except asyncio.CancelledError:
-                    raise
-                except Exception as exc:  # noqa: BLE001 - crash isolation
-                    result = f"Error ({type(exc).__name__}): {exc!s}"
-                    status = "error"
-                if isinstance(result, str) and result.startswith("Error"):
-                    self._guard_failures[key] = prior + 1
-                else:
-                    self._guard_failures.pop(key, None)  # success forgives
-                return (status, tool_call, t_name, result)
             try:
                 result = await self.execute_tool_unified(t_name, t_args)
                 return ("ok", tool_call, t_name, result)
@@ -1839,6 +1913,7 @@ class TitanAgent:
         used_tools = False
         run_tools: list[str] = []
         reflect_done = False
+        postcheck_done = False  # Phase 26: bounded auto post-check for edit runs
         # Phase 23: per-run consecutive identical-failure counters, keyed by
         # "tool\x00canonical-args". Reset on every run_task.
         self._guard_failures: dict[str, int] = {}
@@ -1978,9 +2053,16 @@ class TitanAgent:
             if needs_reflection and not reflect_done:
                 reflect_done = True
                 yield AgentEvent("status", "Critically reviewing results (reflection)...")
+                # Phase 25: feed the critic a deterministic list of what REALLY
+                # happened with tools so it argues against facts, not vibes.
                 critic_messages = list(messages) + [
                     {"role": "assistant", "content": final_text},
-                    {"role": "user", "content": REFLECTION_PROMPT}
+                    {
+                        "role": "user",
+                        "content": REFLECTION_PROMPT
+                        + "\n"
+                        + self._build_tool_evidence(messages),
+                    },
                 ]
                 try:
                     crit = await self._critic_llm().chat_completion(
@@ -2064,6 +2146,23 @@ class TitanAgent:
                                 yield AgentEvent("final_answer", f"Reached the maximum number of steps ({max_steps}). The latest state and results are preserved above.")
                                 return
                             continue
+
+            # Phase 26: bounded auto post-check for edit runs. When files were
+            # actually written/edited, inject exactly ONE extra verification
+            # turn before finalizing (re-read changed files, run tests) — the
+            # classic weak-model failure is claiming "done" without ever
+            # verifying. Read-only runs never trigger this.
+            if (
+                auto_postcheck_enabled()
+                and not postcheck_done
+                and self._run_used_write_tool(messages)
+            ):
+                postcheck_done = True
+                messages.append({"role": "system", "content": POSTCHECK_PROMPT})
+                yield AgentEvent(
+                    "status", "Post-check: verifying edited files before finalizing..."
+                )
+                continue
 
             yield AgentEvent("final_answer", final_text)
             await self._finalize_run(session_id, user_input, final_text, mode, strategy, auto_commit)
