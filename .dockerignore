@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+pyre-tmp/
+*.egg-info/
+
+# Secrets / local state (never bake a key or the working directory into the image)
+.env
+!.env.example
+workspace/
+titan_memory.db
+checkpoints.db
+task_queue.db
+.server_key
+*.log
+
+# Frontend deps (web UI is served as static files from titan_agent/web_ui)
+node_modules/
+frontend/node_modules/
+
+# Stray root-level debug/probe scripts (not part of the package)
+probe*.py
+find_env*.py
+
+# Editor junk
+.idea/
+.vscode/

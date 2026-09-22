@@ -130,6 +130,27 @@ python run.py --provider ollama --model hermes3:8b
 python run.py --mode deep_search --effort ultra   # CLI: heavy research run
 ```
 
+### Method 4: Docker (Linux / macOS / Windows with Docker Desktop)
+```bash
+cp .env.example .env        # first time: set provider / API keys / TITAN_API_KEY
+docker compose up -d --build
+```
+- Dashboard: `http://localhost:7860` (port override: `TITAN_PORT` in `.env`).
+- The agent's working directory lives on a named volume (`titan-workspace`) — task
+  state, checkpoints, core memory and the HITL audit trail survive restarts.
+- `mcp_servers.json` is bind-mounted (read-only) so MCP servers are editable
+  without rebuilding the image.
+- Health check: `docker compose ps` / `docker inspect --format '{{.State.Health.Status}}' titan-agent`.
+- One-off server: `docker run --rm -p 7860:7860 --env-file .env titan-agent`
+- Rebuild after code changes: `docker compose up -d --build`
+
+> ⚠️ **Known limitation:** the container cannot access localhost-bound AI
+> gateways on the host *as* `localhost` — a self-hosted **OmniRoute**
+> (`localhost:20128`) needs `host.docker.internal:20128` (add
+> `OMNI_BASE_URL=http://host.docker.internal:20128/v1`
+> and `--add-host=host.docker.internal:host-gateway` to the run command;
+> Docker Desktop adds this automatically).
+
 The web dashboard opens automatically in your browser at `http://127.0.0.1:7860`.
 
 > 💡 **No API key required:** In the Web Dashboard open Settings (⚙️) and keep the **Puter.js** provider —

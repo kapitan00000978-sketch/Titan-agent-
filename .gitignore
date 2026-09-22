@@ -37,7 +37,6 @@ htmlcov/
 workspace/
 _staging/
 $null
-
 # ===== Packaging =====
 *.zip
 *.tar.gz

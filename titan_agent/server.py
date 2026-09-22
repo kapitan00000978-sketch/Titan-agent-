@@ -1,19 +1,23 @@
 import asyncio
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 import aiofiles
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .agent import TitanAgent
+from .auth import require_api_key
 from .config import MCP_CONFIG_FILE, WORKSPACE_DIR, full_access_enabled, set_full_access
+from .core.guardrails.hitl import HumanInTheLoop
 from .llm_client import LLMClient
+from .logging_setup import LOG_RING, setup_logging
 from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .scheduler import CronScheduler
@@ -43,13 +47,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Phase 15: structured JSON logging — one stream handler + the in-memory ring
+# that backs GET /api/logs/recent (idempotent, no-op if already configured).
+setup_logging()
+
 # Global instances
 mcp_manager = MCPManager(MCP_CONFIG_FILE)
 tool_registry = ToolRegistry(WORKSPACE_DIR)
 memory_manager = MemoryManager()
 telegram_manager = TelegramManager()
 llm_client = LLMClient()
-agent = TitanAgent(llm=llm_client, tools=tool_registry, mcp=mcp_manager, memory=memory_manager, telegram=telegram_manager)
+# Phase 14: Human-in-the-loop. One global approval manager, wired into BOTH the
+# tool registry (guarded wrappers) and the live agent (single gate in
+# execute_tool_unified). Decisions are audited to workspace/hitl_audit.jsonl.
+hitl_timeout = float(os.getenv("TITAN_HITL_TIMEOUT", "120"))
+hitl_manager = HumanInTheLoop(
+    default_timeout=hitl_timeout,
+    audit_path=WORKSPACE_DIR / "hitl_audit.jsonl",
+)
+tool_registry.attach_hitl(hitl_manager, hitl_timeout)
+agent = TitanAgent(
+    llm=llm_client,
+    tools=tool_registry,
+    mcp=mcp_manager,
+    memory=memory_manager,
+    telegram=telegram_manager,
+    hitl=hitl_manager,
+    hitl_timeout=hitl_timeout,
+)
 
 async def _cron_runner(prompt: str, session_id: str, mode: str, effort: str, strategy: str = "auto", auto_commit: bool = False, resume: bool = False) -> str:
     """Runner used by the cron scheduler: execute a prompt with the live agent
@@ -116,6 +141,11 @@ async def root():
             content = await f.read()
             return HTMLResponse(content)
     return HTMLResponse("<h1>Titan Agent Web UI loading...</h1>")
+
+@app.get("/health")
+async def health():
+    """Public liveness check — the only route that needs no Bearer token."""
+    return {"status": "ok"}
 
 class ChatRequest(BaseModel):
     message: str
@@ -399,3 +429,141 @@ async def queue_process_once():
         return {"status": "success", "processed": processed}
     except Exception as e:  # noqa: BLE001 - API surface
         return {"status": "error", "detail": str(e)}
+
+
+# ---- Phase 14: Human-in-the-loop API -----------------------------------------
+# Backs the web UI approval queue. The live agent creates requests in the
+# global `hitl_manager`; these endpoints list them and let a human decide.
+# (All routes are guarded by the Phase 12 Bearer-token auth below.)
+
+class HitlRequestCreate(BaseModel):
+    action: str = Field(..., min_length=1, description="Tool/action name, e.g. delete_file")
+    resource: str = "*"
+    details: dict[str, Any] = Field(default_factory=dict)
+    reason: str = ""
+
+
+class HitlDecideBody(BaseModel):
+    request_id: str = Field(..., min_length=1)
+    decision: str = Field(..., description="approve | deny | cancel")
+    by: str = "human"
+
+
+@app.get("/api/hitl")
+async def hitl_index(limit: int = 200):
+    """Audit trail: most recent approval requests, newest first."""
+    reqs = hitl_manager.recent(limit=limit)
+    return {
+        "requests": [r.to_dict() for r in reqs],
+        "counts": hitl_manager.status_counts(),
+    }
+
+
+@app.get("/api/hitl/pending")
+async def hitl_pending():
+    """Everything currently waiting for a human decision."""
+    reqs = hitl_manager.pending()
+    return {
+        "pending": [r.to_dict() for r in reqs],
+        "count": len(reqs),
+        "counts": hitl_manager.status_counts(),
+    }
+
+
+@app.post("/api/hitl/request")
+async def hitl_request(body: HitlRequestCreate):
+    """Create a new approval request (manual or for tooling/tests)."""
+    req = hitl_manager.request(body.action, body.resource, body.details, body.reason)
+    return {"status": "success", "request": req.to_dict()}
+
+
+@app.post("/api/hitl/decide")
+async def hitl_decide(body: HitlDecideBody):
+    """Resolve a pending request: approve, deny, or cancel."""
+    if body.decision == "approve":
+        req = hitl_manager.approve(body.request_id, by=body.by)
+    elif body.decision == "deny":
+        req = hitl_manager.deny(body.request_id, by=body.by)
+    elif body.decision == "cancel":
+        req = hitl_manager.cancel(body.request_id)
+    else:
+        raise HTTPException(status_code=422, detail="decision must be 'approve', 'deny' or 'cancel'")
+    if req is None:
+        raise HTTPException(status_code=404, detail=f"unknown request_id: {body.request_id}")
+    return {"status": "success", "request": req.to_dict()}
+
+
+@app.get("/api/hitl/{request_id}")
+async def hitl_get(request_id: str):
+    """Status of a single approval request."""
+    req = hitl_manager.get(request_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail=f"unknown request_id: {request_id}")
+    return {"request": req.to_dict()}
+
+
+# ---- Phase 15: structured logging API ---------------------------------------
+# GET /api/logs/recent returns the newest JSON log records from the in-memory
+# ring (no filesystem reads, no log-tailing). Auth-protected like every /api.
+
+@app.get("/api/logs/recent")
+async def logs_recent(limit: int = 100, level: str = ""):
+    """Newest structured log records, optionally filtered by exact level name."""
+    records = list(LOG_RING)
+    records.reverse()  # newest first
+    level_hint = level.strip().upper()
+    if level_hint:
+        records = [r for r in records if r.get("level") == level_hint]
+    clipped = records[: max(1, min(limit, 1000))]
+    return {
+        "logs": clipped,
+        "count": len(clipped),
+        "total": len(records),
+        "level_filter": level_hint or None,
+    }
+
+# ---- Phase 12: attach Bearer-token auth to every API route -------------------
+# The liveness check (/health) and the web-UI shell (/) stay public; every
+# other route gets the `require_api_key` dependency appended in-place.
+_PUBLIC_PATHS = frozenset({"/", "/health"})
+
+
+def _apply_auth_dependency() -> None:
+    """Append `Depends(require_api_key)` to every non-public route, in place.
+
+    FastAPI builds each route's dependency tree (`route.dependant`) exactly once,
+    inside ``APIRoute.__init__``, and the per-request handler captures that tree
+    *by reference*. So we must mutate the LIVE tree node, not reassign
+    ``route.dependant`` to a fresh object — the baked handler would keep solving
+    against the old tree and the auth check would never run.
+
+    Mirror exactly what ``APIRoute.__init__`` does for ``dependencies=...``:
+    attach a parameterless sub-dependant (``get_parameterless_sub_dependant``)
+    at the front of ``route.dependant.dependencies``. ``solve_dependencies``
+    walks this list at request time, so the inserted node is enforced on every
+    call even though the handler was created earlier.
+    """
+    from fastapi.dependencies.utils import get_parameterless_sub_dependant
+    from fastapi.routing import APIRoute
+
+    for route in list(app.routes):
+        if not isinstance(route, APIRoute):
+            continue
+        if route.path in _PUBLIC_PATHS:
+            continue
+        if any(
+            (getattr(d, "dependency", None) or getattr(d, "call", None))
+            is require_api_key
+            for d in route.dependant.dependencies
+        ):
+            continue
+        route.dependencies.append(Depends(require_api_key))
+        route.dependant.dependencies.insert(
+            0,
+            get_parameterless_sub_dependant(
+                depends=Depends(require_api_key), path=route.path_format
+            ),
+        )
+
+
+_apply_auth_dependency()

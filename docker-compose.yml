@@ -1,0 +1,35 @@
+# Titan Agent — docker compose (Phase 16)
+#
+#   cp .env.example .env        # adjust keys / provider first
+#   docker compose up -d --build
+#   open http://localhost:7860
+#
+# The agent's working directory (workspace/) lives on a named volume so task
+# state, checkpoints and the HITL audit trail survive container restarts.
+services:
+  titan-agent:
+    build: .
+    image: titan-agent:latest
+    container_name: titan-agent
+    restart: unless-stopped
+    ports:
+      - "${TITAN_PORT:-7860}:7860"
+    env_file:
+      - .env
+    environment:
+      TITAN_WORKSPACE: /app/workspace
+    volumes:
+      - titan-workspace:/app/workspace
+      # Edit MCP servers on the host without rebuilding the image.
+      - ./mcp_servers.json:/app/mcp_servers.json:ro
+      # Host clock (Windows Docker Desktop) — keeps cron/daemon scheduling sane.
+      - /etc/localtime:/etc/localtime:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/health', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  titan-workspace:

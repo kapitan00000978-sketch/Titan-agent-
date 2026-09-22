@@ -116,6 +116,7 @@ class ToolBridge(IToolExecutor):
         hitl: HumanInTheLoop | None = None,
         hitl_timeout: float = 60.0,
         auto_approve: bool | None = None,
+        defer_approval: bool = False,
     ):
         self.execute_fn = execute_fn
         self.get_tools_fn = get_tools_fn
@@ -125,6 +126,11 @@ class ToolBridge(IToolExecutor):
         # Phase 8: in FULL/ABSOLUTE access every approval gate is auto-granted
         # (None = derive from config so a runtime toggle applies immediately).
         self.auto_approve = _cfg.full_access_enabled() if auto_approve is None else auto_approve
+        # Phase 14: when True and no HITL is attached, require-approval tools are
+        # handed through to the underlying executor (ToolRegistry) instead of being
+        # denied here — the live agent wires HITL at the registry layer so every
+        # execution path shares ONE approval gate (no double approval prompts).
+        self.defer_approval = defer_approval
 
     async def execute(
         self,
@@ -154,7 +160,10 @@ class ToolBridge(IToolExecutor):
         if self.auto_approve:
             return True
         if self.hitl is None:
-            return False
+            # Phase 14: defer_approval=True lets the request through so the
+            # execution layer (ToolRegistry HITL gate) handles it — otherwise
+            # we keep the classic "no responder" denial.
+            return self.defer_approval
         try:
             req = self.hitl.request(
                 tool_name,
@@ -252,6 +261,7 @@ class StructuredEngine:
         hitl: HumanInTheLoop | None = None,
         hitl_timeout: float = 30.0,
         auto_approve: bool = False,
+        defer_approval: bool = False,
     ):
         self.llm_bridge = LLMBridge(llm)
         self.tool_bridge = ToolBridge(
@@ -261,6 +271,7 @@ class StructuredEngine:
             hitl=hitl,
             hitl_timeout=hitl_timeout,
             auto_approve=auto_approve,
+            defer_approval=defer_approval,
         )
         self.policy = self.tool_bridge.policy
         self.session_id = session_id

@@ -131,6 +131,14 @@ class HumanInTheLoop:
             if r.status == ApprovalStatus.PENDING
         ]
 
+    def recent(self, limit: int = 200) -> list[ApprovalRequest]:
+        """Most recently created requests, newest first (for audit UIs)."""
+        return sorted(
+            self._requests.values(),
+            key=lambda r: r.created_at,
+            reverse=True,
+        )[:limit]
+
     def get(self, request_id: str) -> ApprovalRequest | None:
         return self._requests.get(request_id)
 

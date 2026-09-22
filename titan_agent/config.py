@@ -63,6 +63,47 @@ else:
     DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "ollama")
     DEFAULT_MODEL = os.getenv("TITAN_MODEL", "hermes3:8b")
 
+# ---- Phase 13: provider fallback chain -------------------------------
+# When the primary LLM provider fails with a network / rate-limit / server
+# error (or is not configured), `LLMClient.chat_completion` automatically
+# re-runs the request against the next provider from this chain. Read at CALL
+# time (not import time) so tests and the runtime can change it on the fly.
+#   TITAN_PROVIDER_FALLBACK_CHAIN="kimi,glm,deepseek,ollama"   (comma-separated)
+#   TITAN_PROVIDER_FALLBACK_MODELS="kimi=my-kimi-model,glm=my-glm-model"
+#   (optional per-provider model overrides, provider=model pairs)
+def provider_fallback_chain() -> list[str]:
+    """Ordered provider names to try after the primary, in priority order."""
+    raw = os.getenv("TITAN_PROVIDER_FALLBACK_CHAIN", "")
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
+def provider_fallback_models() -> dict[str, str]:
+    """Per-provider model overrides for the fallback chain."""
+    overrides: dict[str, str] = {}
+    for pair in os.getenv("TITAN_PROVIDER_FALLBACK_MODELS", "").split(","):
+        if "=" in pair:
+            provider, _, model = pair.partition("=")
+            provider, model = provider.strip(), model.strip()
+            if provider and model:
+                overrides[provider] = model
+    return overrides
+
+
+def provider_default_model(provider: str) -> str | None:
+    """Known default model for a provider when the fallback chain names it."""
+    return {
+        "openrouter": "nousresearch/hermes-3-llama-3.1-405b:free",
+        "kimi": KIMI_MODEL,
+        "glm": GLM_MODEL,
+        "omni": OMNI_MODEL,
+        "deepseek": "deepseek-chat",
+        "groq": "llama-3.3-70b-versatile",
+        "openai": "gpt-4o",
+        "ollama": "hermes3:8b",
+        "completions": "claude-opus-4-1-20250817",
+        "lmstudio": "local-model",
+    }.get(provider)
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

@@ -23,8 +23,30 @@ from .config import (
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     OPENROUTER_API_KEY,
+    provider_default_model,
+    provider_fallback_chain,
+    provider_fallback_models,
 )
 from .token_limit import TokenRateLimiter, estimate_tokens
+
+log = logging.getLogger(__name__)
+
+# Providers that need an API key before they can serve a request, mapped to the
+# module-level key variable they read (read via globals() so tests/runtime can
+# swap keys live). Everything NOT listed here cannot take part in the fallback
+# chain unless it already has its key baked in.
+_PROVIDER_API_KEY_ATTR = {
+    "openrouter": "OPENROUTER_API_KEY",
+    "groq": "GROQ_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "kimi": "KIMI_API_KEY",
+    "glm": "GLM_API_KEY",
+    "omni": "OMNI_API_KEY",
+    "completions": "COMPLETIONS_API_KEY",
+    "openai": "OPENAI_API_KEY",
+}
+# Local / browser providers never need a key.
+_LOCAL_PROVIDERS = frozenset({"ollama", "lmstudio", "puter"})
 
 
 class LLMResponse:
@@ -153,7 +175,95 @@ class LLMClient:
         text = re.sub(r"<tool_call>.*?</tool_call>", "", text, flags=re.DOTALL | re.IGNORECASE).strip()
         return text, thoughts, tool_calls
 
+    def _build_fallback_chain(self) -> list[tuple[str, str]]:
+        """(provider, model) pairs to try, primary first, deduplicated.
+
+        The chain comes from ``TITAN_PROVIDER_FALLBACK_CHAIN`` (read at call
+        time so tests and the runtime can change it on the fly). Providers that
+        need an API key but have none configured are skipped entirely — wasting
+        a doomed HTTP round-trip is pointless when the sibling may already work.
+        """
+        chain: list[tuple[str, str]] = [(self.provider, self.model)]
+        seen = {self.provider}
+        overrides = provider_fallback_models()
+        for provider in provider_fallback_chain():
+            if provider in seen:
+                continue
+            seen.add(provider)
+            if not self._has_credentials(provider):
+                continue
+            model = overrides.get(provider) or provider_default_model(provider) or self.model
+            chain.append((provider, model))
+        return chain
+
+    @classmethod
+    def _has_credentials(cls, provider: str) -> bool:
+        """False when the provider needs an API key but none is configured."""
+        if provider in _LOCAL_PROVIDERS:
+            return True
+        attr = _PROVIDER_API_KEY_ATTR.get(provider)
+        return bool(attr and globals().get(attr))
+
+    @staticmethod
+    def _is_transient_api_error(exc: RuntimeError) -> bool:
+        """API-level failures that should roll over to the next provider.
+
+        The project convention is that auth errors (401/403) and malformed
+        requests are NOT transient — a bad key on one provider will not be fixed
+        by another provider, so they fail fast. Rate limits, server hiccups and
+        missing-key/provider-configuration errors are genuinely worth a sibling
+        attempt.
+        """
+        msg = str(exc)
+        if "is not configured" in msg or "missing API key" in msg:
+            return True
+        match = re.search(r"\[(\d{3})\]", msg)
+        if not match:
+            return False
+        status = int(match.group(1))
+        return status in (408, 429) or 500 <= status <= 599
+
     async def chat_completion(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        temperature: float = 0.6,
+        max_tokens: int = 4096
+    ) -> LLMResponse:
+        """Run chat over the primary provider, falling back down the chain.
+
+        Transient failures (network errors, timeouts, HTTP 408/429/5xx) and an
+        unconfigured primary roll over to the next provider from
+        ``TITAN_PROVIDER_FALLBACK_CHAIN``; auth (401/403) and malformed-request
+        errors fail fast. The client's configured provider/model are restored
+        afterwards so a fallback never silently reconfigures the session.
+        """
+        chain = self._build_fallback_chain()
+        original = (self.provider, self.model, self.base_url, self.api_key)
+        errors: list[str] = []
+        try:
+            for provider, model in chain:
+                if provider != self.provider or model != self.model:
+                    self.set_model(provider, model)
+                try:
+                    return await self._chat_completion_once(
+                        messages, tools=tools, temperature=temperature, max_tokens=max_tokens
+                    )
+                except (aiohttp.ClientError, OSError, asyncio.TimeoutError, RuntimeError) as exc:
+                    if isinstance(exc, RuntimeError) and not self._is_transient_api_error(exc):
+                        raise  # auth / malformed request — not eligible for fallback
+                    errors.append(f"{provider} ({model}): {exc}")
+                    log.warning("LLM provider '%s' (%s) failed, trying next: %s", provider, model, exc)
+                    continue
+            detail = " | ".join(errors) if errors else "all providers exhausted"
+            raise RuntimeError(f"All providers failed. Errors: {detail}")
+        finally:
+            # Restore the configured provider/model/credentials so a fallback
+            # mid-flight does not permanently swap the client's configuration.
+            self.provider, self.model = original[0], original[1]
+            self.base_url, self.api_key = original[2], original[3]
+
+    async def _chat_completion_once(
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,

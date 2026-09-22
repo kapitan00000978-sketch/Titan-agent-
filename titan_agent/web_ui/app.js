@@ -46,8 +46,55 @@ async function acquireTokens(n) {
   return waitMs;
 }
 
+// ---------- Phase 12: server auth token ----------
+// Every /api route requires 'Authorization: Bearer <TITAN_API_KEY>'. The token
+// lives in localStorage; on first load we prompt once and cache it. The public
+// routes / and /health need no token.
+const API_KEY_STORAGE = "titan_api_key";
+
+function getApiKey() {
+  try { return localStorage.getItem(API_KEY_STORAGE) || ""; } catch (e) { return ""; }
+}
+
+function setApiKey(token) {
+  try { localStorage.setItem(API_KEY_STORAGE, token); } catch (e) { /* ignore */ }
+}
+
+// Wraps fetch() with the Bearer header + a 401 handler that re-prompts for the key.
+async function apiFetch(url, options = {}) {
+  const token = getApiKey();
+  const headers = Object.assign({}, options.headers || {});
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(url, Object.assign({}, options, { headers }));
+  if (res.status === 401) {
+    promptForApiKey();
+    throw new Error("Unauthorized — API key required.");
+  }
+  return res;
+}
+
+function promptForApiKey() {
+  const current = getApiKey();
+  const input = window.prompt(
+    "TITAN AGENT — server authentication is on.\n" +
+    "Enter the TITAN_API_KEY (it was printed once in the server console, or set in .env).\n" +
+    "Leave empty to try the public liveness check only.",
+    current
+  );
+  if (input !== null) {
+    const trimmed = input.trim();
+    if (trimmed) setApiKey(trimmed);
+  }
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
+  // Phase 12: if no API key is cached, prompt for it on first load so the very
+  // first config fetch is authenticated. A missing key only shows the prompt
+  // once; /health stays reachable without it.
+  if (!getApiKey()) {
+    promptForApiKey();
+  }
   fetchConfig();
   fetchMcpTools();
   fetchWorkspaceFiles();

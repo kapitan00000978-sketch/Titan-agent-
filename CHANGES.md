@@ -2,6 +2,210 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🔧 Phase 16 — DOCKER PACKAGING
+
+Ship the web dashboard / API server as a container: one `docker build`, one
+`docker compose up`, on Linux / macOS / Windows (Docker Desktop).
+
+### 1. `Dockerfile`
+- `python:3.12-slim` base; installs `git` + `ca-certificates` (gitops /
+  `self_update` / TLS), pip-installs `requirements.txt` as its own layer for
+  fast rebuilds.
+- Build-time smoke gate: `python -c "import titan_agent.server"` fails the
+  build early if the server wiring (FastAPI app + all singletons) is broken.
+- Runs `uvicorn titan_agent.server:app` on `0.0.0.0:7860` (`EXPOSE 7860`).
+
+### 2. `docker-compose.yml`
+- Service `titan-agent` — `restart: unless-stopped`, host port from
+  `TITAN_PORT` (default 7860), `env_file: .env`.
+- Named volume `titan-workspace` → task state, checkpoints, core memory and
+  the HITL audit trail survive restarts; `mcp_servers.json` bind-mounted
+  read-only so MCP config is editable without rebuilding.
+- HTTP healthcheck against `/health` (interval 30s, start period 10s).
+
+### 3. `.dockerignore`
+- Excludes `.env`, `workspace/`, `*.db`, `.server_key`, `*.log`, venvs and
+  frontend deps (web UI ships as static files inside the package);
+  `!.env.example` stays shippable. Stray root probe/debug scripts excluded and
+  removed from the working tree.
+
+### 4. `README.md`
+- "Method 4: Docker" quick-start: build, run, volume/healthcheck notes and the
+  `host.docker.internal` caveat for self-hosted gateways (OmniRoute).
+
+### Verification
+- `tests/test_docker.py` — **6 deterministic tests** (no daemon): Dockerfile
+  base/entrypoint/smoke gate, compose mounts + healthcheck, dockerignore
+  secret hygiene, offline server-module import (the exact Dockerfile smoke
+  check) and web_ui presence. Full suite **409 passed, 1 skipped**, `ruff check .`
+  clean (stray probe scripts also removed).
+
+## 🔧 Phase 15 — STRUCTURED JSON LOGGING + `/api/logs/recent`
+
+Every log line from the `titan_agent` logger tree is now a single
+machine-parseable JSON object, mirrored into an in-memory ring buffer that the
+web UI / API can query — no filesystem reads, no log-tailing.
+
+### 1. `titan_agent/logging_setup.py` (new)
+- `JsonFormatter` — emits `{ts, level, logger, message}` plus every `extra`
+  field passed to the log call (e.g. `event`, `session_id`) and a `traceback`
+  for exception records; standard `LogRecord` attributes never leak.
+- `RingBufferHandler` — mirrors each record as a dict into the bounded
+  `LOG_RING` deque (size from `TITAN_LOG_BUFFER`, default 500).
+- `setup_logging()` — idempotent: exactly one stream handler + one ring
+  handler on the `titan_agent` logger; propagation disabled so records are NOT
+  re-rendered by root/uvicorn (single JSON source of truth). Level from
+  `TITAN_LOG_LEVEL` (default INFO).
+
+### 2. Live endpoint (`titan_agent/server.py`)
+- `GET /api/logs/recent?limit=&level=` — newest JSON log records first,
+  optional exact-level filter, sane clamping, auth-protected like every `/api`
+  route. `setup_logging()` runs at server import.
+
+### 3. `.env.example`
+- Documented `TITAN_LOG_LEVEL` and `TITAN_LOG_BUFFER`.
+
+### Verification
+- `tests/test_logging.py` — **11 deterministic tests** (no network): formatter
+  JSON shape + extras + traceback + no standard-attr leaks, ring mirroring,
+  exotic-extra resilience, idempotency, propagation off, endpoint auth +
+  newest-first ordering + level filter + limit clamp. Full suite
+  **403 passed, 1 skipped**, ruff clean.
+
+## 🔧 Phase 14 — HUMAN-IN-THE-LOOP (live approval gate + HTTP API)
+
+Sensitive operations (`delete_file`, `screenshot`, …) now create a real pending
+approval request the agent *waits on* — surfaced through a protected HTTP API and
+audited to disk — instead of being silently hard-denied or auto-run.
+
+### 1. Live approval gate (`titan_agent/agent.py`)
+- `TitanAgent.__init__(hitl=…, hitl_timeout=…)` — accepts the global
+  `HumanInTheLoop` and wires it onto its tool registry in the constructor.
+- `_approval_gate()` — **one approval funnel for every loop style** (classic,
+  structured strategy, cron, queue): every `execute_tool_unified` call is
+  checked against the policy. `delete_file` / `screenshot` → a pending request
+  is created; the run waits up to `hitl_timeout` for a human decision and only
+  proceeds on explicit APPROVE. FULL access auto-grants; no HITL wired keeps
+  today's permissive behavior (tests/headless untouched).
+
+### 2. Guarded `ToolRegistry` parity (`titan_agent/core/tools/registry.py`)
+- `__init__(hitl=…, hitl_timeout=…)` + `attach_hitl()` (late wiring).
+- Require-approval decisions escalate to HITL via `_ensure_approved()` and only
+  raise `PermissionError` when the human denies/times out or no HITL is set.
+
+### 3. Structured strategy defers (`titan_agent/structured.py`)
+- `ToolBridge(…, defer_approval=…)` — when no HITL is attached, deferring lets
+  the request travel to the registry gate instead of being denied; the default
+  `False` keeps the existing "approval required" behavior for direct users.
+
+### 4. Server wiring + HTTP API (`titan_agent/server.py`)
+- Global `hitl_manager` (audit → `workspace/hitl_audit.jsonl`), timeout from
+  `TITAN_HITL_TIMEOUT` (default 120 s), attached to the registry and agent.
+- `GET  /api/hitl` — audit trail (recent requests newest-first + status counts).
+- `GET  /api/hitl/pending` — everything waiting on a human.
+- `POST /api/hitl/request` — create a request (manual / tooling / tests).
+- `POST /api/hitl/decide` — `approve | deny | cancel` (idempotent; 404 unknown,
+  422 bad decision).
+- `GET  /api/hitl/{request_id}` — single-request status.
+- Every endpoint is protected by the Phase 12 Bearer-token auth.
+
+### 5. `.env.example`
+- Documented `TITAN_HITL_TIMEOUT`.
+
+### Verification
+- `tests/test_server_hitl.py` — **18 deterministic tests** (network-free, no
+  real LLM): auth gating, full request→pending→decide→audit lifecycle,
+  idempotent decisions, agent gate approve/deny, guarded-registry approve/deny,
+  ToolBridge defer semantics. Full suite **392 passed, 1 skipped**, ruff clean.
+- `tests/test_server_auth.py` — `_auth_headers()` now reads `TITAN_API_KEY` at
+  call time so multiple server test modules can share one env key regardless of
+  pytest collection order.
+
+## 🔧 Phase 13 — PROVIDER FALLBACK CHAIN (multi-provider resilience)
+
+When the primary LLM provider fails with a transient error, `chat_completion`
+now automatically rolls over to the next provider from a configurable chain —
+so one dead/rate-limited/unconfigured provider never kills the agent.
+
+### 1. Call-time configuration (`titan_agent/config.py`)
+- `provider_fallback_chain()` — comma-separated providers from
+  `TITAN_PROVIDER_FALLBACK_CHAIN` (e.g. `"kimi,glm,ollama,deepseek"`), read at
+  CALL time so tests and the runtime can change the chain without a restart.
+- `provider_fallback_models()` — optional per-provider model overrides from
+  `TITAN_PROVIDER_FALLBACK_MODELS` (e.g. `"kimi=kimi-k3,glm=glm-5.3-flash"`).
+- `provider_default_model(provider)` — known default model for every registered
+  provider so the chain can pick a sane model when none is overridden.
+
+### 2. Fallback engine (`titan_agent/llm_client.py`)
+- `chat_completion()` is now an orchestrator: it builds the chain, tries the
+  primary first, then each fallback provider, and raises
+  `RuntimeError("All providers failed. Errors: …")` naming every attempt when
+  the whole chain is exhausted.
+- `_chat_completion_once()` — the original single-provider HTTP call, unchanged.
+- `_build_fallback_chain()` — primary first, deduplicated, skipping providers
+  that need an API key but have none configured (`_has_credentials`).
+- `_is_transient_api_error()` — the rollover policy: network errors (aiohttp
+  `ClientError`, `OSError`, `TimeoutError`) plus HTTP **408/429/5xx** and
+  "is not configured" roll over; **401/403 (auth) and malformed requests fail
+  fast** (project convention — a bad key on one provider is not fixed by
+  another). `set_model()` re-resolves credentials per provider during fallback.
+- Client configuration (provider/model/base_url/api_key) is restored in a
+  `finally` so a fallback never silently reconfigures the session.
+
+### 3. `.env.example`
+- Documented `TITAN_PROVIDER_FALLBACK_CHAIN` and `TITAN_PROVIDER_FALLBACK_MODELS`.
+
+### Verification
+- `tests/test_provider_fallback.py` — **15 deterministic tests**, network-free
+  (per-provider call scripted via an instance-level fake); chain ordering,
+  dedup, key-less provider skipping, local providers without keys, model
+  overrides, primary-success-no-fallback, fallback on network/429/5xx, 401
+  fail-fast (chain never consulted), aggregate error on total failure, config
+  restoration, and the transient/no-transient classifier.
+- Full suite: **374 passed, 1 skipped** (Windows-only branch).
+- `ruff check` clean on all touched files.
+
+## 🔧 Phase 12 — SERVER AUTHENTICATION (Bearer token on every /api route)
+
+Every HTTP route except the public liveness check (`/health`) and the web-UI
+shell (`/`) now requires `Authorization: Bearer <TITAN_API_KEY>`. The web UI
+shell stays public so a browser can load the page; the UI prompts for the key
+via JavaScript.
+
+### 1. `titan_agent/auth.py` (new)
+- `get_server_api_key()` resolves the server key in priority order:
+  1. `TITAN_API_KEY` env var (explicit operator choice);
+  2. the persisted random key in `workspace/.server_key` (survives restarts);
+  3. a freshly generated `sk-titan-…` key — persisted to `workspace/.server_key`
+     and printed ONCE to the console so the operator can copy it.
+- `require_api_key` — FastAPI dependency returning 401 (`WWW-Authenticate:
+  Bearer`) for missing/wrong tokens. `workspace/` is already gitignored, so the
+  persisted key is never committed.
+- `SERVER_KEY_FILE` derives from `WORKSPACE_DIR` (so a custom
+  `TITAN_WORKSPACE` moves the key file with the workspace).
+
+### 2. Route guarding — `titan_agent/server.py`
+- `_apply_auth_dependency()` attaches `Depends(require_api_key)` to every
+  non-public `APIRoute` **in place**, the version-safe way: FastAPI builds each
+  route's dependency tree once in `APIRoute.__init__` and the per-request
+  handler captures that tree by reference, so the auth node is inserted into the
+  LIVE `route.dependant.dependencies` via `get_parameterless_sub_dependant()`
+  (the identical mechanism `APIRoute.__init__` uses for `dependencies=…`).
+  This avoids the FastAPI ≥ 0.120 API drift (`get_dependant` no longer accepts
+  a `dependencies=` keyword) and works without rebuilding `route.app`.
+- `_PUBLIC_PATHS = {"/", "/health"}` — only these two stay public.
+
+### 3. `.env.example`
+- `TITAN_API_KEY=` documented (optional — auto-generated + persisted if unset).
+
+### Verification
+- `tests/test_server_auth.py` — **19 deterministic tests** (no network): public
+  `/health` + `/` stay open, every protected sample route 401s on missing/wrong
+  token with `WWW-Authenticate`, a valid token passes the auth gate, every
+  protected `APIRoute` carries `require_api_key`, and public paths never do.
+- Full suite: **359 passed, 1 skipped** (Windows-only branch).
+- `ruff check` clean on all touched files.
+
 ## 🔧 Phase 11 — INTENT ROUTER + SPECIALIST ROSTER (12 sub-agents)
 
 The user's full wishlist of useful sub-agents exists now as real staff roles —

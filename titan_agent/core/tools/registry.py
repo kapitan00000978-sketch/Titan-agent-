@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from ...config import absolute_access_enabled, full_access_enabled
-from ..guardrails import Decision, PolicyEngine
+from ..guardrails import ApprovalStatus, Decision, HumanInTheLoop, PolicyEngine
 from ..reasoning.interfaces import IToolExecutor
 
 
@@ -110,13 +110,29 @@ class ToolRegistry(IToolExecutor):
         policy: PolicyEngine | None = None,
         workspace: Path | None = None,
         require_approval_for: Iterable[str] | None = None,
+        hitl: HumanInTheLoop | None = None,
+        hitl_timeout: float = 120.0,
     ):
         self.delegate = delegate
         self.policy = policy or PolicyEngine()
         self.workspace = Path(workspace) if workspace else None
         self.approval_required = set(require_approval_for or [])
         self._specs: dict[str, ToolSpec] = {}
+        self.hitl = hitl
+        self.hitl_timeout = hitl_timeout
         self._rebuild_specs()
+
+    def attach_hitl(
+        self, hitl: HumanInTheLoop | None, hitl_timeout: float | None = None
+    ) -> None:
+        """Wire (or replace) the HumanInTheLoop used for require-approval tools.
+
+        Called by the server once its global HITL manager exists — the registry
+        is constructed first, so late attach keeps the two singletons decoupled.
+        """
+        self.hitl = hitl
+        if hitl_timeout is not None:
+            self.hitl_timeout = hitl_timeout
 
     # ---------- Spec discovery ----------
 
@@ -229,7 +245,11 @@ class ToolRegistry(IToolExecutor):
         decision = self.policy.check(action, resource, json.dumps(args, default=str), access=access)
         if decision.decision == Decision.DENY:
             raise PermissionError(f"Blocked by policy: {decision.reasons}")
-        if (decision.decision == Decision.REQUIRE_APPROVAL or spec.requires_approval) and not full:
+        if (
+            (decision.decision == Decision.REQUIRE_APPROVAL or spec.requires_approval)
+            and not full
+            and not await self._ensure_approved(tool_name, action, resource, args, decision)
+        ):
             raise PermissionError(
                 f"Requires approval (tool={tool_name}): {decision.reasons}"
             )
@@ -247,6 +267,35 @@ class ToolRegistry(IToolExecutor):
         if asyncio.iscoroutine(result) or hasattr(result, "__await__"):
             return await result
         return result
+
+    async def _ensure_approved(
+        self,
+        tool_name: str,
+        action: str,
+        resource: str,
+        args: dict[str, Any],
+        decision: Any,
+    ) -> bool:
+        """Escalate a require-approval decision to HumanInTheLoop.
+
+        With no HITL wired we keep the classic hard denial (PermissionError) so
+        existing behavior is unchanged; with one, we create a pending request,
+        wait for a human decision (up to ``hitl_timeout``) and only grant the
+        tool when the request was explicitly APPROVED.
+        """
+        if self.hitl is None:
+            return False
+        try:
+            req = self.hitl.request(
+                action or tool_name,
+                resource,
+                details={"args": args},
+                reason="; ".join(decision.reasons or []) or "requires human approval",
+            )
+            req = await self.hitl.wait(req, timeout=self.hitl_timeout)
+            return req.status == ApprovalStatus.APPROVED
+        except Exception:  # noqa: BLE001 - approval is best-effort
+            return False
 
     def _sandbox_path(self, value: str) -> Path:
         """Resolve a path argument inside the workspace."""

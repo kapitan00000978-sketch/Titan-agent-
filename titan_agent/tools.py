@@ -150,6 +150,17 @@ class ToolRegistry:
     def __init__(self, workspace: Path = WORKSPACE_DIR):
         self.workspace = workspace
         self.workspace.mkdir(parents=True, exist_ok=True)
+        # Phase 14: optional Human-in-the-loop manager. The approval gate itself
+        # lives in agent.execute_tool_unified (single point for every loop), so
+        # here we only accept the wiring to keep construction uniform.
+        self.hitl = None
+        self.hitl_timeout = 120.0
+
+    def attach_hitl(self, hitl, hitl_timeout: float | None = None) -> None:
+        """Accept the global HITL manager (approvals enforced at the agent layer)."""
+        self.hitl = hitl
+        if hitl_timeout is not None:
+            self.hitl_timeout = hitl_timeout
 
     def _resolve_path(self, rel_or_abs: str | Path) -> Path:
         p = Path(rel_or_abs)

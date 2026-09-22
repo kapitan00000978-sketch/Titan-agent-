@@ -20,6 +20,8 @@ from .config import (
     WORKSPACE_DIR,
     full_access_enabled,
 )
+from .core.guardrails.hitl import ApprovalStatus, HumanInTheLoop
+from .core.guardrails.policy import Decision, PolicyEngine
 from .core.memory.memory_system import MemorySystem
 from .core.memory.types import MemoryKind
 from .gitops import auto_commit as git_auto_commit
@@ -375,6 +377,8 @@ class TitanAgent:
         checkpoint: CheckpointStore | None = None,
         checkpoint_path: Path | str | None = None,
         tool_policy: Any | None = None,
+        hitl: HumanInTheLoop | None = None,
+        hitl_timeout: float = 120.0,
     ):
         self.llm = llm or LLMClient()
         self.tools = tools or ToolRegistry()
@@ -385,6 +389,19 @@ class TitanAgent:
         # Phase 9: per-role tool policy (Allowed/blocked sets enforced in
         # execute_tool_unified AND reflected in the model's tool catalog).
         self.tool_policy = tool_policy
+        # Phase 14: Human-in-the-loop approval gate. Wired onto the tool registry
+        # (single approval point for BOTH the classic loop and the structured
+        # strategy path — ToolBridge defers via defer_approval=True) so sensitive
+        # tool calls can wait for explicit human consent instead of hard-failing.
+        self.hitl = hitl
+        self.hitl_timeout = hitl_timeout
+        if hitl is not None:
+            attach = getattr(self.tools, "attach_hitl", None)
+            if callable(attach):
+                try:
+                    attach(hitl, hitl_timeout)
+                except Exception as exc:  # noqa: BLE001 - HITL is best-effort
+                    log.warning("could not attach HITL to tool registry: %s", exc)
         self.system_prompt = TITAN_SYSTEM_PROMPT
         # ---- Phase 4: MemGPT-style core memory + Git-first workflow ----
         self._core_memory = core_memory
@@ -883,12 +900,55 @@ class TitanAgent:
         except Exception as exc:  # noqa: BLE001 - checkpointing must never break a run
             log.debug("checkpoint save failed for %s: %s", session_id, exc)
 
+    async def _approval_gate(self, name: str, args: dict[str, Any]) -> bool | None:
+        """Phase 14: single HITL approval decision point for sensitive tools.
+
+        Returns:
+          None  -> no approval needed (or gate disabled / under FULL access)
+          True  -> explicitly APPROVED by the human
+          False -> denied or timed out (caller must not execute)
+        """
+        try:
+            if full_access_enabled():
+                return None  # Phase 8: approvals are auto-granted in FULL access
+            resource = str(args.get("command", "")) if name == "execute_command" else name
+            decision = PolicyEngine().check(
+                name,
+                resource,
+                json.dumps(args, default=str),
+                access=PolicyEngine.ACCESS_NORMAL,
+            )
+            if decision.decision != Decision.REQUIRE_APPROVAL:
+                return None
+            req = self.hitl.request(
+                name,
+                resource,
+                details={"args": args},
+                reason="; ".join(decision.reasons or []) or "requires human approval",
+            )
+            req = await self.hitl.wait(req, timeout=self.hitl_timeout)
+            return req.status == ApprovalStatus.APPROVED
+        except Exception as exc:  # noqa: BLE001 - the gate must never break a run
+            log.debug("approval gate failed for %s: %s", name, exc)
+            return None
+
     async def execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
         # Phase 9: per-role tool policy enforced for EVERY tool family
         # (terminal / memory / skill / telegram / git / mcp) — a researcher
         # cannot commit, a reviewer cannot write.
         if not self._policy_allows(name):
             return f"Error: tool '{name}' is outside this subagent's role and was blocked by tool policy."
+        # Phase 14: Human-in-the-loop approval gate. Executes for every tool
+        # call funnel (classic loop, structured strategy, cron, queue) so the
+        # live agent truly waits for a human instead of silently doing nothing.
+        # When no HITL is wired (tests / headless) today's behavior is kept.
+        if self.hitl is not None:
+            granted = await self._approval_gate(name, args)
+            if granted is False:
+                return (
+                    "Error: approval required but not granted "
+                    f"(tool='{name}' was not approved by the human)."
+                )
         if name == "memory_save":
             key = str(args.get("key", "")).strip()
             value = str(args.get("value", "")).strip()
@@ -1350,6 +1410,11 @@ class TitanAgent:
                     self.execute_tool_unified,
                     self._build_tools_list,
                     session_id=session_id,
+                    # Phase 14: defer approval to the registry's HITL gate so the
+                    # structured and classic paths share ONE approval decision.
+                    hitl=None,
+                    hitl_timeout=self.hitl_timeout,
+                    defer_approval=True,
                 )
                 structured_context = self._build_structured_context(user_input, mode, effort)
                 async for ev in engine.run(
