@@ -25,6 +25,8 @@ from .config import (
     parallel_tool_calls,
     provider_default_model,
     refinement_rounds,
+    repeat_guard_enabled,
+    repeat_guard_limit,
     reviewer_model,
     tool_record_enabled,
 )
@@ -477,6 +479,9 @@ class TitanAgent:
         # so the server endpoint sees every agent's record; an isolated
         # collector can be injected for deterministic tests.
         self.tool_stats = tool_stats or TOOL_STATS
+        # Phase 23: repeated identical-failure guard state. Always exists so
+        # _emit_tool_results works standalone; run_task resets it per run.
+        self._guard_failures: dict[str, int] = {}
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
@@ -1054,6 +1059,16 @@ class TitanAgent:
             log.debug("approval gate failed for %s: %s", name, exc)
             return None
 
+    def _guard_key(self, t_name: str, t_args: dict[str, Any]) -> str:
+        """Canonical identity of a tool call for the repeated-failure guard:
+        tool name + sorted-key JSON of the arguments, so any argument change
+        resets the per-pattern counter."""
+        try:
+            canonical = json.dumps(t_args, sort_keys=True, default=str)
+        except (TypeError, ValueError):
+            canonical = repr(t_args)
+        return f"{t_name}\x00{canonical}"
+
     async def execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
         # Phase 22: telemetry wrapper. Every tool execution — classic loop,
         # structured strategies, cron, queue, direct calls — funnels through
@@ -1327,6 +1342,37 @@ class TitanAgent:
         semaphore = asyncio.Semaphore(max(1, limit))
 
         async def _run_one(tool_call, t_name, t_args):
+            # Phase 23: repeated identical-failure guard — the SAME call that
+            # already failed `limit` times is skipped (not executed) and the
+            # model is told to change approach. A blocked call returns "ok"
+            # with an error text so cancel-on-failure does NOT cascade-cancel
+            # healthy siblings in the same batch.
+            if repeat_guard_enabled():
+                key = self._guard_key(t_name, t_args)
+                prior = self._guard_failures.get(key, 0)
+                if prior >= repeat_guard_limit():
+                    return (
+                        "ok", tool_call, t_name,
+                        (
+                            "Error: repeated tool failure guard — this exact call "
+                            f"(tool='{t_name}') already failed {prior} times in "
+                            "this run. Change the arguments, use a different tool, "
+                            "or verify the prerequisites first."
+                        ),
+                    )
+                try:
+                    result = await self.execute_tool_unified(t_name, t_args)
+                    status = "ok"
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001 - crash isolation
+                    result = f"Error ({type(exc).__name__}): {exc!s}"
+                    status = "error"
+                if isinstance(result, str) and result.startswith("Error"):
+                    self._guard_failures[key] = prior + 1
+                else:
+                    self._guard_failures.pop(key, None)  # success forgives
+                return (status, tool_call, t_name, result)
             try:
                 result = await self.execute_tool_unified(t_name, t_args)
                 return ("ok", tool_call, t_name, result)
@@ -1750,6 +1796,9 @@ class TitanAgent:
         used_tools = False
         run_tools: list[str] = []
         reflect_done = False
+        # Phase 23: per-run consecutive identical-failure counters, keyed by
+        # "tool\x00canonical-args". Reset on every run_task.
+        self._guard_failures: dict[str, int] = {}
         grounded = False  # Phase 20: zero-tool answers get exactly ONE verification pass
 
         while iteration < max_steps:

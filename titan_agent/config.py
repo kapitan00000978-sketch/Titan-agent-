@@ -177,6 +177,28 @@ def tool_record_enabled() -> bool:
     )
 
 
+# ---- Phase 23: repeated tool-failure guard (harness-level anti-retry-loop) --
+# Weak models keep re-sending the SAME failing tool call with the SAME
+# arguments, burning tokens and repeating the same dead end. The harness
+# tracks identical (tool, canonical-args) patterns that already failed within
+# a run and BLOCKS the next identical attempt, telling the model to change
+# approach instead. Execution happens `TITAN_REPEAT_GUARD_LIMIT` times, then
+# identical retries are skipped.
+def repeat_guard_enabled() -> bool:
+    """Block identical repeated failing tool calls (default on)."""
+    return os.getenv("TITAN_REPEAT_GUARD", "1").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
+def repeat_guard_limit() -> int:
+    """How many identical failures are tolerated before blocking."""
+    try:
+        return max(1, int(os.getenv("TITAN_REPEAT_GUARD_LIMIT", "2")))
+    except (TypeError, ValueError):
+        return 2
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

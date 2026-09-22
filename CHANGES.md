@@ -2,6 +2,37 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🚦 Phase 23 — REPEATED TOOL-FAILURE GUARD (anti-retry-loop)
+
+Weak models re-send the SAME failing tool call with the SAME arguments over
+and over — burning tokens and repeating the same dead end. Phase 23 makes the
+harness itself break the loop, no model intelligence required.
+
+### 1. Per-pattern failure counters (`config.py`, `agent.py`)
+- The run loop tracks consecutive identical failures per pattern
+  `(tool name, canonical sorted-key JSON of args)` inside `_emit_tool_results`
+  — any ARGUMENT change resets the counter, a SUCCESS forgives the pattern.
+  State resets at the start of every `run_task` (and always exists on the
+  agent, so `_emit_tool_results` stays safe when called standalone).
+- `TITAN_REPEAT_GUARD` (default `1`) enables it; `TITAN_REPEAT_GUARD_LIMIT`
+  (default `2`) is how many identical failures are tolerated before blocking.
+- After the limit, the identical call is NOT executed anymore — the model gets
+  an explanatory `Error: repeated tool failure guard …` result telling it to
+  change arguments, switch tool or verify prerequisites. Blocked calls return
+  `ok` status so `TITAN_CANCEL_ON_TOOL_ERROR` does not cascade-cancel healthy
+  siblings in the same batch.
+
+### 2. `.env.example`
+- Documented `TITAN_REPEAT_GUARD`, `TITAN_REPEAT_GUARD_LIMIT`.
+
+### Verification
+- `tests/test_repeat_guard.py` — **6 deterministic tests** (scripted fake LLM +
+  fake failing/succeeding executors): block after the limit (2 real attempts,
+  3rd skipped), per-args counters (A,B,A then A blocked), success forgives,
+  `LIMIT=1`, guard disabled, state reset across consecutive runs on the same
+  agent.
+- Full suite: **452 passed, 1 skipped**, `ruff check .` clean.
+
 ## 📊 Phase 22 — PER-TOOL TELEMETRY + ADAPTIVE TOOL RECORD
 
 Weak models repeat the SAME failing tool call instead of switching approach.
