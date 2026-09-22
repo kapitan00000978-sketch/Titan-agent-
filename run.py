@@ -7,11 +7,13 @@ import webbrowser
 import uvicorn
 
 if sys.platform == "win32":
-    try:
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-    except (AttributeError, OSError, ValueError):
-        pass  # best-effort: keep default streams if reconfigure is unsupported
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding='utf-8', errors='replace')
+            except (OSError, ValueError):
+                pass  # best-effort: keep default streams if reconfigure is unsupported
 
 
 def main():

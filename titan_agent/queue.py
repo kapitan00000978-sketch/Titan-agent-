@@ -140,7 +140,10 @@ class TaskQueue:
                 (name or task[:60], task, int(priority), float(schedule_at or 0), t, max(1, int(max_attempts))),
             )
             self._conn.commit()
-            return int(cur.lastrowid)
+            last_id = cur.lastrowid
+            if last_id is None:  # pragma: no cover - sqlite sets it for INSERT
+                raise RuntimeError("Task insert did not return a row id")
+            return int(last_id)
 
     def claim_next(self, now: float | None = None) -> Task | None:
         """Atomically claim the highest-priority task that is due, or None.

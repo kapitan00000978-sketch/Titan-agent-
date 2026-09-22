@@ -3,6 +3,7 @@
 Deterministic — never touches the network. The consent gate, allowlist parsing
 and PII sanitizers are tested via module-level constant monkeypatching.
 """
+import asyncio
 import sys
 from pathlib import Path
 
@@ -55,11 +56,11 @@ def test_disabled_gate_blocks_everything(tmp_path):
     assert m.status()["enabled"] is False
     for fn in (
         lambda: m.list_accounts(),
-        lambda: m.login_start("x", "+998901234567"),
-        lambda: m.send_message("x", "someone", "hi"),
-        lambda: m.recent_messages("x"),
-        lambda: m.whoami("x"),
-        lambda: m.logout("x"),
+        lambda: asyncio.run(m.login_start("x", "+998901234567")),
+        lambda: asyncio.run(m.send_message("x", "someone", "hi")),
+        lambda: asyncio.run(m.recent_messages("x")),
+        lambda: asyncio.run(m.whoami("x")),
+        lambda: asyncio.run(m.logout("x")),
     ):
         try:
             fn()
@@ -79,7 +80,7 @@ def test_status_reflects_config(tmp_path):
 def test_send_refused_when_allowlist_empty(tmp_path):
     m = _manager(tmp_path, enabled=True, allowlist="")
     try:
-        m.send_message("work", "titan_bot", "hello")
+        asyncio.run(m.send_message("work", "titan_bot", "hello"))
         assert False, "should have raised"
     except TelegramError as e:
         assert "TITAN_TELEGRAM_SEND_ALLOWLIST" in str(e)
@@ -88,7 +89,7 @@ def test_send_refused_when_allowlist_empty(tmp_path):
 def test_send_refused_for_non_allowlisted_target_before_network(tmp_path):
     m = _manager(tmp_path, enabled=True, allowlist="allowed_user, another_one")
     try:
-        m.send_message("work", "stranger", "hello")
+        asyncio.run(m.send_message("work", "stranger", "hello"))
         assert False, "should have raised"
     except TelegramError as e:
         assert "not allowed" in str(e)

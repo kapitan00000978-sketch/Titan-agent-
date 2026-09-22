@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -60,7 +60,7 @@ class CheckpointStore:
         self._init_db()
 
     @contextmanager
-    def _conn(self) -> Iterable[sqlite3.Connection]:
+    def _conn(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
         try:

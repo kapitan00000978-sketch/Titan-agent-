@@ -66,11 +66,11 @@ ROUTE_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
 )
 
 
-def _name(task: str) -> str:
+def _name(task: str | None) -> str:
     return str(task or "").strip().lower()
 
 
-def _matched_keywords(task: str) -> list[tuple[str, str]]:
+def _matched_keywords(task: str | None) -> list[tuple[str, str]]:
     """All (role, keyword) hits for a task, in rule order."""
     lowered = _name(task)
     out: list[tuple[str, str]] = []
@@ -103,14 +103,14 @@ def route_intent(task: str | None) -> IntentRoute:
             reason="No specialist keywords matched; fell back to the generalist role.",
         )
     # Group hits per role, keep first-seen (rule order) for tie-breaks.
-    scored: list[tuple[str, int, int]] = []  # (role, hits, rule_index)
-    seen: dict[str, int] = {}
+    grouped: dict[str, list[int]] = {}  # role -> [hits, first_rule_index]
     for rule_idx, (role, _kw) in enumerate(matches):
-        if role not in seen:
-            seen[role] = len(scored)
-            scored.append([role, 0, rule_idx])
-        scored[seen[role]][1] += 1
-    scored.sort(key=lambda row: (-row[1], row[2]))
+        entry = grouped.setdefault(role, [0, rule_idx])
+        entry[0] += 1
+    scored = sorted(
+        ((role, hits, rule_idx) for role, (hits, rule_idx) in grouped.items()),
+        key=lambda row: (-row[1], row[2]),
+    )
     primary = scored[0][0]
     supporting = tuple(
         row[0] for row in scored[1:] if row[0] != "generalist"

@@ -190,7 +190,7 @@ class ToolError(TitanError):
         cause: BaseException | None = None,
         details: dict | None = None,
     ):
-        auto_details = {}
+        auto_details: dict[str, Any] = {}
         if tool_name: auto_details["tool"] = tool_name
         if args: auto_details["args"] = {k: str(v)[:100] for k, v in args.items()}
         if exit_code is not None: auto_details["exit_code"] = exit_code
@@ -204,7 +204,7 @@ class ToolError(TitanError):
 class ToolNotFoundError(ToolError):
     """Tool not registered"""
     def __init__(self, tool_name: str, available_tools: list[str] | None = None):
-        details = {"tool": tool_name}
+        details: dict[str, Any] = {"tool": tool_name}
         if available_tools:
             details["available_tools"] = available_tools
         super().__init__(
@@ -238,7 +238,7 @@ class LLMError(TitanError):
         retryable: bool = False,
         cause: BaseException | None = None,
     ):
-        details = {}
+        details: dict[str, Any] = {}
         if provider: details["provider"] = provider
         if model: details["model"] = model
         if status_code: details["status_code"] = status_code
@@ -279,11 +279,12 @@ class StorageError(TitanError):
         operation: str | None = None,
         path: str | None = None,
         cause: BaseException | None = None,
+        details: dict[str, Any] | None = None,
     ):
-        details = {}
-        if operation: details["operation"] = operation
-        if path: details["path"] = path
-        super().__init__(message, ErrorCode.STORAGE_ERROR, details, cause)
+        merged: dict[str, Any] = {} if details is None else dict(details)
+        if operation: merged["operation"] = operation
+        if path: merged["path"] = path
+        super().__init__(message, ErrorCode.STORAGE_ERROR, merged, cause)
 
 
 class DatabaseError(StorageError):
@@ -295,7 +296,7 @@ class DatabaseError(StorageError):
         params: tuple | None = None,
         cause: BaseException | None = None,
     ):
-        details = {}
+        details: dict[str, Any] = {}
         if query: details["query"] = query[:200]
         if params: details["params"] = str(params)[:200]
         super().__init__(message, operation="database", details=details, cause=cause)

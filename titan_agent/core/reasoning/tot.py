@@ -14,7 +14,13 @@ import json
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from .interfaces import IEvaluator, ILLMProvider, IReasoningEngine, ReasoningContext
+from .interfaces import (
+    IEvaluator,
+    ILLMProvider,
+    IReasoningEngine,
+    ReasoningContext,
+    complete_text,
+)
 from .types import (
     ActionType,
     ReasoningConfig,
@@ -22,6 +28,12 @@ from .types import (
     ReasoningTrace,
     StepStatus,
 )
+
+
+def _last_content(trace: ReasoningTrace) -> str:
+    """Content of a trace's last step, or ``""`` when it has no steps yet."""
+    last = trace.get_last_step()
+    return last.content if last else ""
 
 GENERATE_PROMPT = """You are exploring multiple solution paths for a problem.
 
@@ -78,10 +90,11 @@ class LLMEvaluator(IEvaluator):
         if len(candidates) == 1:
             return [0.5]
         numbered = "\n".join(
-            f"{i + 1}. {c.get_last_step().content if c.get_last_step() else '(empty)'}"
+            f"{i + 1}. {_last_content(c) or '(empty)'}"
             for i, c in enumerate(candidates)
         )
-        raw = await self.llm.complete(
+        raw = await complete_text(
+            self.llm,
             messages=[
                 {"role": "system", "content": "You output JSON only."},
                 {"role": "user", "content": EVALUATE_PROMPT.format(
@@ -106,7 +119,8 @@ class LLMEvaluator(IEvaluator):
     ) -> tuple[bool, float]:
         last = trace.get_last_step()
         path_text = last.content if last else "(empty path)"
-        raw = await self.llm.complete(
+        raw = await complete_text(
+            self.llm,
             messages=[
                 {"role": "system", "content": "You output JSON only."},
                 {"role": "user", "content": SOLUTION_PROMPT.format(
@@ -120,7 +134,7 @@ class LLMEvaluator(IEvaluator):
         solved = bool(data.get("solved", False))
         confidence = float(data.get("confidence", 1.0 if solved else 0.0))
         if solved:
-            trace.final_answer = str(data.get("answer", "") or last.content)
+            trace.final_answer = str(data.get("answer", "") or (last.content if last else ""))
         return solved, confidence
 
     @staticmethod
@@ -215,7 +229,7 @@ class ToTEngine(IReasoningEngine):
             if solved is not None:
                 yield ReasoningStep(
                     action_type=ActionType.DECIDE,
-                    content=solved.final_answer or solved.get_last_step().content,
+                    content=solved.final_answer or _last_content(solved),
                     status=StepStatus.COMPLETED,
                 )
                 return
@@ -226,7 +240,8 @@ class ToTEngine(IReasoningEngine):
             yield ReasoningStep(
                 action_type=ActionType.DECIDE,
                 content=best.final_answer
-                or (best.get_last_step().content if best.get_last_step() else "No solution found"),
+                or _last_content(best)
+                or "No solution found",
                 status=StepStatus.COMPLETED,
             )
 
@@ -320,7 +335,8 @@ class ToTEngine(IReasoningEngine):
 
     async def _generate_thoughts(self, task: str, path_text: str, ) -> list[str]:
         """Ask the LLM for distinct next-step ideas (JSON array of strings)."""
-        raw = await self.llm.complete(
+        raw = await complete_text(
+            self.llm,
             messages=[
                 {"role": "system", "content": "You output JSON only."},
                 {"role": "user", "content": GENERATE_PROMPT.format(

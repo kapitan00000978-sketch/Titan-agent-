@@ -123,6 +123,7 @@ async def heal_run(
     result = HealResult(command=command)
     attempts = max(1, int(max_attempts or 1))
 
+    code, out, err = -1, "", ""  # defined for the (unusual) attempts == 0 case
     for i in range(attempts):
         code, out, err = await run(command)
         result.attempts.append(

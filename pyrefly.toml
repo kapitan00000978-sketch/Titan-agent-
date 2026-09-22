@@ -1,0 +1,25 @@
+# Pyrefly configuration — standalone file: all keys at top level, kebab-case.
+# Schema + docs: https://pyrefly.org/schemas/pyrefly.json
+# Run: python -m pyrefly check
+
+# Chosen deliberately: the codebase leans on dynamic patterns (LLM tool
+# surfaces, duck typing), so `basic` keeps real bugs visible without the
+# stricter annotation-completeness noise.
+preset = "basic"
+
+# Type-check the application source and the two entry points only.
+# (tests/ and workspace/ scratch output are intentionally out of scope.)
+project-includes = ["titan_agent", "cli.py", "run.py"]
+project-excludes = ["tests/*", "workspace/*"]
+
+# Import resolution: project root first, then the interpreter's site-packages.
+search-path = ["."]
+site-package-path = [
+    "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages",
+]
+
+# Query this interpreter (has the project deps) for environment autoconfig,
+# instead of auto-detecting a venv without pytest/fastapi/etc.
+python-interpreter-path = "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"
+python-version = "3.12"
+python-platform = "win32"

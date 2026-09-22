@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -71,7 +71,7 @@ class MemorySystem:
     # ---------- Internals ----------
 
     @contextmanager
-    def _conn(self) -> Iterable[sqlite3.Connection]:
+    def _conn(self) -> Iterator[sqlite3.Connection]:
         """Context-managed connection: always closed (Windows file-lock safe)."""
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
@@ -161,7 +161,10 @@ class MemorySystem:
                     record.scope,
                 ),
             )
-            record.id = int(cur.lastrowid)
+            last_id = cur.lastrowid
+            if last_id is None:  # pragma: no cover - sqlite sets it for INSERT
+                raise RuntimeError("Memory record insert did not return a row id")
+            record.id = int(last_id)
         return record
 
     def remember_working(self, key: str, content: str, metadata: dict[str, Any] | None = None) -> MemoryRecord:

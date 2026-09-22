@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .interfaces import ILLMProvider, IPlanner, IToolExecutor
+from .interfaces import ILLMProvider, IPlanner, IToolExecutor, complete_text
 from .types import Plan, PlanStep, ReasoningConfig, StepStatus
 
 PLAN_PROMPT = """You are a meticulous planning engine. Given a goal and a set of tools,
@@ -76,7 +76,8 @@ class PlanExecutor(IPlanner):
         if context:
             prompt += f"\n\nContext:\n{json.dumps(context, default=str)[:4000]}"
 
-        raw = await self.llm.complete(
+        raw = await complete_text(
+            self.llm,
             messages=[
                 {"role": "system", "content": "You output JSON only."},
                 {"role": "user", "content": prompt},

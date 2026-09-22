@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..memory import MemoryKind, MemoryRecord, MemorySystem
-from ..reasoning.interfaces import ILLMProvider, IReflector
+from ..reasoning.interfaces import ILLMProvider, IReflector, complete_text
 from ..reasoning.types import ReasoningTrace, StepStatus
 
 REFLECTION_PROMPT = """You are a self-reflection module. Given the reasoning trace of an
@@ -62,7 +62,8 @@ class Reflector(IReflector):
         if focus:
             prompt += f"\n\nFocus on: {focus}"
 
-        raw = await self.llm.complete(
+        raw = await complete_text(
+            self.llm,
             messages=[
                 {"role": "system", "content": "You output JSON only."},
                 {"role": "user", "content": prompt},

@@ -961,7 +961,7 @@ class TitanAgent:
             return skill.full_text()
         if name.startswith("telegram_"):
             try:
-                return self._dispatch_telegram(name, args)
+                return await self._dispatch_telegram(name, args)
             except TelegramError as e:
                 return f"Telegram: {e}"
         if name.startswith("git_"):
@@ -986,7 +986,7 @@ class TitanAgent:
             return await asyncio.to_thread(git_commit, root, message)
         return f"Unknown git tool '{name}'."
 
-    def _dispatch_telegram(self, name: str, args: dict[str, Any]) -> str:
+    async def _dispatch_telegram(self, name: str, args: dict[str, Any]) -> str:
         """Consent-gated Telegram dispatch. Every call is wrapped by the caller
         with TelegramError -> friendly message."""
         tg = self.telegram
@@ -1013,7 +1013,7 @@ class TitanAgent:
         if name == "telegram_login_start":
             label = str(args.get("label", "")).strip()
             phone = str(args.get("phone", "")).strip()
-            res = tg.login_start(label, phone)
+            res = await tg.login_start(label, phone)
             return (
                 f"Login code requested for '{res['label']}'. "
                 f"IMPORTANT: ask the user for the code Telegram sent to their phone "
@@ -1025,7 +1025,7 @@ class TitanAgent:
             code = str(args.get("code", "")).strip()
             if not label or not code:
                 return "Error: telegram_login_confirm requires 'label' and 'code'."
-            res = tg.login_confirm(label, code)
+            res = await tg.login_confirm(label, code)
             return (
                 f"Account '{res['label']}' logged in (phone: {res['phone']}, "
                 f"username: {res['username']}). You can now use telegram_recent / "
@@ -1037,14 +1037,14 @@ class TitanAgent:
             text = str(args.get("text", "")).strip()
             if not label or not target or not text:
                 return "Error: telegram_send requires 'label', 'target' and 'text'."
-            res = tg.send_message(label, target, text)
+            res = await tg.send_message(label, target, text)
             return f"Sent {res['chars']} chars to @{res['target']} from '{res['label']}'."
         if name == "telegram_recent":
             label = str(args.get("label", "")).strip()
             limit = int(args.get("limit", 10) or 10)
             if not label:
                 return "Error: telegram_recent requires 'label'."
-            msgs = tg.recent_messages(label, limit=limit)
+            msgs = await tg.recent_messages(label, limit=limit)
             if not msgs:
                 return "No recent messages found for that account."
             return "\n".join(
@@ -1055,7 +1055,7 @@ class TitanAgent:
             delete = bool(args.get("delete", False))
             if not label:
                 return "Error: telegram_logout requires 'label'."
-            res = tg.logout(label, delete=delete)
+            res = await tg.logout(label, delete=delete)
             return f"Account '{res['label']}': {res['status']}."
         return f"Unknown telegram tool '{name}'."
 

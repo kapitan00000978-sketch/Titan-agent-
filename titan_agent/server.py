@@ -254,9 +254,10 @@ class TelegramLogoutRequest(BaseModel):
     label: str
     delete: bool = False
 
-def _tg(resp_fn):
+async def _tg(resp_fn):
+    """Run a telegram handler, converting TelegramError to a JSON-safe error."""
     try:
-        return resp_fn()
+        return await resp_fn()
     except TelegramError as e:
         return {"status": "error", "detail": str(e)}
 
@@ -266,27 +267,27 @@ async def telegram_status():
 
 @app.get("/api/telegram/accounts")
 async def telegram_accounts():
-    return _tg(lambda: {"status": "success", "accounts": telegram_manager.list_accounts()})
+    return await _tg(lambda: asyncio.to_thread(telegram_manager.list_accounts))
 
 @app.post("/api/telegram/login/start")
 async def telegram_login_start(req: TelegramLoginStartRequest):
-    return _tg(lambda: {"status": "success", "data": telegram_manager.login_start(req.label, req.phone)})
+    return await _tg(lambda: telegram_manager.login_start(req.label, req.phone))
 
 @app.post("/api/telegram/login/confirm")
 async def telegram_login_confirm(req: TelegramLoginConfirmRequest):
-    return _tg(lambda: {"status": "success", "data": telegram_manager.login_confirm(req.label, req.code)})
+    return await _tg(lambda: telegram_manager.login_confirm(req.label, req.code))
 
 @app.post("/api/telegram/send")
 async def telegram_send(req: TelegramSendRequest):
-    return _tg(lambda: {"status": "success", "data": telegram_manager.send_message(req.label, req.target, req.text)})
+    return await _tg(lambda: telegram_manager.send_message(req.label, req.target, req.text))
 
 @app.get("/api/telegram/recent")
 async def telegram_recent(label: str, limit: int = 10):
-    return _tg(lambda: {"status": "success", "messages": telegram_manager.recent_messages(label, limit=limit)})
+    return await _tg(lambda: telegram_manager.recent_messages(label, limit=limit))
 
 @app.post("/api/telegram/logout")
 async def telegram_logout(req: TelegramLogoutRequest):
-    return _tg(lambda: {"status": "success", "data": telegram_manager.logout(req.label, delete=req.delete)})
+    return await _tg(lambda: telegram_manager.logout(req.label, delete=req.delete))
 
 class CronJobRequest(BaseModel):
     prompt: str
@@ -348,15 +349,17 @@ async def cron_run(job_id: str):
 
 # ---- Phase 7: autonomous task queue ----
 
+_task_queue_cache: Any = None  # lazy singleton (module-level avoids function-attr typing)
+
+
 def _task_queue():
+    global _task_queue_cache
     from .config import TASK_QUEUE_FILE as _qfile
     from .queue import TaskQueue
 
-    q = getattr(_task_queue, "_q", None)
-    if q is None:
-        q = TaskQueue(_qfile)
-        _task_queue._q = q
-    return q
+    if _task_queue_cache is None:
+        _task_queue_cache = TaskQueue(_qfile)
+    return _task_queue_cache
 
 @app.get("/api/queue/tasks")
 async def queue_list(status: str = "", limit: int = 20):

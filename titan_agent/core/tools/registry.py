@@ -250,6 +250,10 @@ class ToolRegistry(IToolExecutor):
 
     def _sandbox_path(self, value: str) -> Path:
         """Resolve a path argument inside the workspace."""
+        if self.workspace is None:
+            raise PermissionError(
+                "Workspace is not configured; sandboxed paths are unavailable."
+            )
         p = Path(value).expanduser()
         if p.is_absolute():
             resolved = p.resolve()

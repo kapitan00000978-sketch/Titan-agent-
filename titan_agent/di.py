@@ -4,6 +4,7 @@ Provides proper inversion of control and request-scoped context.
 """
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -28,15 +29,15 @@ class ServiceRegistry:
     
     def __init__(self):
         self._singletons: dict[type, Any] = {}
-        self._factories: dict[type, callable] = {}
-        self._scoped: dict[str, Any] = {}
+        self._factories: dict[type, Callable[..., Any]] = {}
+        self._scoped: dict[type, Any] = {}
         self._scope_id: str | None = None
     
     def register_singleton(self, interface: type[T], instance: T) -> None:
         """Register a pre-created singleton instance"""
         self._singletons[interface] = instance
     
-    def register_factory(self, interface: type[T], factory: callable) -> None:
+    def register_factory(self, interface: type[T], factory: Callable[..., Any]) -> None:
         """Register a factory function for creating instances"""
         self._factories[interface] = factory
     
@@ -180,7 +181,7 @@ async def execution_context(
     roles: set[str] | None = None,
     deadline_seconds: int | None = None,
     **metadata,
-) -> ExecutionContext:
+) -> AsyncGenerator[ExecutionContext, None]:
     """
     Create an execution context with automatic scope management.
     

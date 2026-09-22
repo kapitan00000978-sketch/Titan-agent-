@@ -40,6 +40,25 @@ class ILLMProvider(ABC):
         """Generate completion with tool calling"""
 
 
+async def complete_text(
+    provider: ILLMProvider,
+    messages: list[dict[str, str]],
+    temperature: float = 0.3,
+    max_tokens: int = 4096,
+) -> str:
+    """Run :meth:`ILLMProvider.complete` and coerce the str-or-stream result
+    to a plain string (streaming chunks are concatenated in order)."""
+    result = await provider.complete(
+        messages=messages, temperature=temperature, max_tokens=max_tokens
+    )
+    if isinstance(result, str):
+        return result
+    parts: list[str] = []
+    async for chunk in result:
+        parts.append(chunk)
+    return "".join(parts)
+
+
 class IToolExecutor(ABC):
     """Interface for tool execution"""
     
@@ -74,12 +93,13 @@ class IReasoningEngine(ABC):
         """Execute reasoning for a task"""
     
     @abstractmethod
-    async def stream_reason(
+    def stream_reason(
         self,
         task: str,
         config: ReasoningConfig | None = None,
     ) -> AsyncGenerator[ReasoningStep, None]:
-        """Stream reasoning steps"""
+        """Stream reasoning steps. Implementers are async generator functions
+        (consumed via ``async for``), so this is *not* itself ``async``."""
 
 
 class IPlanner(ABC):

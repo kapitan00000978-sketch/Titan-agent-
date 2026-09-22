@@ -151,7 +151,7 @@ class ToolRegistry:
         self.workspace = workspace
         self.workspace.mkdir(parents=True, exist_ok=True)
 
-    def _resolve_path(self, rel_or_abs: str) -> Path:
+    def _resolve_path(self, rel_or_abs: str | Path) -> Path:
         p = Path(rel_or_abs)
         if not p.is_absolute():
             p = (self.workspace / p).resolve()
@@ -1281,6 +1281,37 @@ class ToolRegistry:
                 import base64
                 import ctypes
                 from ctypes import wintypes
+
+                # wintypes in the stdlib stubs omits the monitor/bitmap structs,
+                # so define them explicitly (fields match the Win32 SDK).
+                class _MONITORINFO(ctypes.Structure):
+                    _fields_ = [
+                        ("cbSize", wintypes.DWORD),
+                        ("rcMonitor", wintypes.RECT),
+                        ("rcWork", wintypes.RECT),
+                        ("dwFlags", wintypes.DWORD),
+                    ]
+
+                class _BITMAPINFOHEADER(ctypes.Structure):
+                    _fields_ = [
+                        ("biSize", wintypes.DWORD),
+                        ("biWidth", ctypes.c_long),
+                        ("biHeight", ctypes.c_long),
+                        ("biPlanes", ctypes.c_ushort),
+                        ("biBitCount", ctypes.c_ushort),
+                        ("biCompression", wintypes.DWORD),
+                        ("biSizeImage", wintypes.DWORD),
+                        ("biXPelsPerMeter", ctypes.c_long),
+                        ("biYPelsPerMeter", ctypes.c_long),
+                        ("biClrUsed", wintypes.DWORD),
+                        ("biClrImportant", wintypes.DWORD),
+                    ]
+
+                class _BITMAPINFO(ctypes.Structure):
+                    _fields_ = [
+                        ("bmiHeader", _BITMAPINFOHEADER),
+                        ("bmiColors", wintypes.DWORD * 1),
+                    ]
                 
                 user32 = ctypes.windll.user32
                 gdi32 = ctypes.windll.gdi32
@@ -1297,7 +1328,7 @@ class ToolRegistry:
                     return f"Error: Monitor {monitor} not found (only {len(monitors)} monitors)"
                 
                 h_mon = monitors[monitor]
-                mi = wintypes.MONITORINFO()
+                mi = _MONITORINFO()
                 mi.cbSize = ctypes.sizeof(mi)
                 user32.GetMonitorInfoW(h_mon, ctypes.byref(mi))
                 
@@ -1313,8 +1344,8 @@ class ToolRegistry:
                 gdi32.BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, left, top, 0x00CC0020)  # SRCCOPY
                 
                 # Get bitmap bits
-                bmi = wintypes.BITMAPINFO()
-                bmi.bmiHeader.biSize = ctypes.sizeof(wintypes.BITMAPINFOHEADER)
+                bmi = _BITMAPINFO()
+                bmi.bmiHeader.biSize = ctypes.sizeof(_BITMAPINFOHEADER)
                 bmi.bmiHeader.biWidth = width
                 bmi.bmiHeader.biHeight = -height  # negative for top-down
                 bmi.bmiHeader.biPlanes = 1
@@ -1719,7 +1750,7 @@ class ToolRegistry:
         self._http_servers[port] = server
         return f"Serving {directory} at http://127.0.0.1:{port}"
 
-    def tool_start_http_server(self, port: int = 8000, directory: str = "") -> str:
+    def tool_start_http_server(self, port: int = 8000, directory: str | Path = "") -> str:
         try:
             directory = self._resolve_path(directory) if directory else self.workspace
             port = int(port or 8000)
