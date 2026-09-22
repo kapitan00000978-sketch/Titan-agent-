@@ -84,6 +84,8 @@ def test_edit_run_gets_one_postcheck_pass(tmp_path):
     assert llm.calls == 4
     assert sum("Post-check" in s for s in statuses) == 1
     assert any("You just edited files" in s for s in llm.seen_system)
+    # Phase 31: the post-check prompt names the exact files the run wrote.
+    assert any("Files written/edited this run: p.txt" in s for s in llm.seen_system)
 
 
 def test_readonly_run_skips_postcheck(tmp_path):

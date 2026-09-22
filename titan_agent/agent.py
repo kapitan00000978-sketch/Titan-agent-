@@ -1107,14 +1107,10 @@ class TitanAgent:
             log.debug("approval gate failed for %s: %s", name, exc)
             return None
 
-    def _build_tool_evidence(self, messages: list[dict[str, Any]], limit: int = 12) -> str:
-        """Phase 25 + 28: a deterministic list of what ACTUALLY happened with
-        tools, built from the real tool round-trips already in the conversation
-        and fed to the critic so it argues against facts instead of vibes. No
-        LLM call, no parsing heuristics beyond the message shape the harness
-        itself wrote. Phase 28 adds a caution section sourced from the per-run
-        repeated-failure guard counters, so the critic also sees which exact
-        calls kept failing."""
+    def _written_paths(self, messages: list[dict[str, Any]]) -> list[str]:
+        """Deduplicated file paths written/edited this run, extracted from the
+        real write/edit tool calls in the conversation (Phase 31). Order is
+        first-seen, duplicates dropped."""
         files: list[str] = []
         for m in messages:
             for tc in m.get("tool_calls") or []:
@@ -1127,6 +1123,17 @@ class TitanAgent:
                             files.append(str(path))
                     except (TypeError, ValueError):
                         pass
+        return list(dict.fromkeys(files))
+
+    def _build_tool_evidence(self, messages: list[dict[str, Any]], limit: int = 12) -> str:
+        """Phase 25 + 28: a deterministic list of what ACTUALLY happened with
+        tools, built from the real tool round-trips already in the conversation
+        and fed to the critic so it argues against facts instead of vibes. No
+        LLM call, no parsing heuristics beyond the message shape the harness
+        itself wrote. Phase 28 adds a caution section sourced from the per-run
+        repeated-failure guard counters, so the critic also sees which exact
+        calls kept failing."""
+        files = self._written_paths(messages)
         lines: list[str] = []
         for m in messages:
             if m.get("role") != "tool":
@@ -2206,7 +2213,18 @@ class TitanAgent:
                 and self._run_used_write_tool(messages)
             ):
                 postcheck_done = True
-                messages.append({"role": "system", "content": POSTCHECK_PROMPT})
+                # Phase 31: tell the model EXACTLY which files it wrote so the
+                # weak model does not have to remember — it re-reads the list.
+                postcheck_prompt = POSTCHECK_PROMPT
+                written = self._written_paths(messages)
+                if written:
+                    postcheck_prompt += (
+                        "\n\nFiles written/edited this run: "
+                        + ", ".join(written)
+                    )
+                messages.append(
+                    {"role": "system", "content": postcheck_prompt}
+                )
                 yield AgentEvent(
                     "status", "Post-check: verifying edited files before finalizing..."
                 )

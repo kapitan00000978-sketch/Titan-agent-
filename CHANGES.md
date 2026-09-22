@@ -2,6 +2,33 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🧭 Phase 31–32 — VERIFICATION WITH NAMES + STRUCTURED-FUNNEL GUARD PROOF
+
+Two refinements that close the remaining gaps from Phases 26–27:
+
+### 1. Post-check names the exact files (`agent.py`)
+- New `_written_paths(messages)` helper (deduplicated, first-seen order)
+  extracted from the real write/edit tool calls — shared with the Phase 25
+  evidence builder (single source of truth).
+- The Phase 26 post-check prompt is now DYNAMIC: it appends
+  `Files written/edited this run: …` so the weak model does not have to
+  remember what it wrote — it re-reads the concrete list before finalizing.
+
+### 2. Structured-funnel guard proof (`tests/test_structured_guard.py`)
+- Two deterministic tests prove the Phase 27 "guard in `execute_tool_unified`"
+  design end-to-end: a `ToolBridge` (the exact adapter react/plan/tot engines
+  execute through) wired to the live wrapper blocks the third identical
+  failing call, and the per-run counter is SHARED — failures recorded through
+  the structured funnel block a later classic/direct call with the same
+  identity (and vice versa).
+
+### Verification
+- `tests/test_structured_guard.py` — 2 deterministic tests (bridge blocking +
+  shared-counter symmetry).
+- `tests/test_postcheck.py` updated: post-check prompt asserts the concrete
+  written path (`Files written/edited this run: p.txt`).
+- Full suite: **480 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🧭 Phase 28–30 — TELEMETRY TIE-IN + OBSERVABILITY + ANTI-DEAD-END (level trio #2)
 
 Three more levers at three levels, shipped together:
