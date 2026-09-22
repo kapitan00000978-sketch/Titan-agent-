@@ -2,6 +2,42 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🛡️ Phase 20 — GROUNDED FINAL VALIDATION (anti-hallucination)
+
+A model that answers WITHOUT ever touching a tool is the classic hallucination
+path for weak local models (hermes3:8b and similar) — and the old fast path
+accepted such answers unvalidated. Phase 20 closes that hole: zero-tool final
+answers now get exactly ONE forced verification turn before finalizing.
+
+### 1. Grounding pass (`titan_agent/agent.py`)
+- If the run has used **no tools at all** when a candidate final appears, one
+  extra `GROUNDING_PROMPT` turn is issued: the model may emit real tool calls
+  (which execute and the loop continues, now marked as tool-grounded) or
+  explicitly decline with `NO_TOOLS_NEEDED` for pure-conceptual tasks.
+- Runs that already used tools **never** pay for this call; the pass fires at
+  most once per run (`grounded` flag), so it can never loop.
+- Grounding uses `_chat_with_recovery` (transient retry + context-overflow
+  halving already built in); if the grounding call itself fails, the run
+  degrades gracefully to the draft instead of crashing.
+- Emits a `"Verifying answer before finalizing (no tools used yet)..."` status
+  so the Web UI / CLI shows exactly when the guard is firing.
+
+### 2. Configuration (`titan_agent/config.py`, `.env.example`)
+- `TITAN_FINAL_GROUNDING` (default `1`) — set `0` to restore the old
+  single-call fast path for pure-chat workloads.
+
+### Verification
+- `tests/test_grounding.py` — **5 deterministic tests** (fake LLM + fake tool
+  executor, no network): zero-tool answer gets a grounding pass whose tool call
+  executes before the final; conceptual answer declines tools and finalizes
+  with exactly one grounding; grounding failure keeps the draft; tool-using
+  runs never ground; `TITAN_FINAL_GROUNDING=0` restores the legacy path.
+- `tests/test_components.py::test_run_task_effort_guidance` updated for the
+  new zero-tool single verification turn (ULTRA now 3 calls: main + grounding +
+  reflection; LOW now 2: main + grounding).
+- Full suite: **430 passed, 1 skipped** (Windows-only screenshot branch),
+  `ruff check .` clean.
+
 ## 🚀 Phase 17 — BOUNDED PARALLEL TOOL EXECUTION
 
 Tool calls that a single model turn emits now run concurrently but inside a

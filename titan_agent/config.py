@@ -126,6 +126,20 @@ def cancel_on_tool_error() -> bool:
     )
 
 
+# ---- Phase 20: grounded final validation ----------------------------------
+# A model that produces a final answer WITHOUT ever touching a tool is the
+# classic hallucination path for weak local models (hermes3:8b etc.). When
+# enabled (default 1), the run gives such answers ONE forced verification
+# turn before finalizing: the model may emit tool calls (which execute and
+# the loop continues) or explicitly decline with NO_TOOLS_NEEDED for pure
+# conceptual tasks. Tool-using runs never pay for this call.
+def final_grounding_enabled() -> bool:
+    """Give zero-tool final answers one forced verification pass."""
+    return os.getenv("TITAN_FINAL_GROUNDING", "1").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

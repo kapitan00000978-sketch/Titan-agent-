@@ -19,6 +19,7 @@ from .config import (
     UNLIMITED_STEPS,
     WORKSPACE_DIR,
     cancel_on_tool_error,
+    final_grounding_enabled,
     full_access_enabled,
     parallel_tool_calls,
 )
@@ -109,6 +110,13 @@ Review the ENTIRE interaction critically before finalizing:
 If anything is missing or wrong, use the tools to fix it NOW (make the needed tool call), or clearly correct/complete your answer.
 Then produce the FINAL polished answer to the user (in their language, markdown, complete and precise).
 Do not repeat the whole history — output only the final answer (or the tool call needed to finish the job).
+"""
+
+GROUNDING_PROMPT = """You produced a final answer WITHOUT using any tools yet. Large models frequently hallucinate in this situation, so before finalizing you MUST ground your answer:
+
+- If your claims depend on files, commands, the web, or any real state, use read/search/execute tools NOW to VERIFY them, then answer with concrete evidence (file contents found, command outputs, URLs).
+- If the task is purely conceptual or conversational (no files/web/system involved), reply with exactly 'NO_TOOLS_NEEDED' followed by your final answer.
+Do not repeat the full history — output the tool call(s) needed to verify, or the final answer.
 """
 
 DEEP_THINKING_PROMPT = """You are currently operating in DEEP THINKING mode. Elevate your rigor:
@@ -1625,6 +1633,7 @@ class TitanAgent:
         used_tools = False
         run_tools: list[str] = []
         reflect_done = False
+        grounded = False  # Phase 20: zero-tool answers get exactly ONE verification pass
 
         while iteration < max_steps:
             iteration += 1
@@ -1686,6 +1695,61 @@ class TitanAgent:
 
             # ---- No tool calls: candidate final answer ----
             final_text = response.content or ""
+
+            # ---- Phase 20: ground zero-tool answers (anti-hallucination) ----
+            # A model that answered without touching a tool once is the classic
+            # hallucination path for weak local models. Give it ONE forced
+            # verification turn: it may emit tool calls (executed below, loop
+            # continues) or explicitly decline with NO_TOOLS_NEEDED for pure
+            # conceptual tasks. Tool-using runs never pay for this call.
+            if (
+                not used_tools
+                and not grounded
+                and final_text.strip()
+                and final_grounding_enabled()
+            ):
+                grounded = True
+                yield AgentEvent(
+                    "status",
+                    "Verifying answer before finalizing (no tools used yet)...",
+                )
+                grounding_messages = list(messages) + [
+                    {"role": "assistant", "content": final_text},
+                    {"role": "user", "content": GROUNDING_PROMPT},
+                ]
+                try:
+                    gresp, grounding_msgs, gnotes = await self._chat_with_recovery(
+                        grounding_messages, available_tools
+                    )
+                except (RuntimeError, OSError, aiohttp.ClientError) as e:
+                    yield AgentEvent("error", f"Grounding pass error: {e!s}")
+                    gresp, grounding_msgs, gnotes = None, messages, []
+                for note in gnotes:
+                    yield AgentEvent("status", note)
+                if gresp is not None:
+                    if gresp.thoughts:
+                        yield AgentEvent("thought", gresp.thoughts)
+                    if gresp.tool_calls:
+                        # Grounding decided real verification is needed — execute it
+                        used_tools = True
+                        async for ev in self._emit_tool_results(
+                            gresp, grounding_msgs, iteration
+                        ):
+                            yield ev
+                        messages = grounding_msgs
+                        self._checkpoint_save(
+                            session_id=session_id, user_input=user_input, mode=mode,
+                            effort=effort, strategy=strategy, messages=messages,
+                            steps_done=iteration, tools_used=["verification"],
+                            status="running",
+                        )
+                        if iteration >= max_steps:
+                            yield AgentEvent("final_answer", f"Reached the maximum number of steps ({max_steps}). The latest state and results are preserved above.")
+                            return
+                        continue
+                    if gresp.content:
+                        # Grounded (or explicitly declined) final answer
+                        final_text = gresp.content or final_text
 
             # Reflection (critic) pass: after real tool use (or always in deep / high-effort runs)
             needs_reflection = used_tools or mode in ("deep", "deep_search") or effort in ("high", "ultra")

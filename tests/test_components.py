@@ -194,17 +194,17 @@ def test_run_task_effort_guidance(tmp_path):
         agent = TitanAgent(llm=FakeLLM(), memory=mem)
         return [ev async for ev in agent.run_task("test task", session_id="t", mode="fast", effort=effort)]
 
-    # ULTRA: guidance in the prompt + critic reflection runs even with no tools (2 LLM calls)
+    # ULTRA: guidance in the prompt + zero-tool grounding + critic reflection
     calls["n"] = 0
     asyncio.run(_run("ultra"))
     assert "ULTRA effort" in calls["system"]
-    assert calls["n"] == 2  # main pass + critic reflection
+    assert calls["n"] == 3  # main pass + grounding verification + critic reflection
 
-    # LOW: speed guidance + no forced reflection (single LLM call)
+    # LOW: speed guidance + grounding pass, but no forced reflection
     calls["n"] = 0
     asyncio.run(_run("low"))
     assert "LOW effort" in calls["system"]
-    assert calls["n"] == 1
+    assert calls["n"] == 2  # main pass + zero-tool grounding
 
 
 def test_token_rate_limit_default_is_214_k():
