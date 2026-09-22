@@ -140,6 +140,31 @@ def final_grounding_enabled() -> bool:
     )
 
 
+# ---- Phase 21: dedicated reviewer model + bounded refinement --------------
+# The critic/reflection pass that polishes final answers normally runs on the
+# SAME model that generated them. When a separate reviewer is configured
+# (TITAN_REVIEWER_PROVIDER / TITAN_REVIEWER_MODEL — e.g. a stronger cloud model
+# while the generator runs a cheap local one), the reflection uses the
+# reviewer, and the run spends up to TITAN_REFINEMENT_ROUNDS regenerations on
+# the GENERATOR addressed to the reviewer's critique ("generate -> strong
+# critique -> revise"). Both are opt-in: with no reviewer configured the
+# reflection behaves exactly as before (refinement rounds have no effect).
+def reviewer_model() -> tuple[str | None, str | None]:
+    """(provider, model) of the dedicated reviewer LLM, if configured."""
+    provider = os.getenv("TITAN_REVIEWER_PROVIDER", "").strip() or None
+    model = os.getenv("TITAN_REVIEWER_MODEL", "").strip() or None
+    return provider, model
+
+
+def refinement_rounds() -> int:
+    """Max generator revision rounds against the reviewer's critique
+    (applies only when a dedicated reviewer is in play)."""
+    try:
+        return max(0, int(os.getenv("TITAN_REFINEMENT_ROUNDS", "1")))
+    except (TypeError, ValueError):
+        return 1
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

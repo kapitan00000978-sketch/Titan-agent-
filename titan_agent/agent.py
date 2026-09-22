@@ -22,6 +22,9 @@ from .config import (
     final_grounding_enabled,
     full_access_enabled,
     parallel_tool_calls,
+    provider_default_model,
+    refinement_rounds,
+    reviewer_model,
 )
 from .core.guardrails.hitl import ApprovalStatus, HumanInTheLoop
 from .core.guardrails.policy import Decision, PolicyEngine
@@ -117,6 +120,15 @@ GROUNDING_PROMPT = """You produced a final answer WITHOUT using any tools yet. L
 - If your claims depend on files, commands, the web, or any real state, use read/search/execute tools NOW to VERIFY them, then answer with concrete evidence (file contents found, command outputs, URLs).
 - If the task is purely conceptual or conversational (no files/web/system involved), reply with exactly 'NO_TOOLS_NEEDED' followed by your final answer.
 Do not repeat the full history — output the tool call(s) needed to verify, or the final answer.
+"""
+
+REFINE_PROMPT = """A dedicated reviewer just critiqued your work and produced a final-answer draft. Before it ships, PROVE it:
+
+- Re-check every factual claim against the evidence in this conversation (file contents, command outputs, search results, tool results).
+- If the review caught a real problem or introduced an error, FIX it now — use tools if verification requires it.
+- Then output the corrected FINAL polished answer to the user (in their language, markdown, complete and precise).
+
+Do not repeat the history — output only the final answer (or the tool call needed to finish the job).
 """
 
 DEEP_THINKING_PROMPT = """You are currently operating in DEEP THINKING mode. Elevate your rigor:
@@ -447,8 +459,16 @@ class TitanAgent:
         tool_policy: Any | None = None,
         hitl: HumanInTheLoop | None = None,
         hitl_timeout: float = 120.0,
+        reviewer_llm: Any | None = None,
     ):
         self.llm = llm or LLMClient()
+        # Phase 21: dedicated reviewer for the critic/reflection pass. When
+        # provided (or auto-built from TITAN_REVIEWER_PROVIDER/MODEL), the
+        # reflection uses it instead of the generator; refinement rounds are
+        # then enabled so the generator revises against the critique.
+        self.reviewer_llm = reviewer_llm
+        self._reviewer_client: Any | None = None
+        self._reviewer_tried = False
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
@@ -1357,6 +1377,32 @@ class TitanAgent:
         except Exception:  # noqa: BLE001 - summarization is best-effort
             return None
 
+    def _critic_llm(self) -> Any:
+        """The model used for the critic/reflection pass.
+
+        Phase 21: a dedicated reviewer (constructor-injected or built lazily
+        from TITAN_REVIEWER_PROVIDER / TITAN_REVIEWER_MODEL) when configured —
+        the classic "weak generator + strong critic" split. Without one this
+        returns the run's own model and behavior is byte-for-byte unchanged.
+        """
+        if self.reviewer_llm is not None:
+            return self.reviewer_llm
+        if not self._reviewer_tried:
+            self._reviewer_tried = True
+            provider, model = reviewer_model()
+            if provider or model:
+                try:
+                    self._reviewer_client = LLMClient(
+                        provider=provider or self.llm.provider,
+                        model=model
+                        or provider_default_model(provider)
+                        or self.llm.model,
+                    )
+                except Exception as exc:  # noqa: BLE001 - reviewer is best-effort
+                    log.warning("could not build reviewer LLM: %s", exc)
+                    self._reviewer_client = None
+        return self._reviewer_client or self.llm
+
     async def _chat_with_recovery(
         self,
         messages: list[dict[str, Any]],
@@ -1761,7 +1807,9 @@ class TitanAgent:
                     {"role": "user", "content": REFLECTION_PROMPT}
                 ]
                 try:
-                    crit = await self.llm.chat_completion(critic_messages, tools=available_tools)
+                    crit = await self._critic_llm().chat_completion(
+                        critic_messages, tools=available_tools
+                    )
                 except (RuntimeError, OSError, aiohttp.ClientError) as e:
                     yield AgentEvent("error", f"Reflection pass error: {e!s}")
                     crit = None
@@ -1785,6 +1833,61 @@ class TitanAgent:
                     elif crit.content:
                         # Reflection produced the polished final answer
                         final_text = crit.content or final_text
+
+                        # Phase 21: bounded refinement when a dedicated reviewer
+                        # is in play — the GENERATOR revises against the critic's
+                        # output up to TITAN_REFINEMENT_ROUNDS times. Without a
+                        # separate reviewer this loop never runs (0 rounds), so
+                        # the classic single-reflection behavior is preserved.
+                        refine_handoff = False
+                        refine_round = 0
+                        critic_llm = self._critic_llm()
+                        while refine_round < (
+                            refinement_rounds()
+                            if critic_llm is not self.llm
+                            else 0
+                        ):
+                            refine_round += 1
+                            yield AgentEvent(
+                                "status",
+                                f"Refining final answer against critique "
+                                f"(round {refine_round}/{refinement_rounds()})...",
+                            )
+                            refine_messages = critic_messages + [
+                                {"role": "assistant", "content": final_text},
+                                {"role": "user", "content": REFINE_PROMPT},
+                            ]
+                            try:
+                                refined = await self.llm.chat_completion(
+                                    refine_messages, tools=available_tools
+                                )
+                            except (RuntimeError, OSError, aiohttp.ClientError) as e:
+                                yield AgentEvent("error", f"Refinement pass error: {e!s}")
+                                break
+                            if refined is None:
+                                break
+                            if refined.thoughts:
+                                yield AgentEvent("thought", refined.thoughts)
+                            if refined.tool_calls:
+                                refine_handoff = True
+                                async for ev in self._emit_tool_results(
+                                    refined, messages, iteration
+                                ):
+                                    yield ev
+                                break
+                            if refined.content:
+                                final_text = refined.content or final_text
+                        if refine_handoff:
+                            self._checkpoint_save(
+                                session_id=session_id, user_input=user_input, mode=mode,
+                                effort=effort, strategy=strategy, messages=messages,
+                                steps_done=iteration, tools_used=["refine"],
+                                status="running",
+                            )
+                            if iteration >= max_steps:
+                                yield AgentEvent("final_answer", f"Reached the maximum number of steps ({max_steps}). The latest state and results are preserved above.")
+                                return
+                            continue
 
             yield AgentEvent("final_answer", final_text)
             await self._finalize_run(session_id, user_input, final_text, mode, strategy, auto_commit)

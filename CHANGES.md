@@ -2,6 +2,44 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🧑‍⚖️ Phase 21 — DEDICATED REVIEWER MODEL + BOUNDED REFINEMENT
+
+The critic/reflection pass that polishes final answers normally runs on the
+SAME model that generated them — so a weak local generator critiques itself.
+Phase 21 enables the classic "weak generator → strong critic → revise" split:
+the reflection runs on a dedicated reviewer, then the generator revises against
+the critique.
+
+### 1. Reviewer wiring (`titan_agent/agent.py`, `config.py`)
+- `TITAN_REVIEWER_PROVIDER` / `TITAN_REVIEWER_MODEL` — configure a separate
+  reviewer LLM (e.g. a stronger cloud model while the generator stays cheap and
+  local). Built lazily on first reflection via `_critic_llm()` (falls back to
+  the generator model on any config error); the same call accepts an injected
+  `reviewer_llm=` for tests/embedders.
+- The reflection pass now calls `self._critic_llm()` — critic can still decide a
+  tool call is needed (executed, loop continues) exactly as before.
+
+### 2. Bounded refinement loop (`REFINE_PROMPT`)
+- When a SEPARATE reviewer is in play, the run spends up to
+  `TITAN_REFINEMENT_ROUNDS` (default `1`) generator revisions on the critic's
+  output: `"A dedicated reviewer just critiqued your work… PROVE it."`
+- A revision may emit tool calls (executed; loop returns to iterate with the new
+  evidence), may fail gracefully (reviewer's final survives), and is bounded — no
+  infinite loops. With NO reviewer configured, rounds default to 0 and behavior
+  is byte-for-byte unchanged (verified backward-compat test).
+
+### 3. `.env.example`
+- Documented `TITAN_REVIEWER_PROVIDER`, `TITAN_REVIEWER_MODEL`,
+  `TITAN_REFINEMENT_ROUNDS`.
+
+### Verification
+- `tests/test_reviewer.py` — **6 deterministic tests** (fake generator +
+  fake reviewer + fake tool executor, no network): reviewer critiques and the
+  generator revises; no-reviewer single-reflection unchanged; `ROUNDS=0` skips
+  revision; revision tool-call handoff; failed revision keeps the reviewer's
+  final; env auto-build of the reviewer with the generator model untouched.
+- Full suite: **436 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🛡️ Phase 20 — GROUNDED FINAL VALIDATION (anti-hallucination)
 
 A model that answers WITHOUT ever touching a tool is the classic hallucination
