@@ -225,6 +225,19 @@ def auto_postcheck_enabled() -> bool:
     )
 
 
+# ---- Phase 30: empty final-answer guard --------------------------------------
+# Weak models occasionally end a run with whitespace-only content — the run
+# "succeeds" while telling the user nothing. When the candidate final is empty,
+# the harness asks ONCE for the answer (bounded single retry), and if the model
+# still returns nothing the final answer is an explicit notice instead of a
+# silent empty success.
+def empty_final_guard_enabled() -> bool:
+    """Retry once on whitespace-only final answers (default on)."""
+    return os.getenv("TITAN_EMPTY_FINAL_GUARD", "1").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

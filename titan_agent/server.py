@@ -538,6 +538,33 @@ async def tools_stats():
         "tools": summary["tools"],
     }
 
+
+# ---- Phase 29: repeated-failure guard observability API ----------------------
+# GET /api/guard/state exposes the LIVE agent's per-run repeated-failure guard
+# counters (identical tool calls that keep failing and are about to be skipped)
+# so an operator can see which calls the harness is blocking and why.
+
+
+@app.get("/api/guard/state")
+async def guard_state():
+    """Per-run repeated-failure guard counters + effective config."""
+    from .config import repeat_guard_enabled, repeat_guard_limit
+
+    counters = dict(getattr(agent, "_guard_failures", {}) or {})
+    return {
+        "enabled": repeat_guard_enabled(),
+        "limit": repeat_guard_limit(),
+        "blocked_patterns": [
+            {
+                "tool": key.split("\x00", 1)[0],
+                "failures": count,
+            }
+            for key, count in sorted(
+                counters.items(), key=lambda kv: -kv[1]
+            )[:50]
+        ],
+    }
+
 # ---- Phase 12: attach Bearer-token auth to every API route -------------------
 # The liveness check (/health) and the web-UI shell (/) stay public; every
 # other route gets the `require_api_key` dependency appended in-place.

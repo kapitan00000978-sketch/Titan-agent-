@@ -2,6 +2,43 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🧭 Phase 28–30 — TELEMETRY TIE-IN + OBSERVABILITY + ANTI-DEAD-END (level trio #2)
+
+Three more levers at three levels, shipped together:
+
+### 1. Context level — failure intelligence in TOOL EVIDENCE (`agent.py`)
+- `_build_tool_evidence` (Phase 25) now appends a **⚠ Repeated failures this
+  run** caution section sourced from the per-run guard counters (Phase 23/27):
+  exact tool names whose identical call already failed ≥2 times, sorted
+  worst-first — so the critic sees precisely what not to repeat. Clean guard
+  → no caution section (stable prompts).
+
+### 2. Server level — guard observability API (`server.py`)
+- New auth-protected **`GET /api/guard/state`** exposing the live agent's
+  per-run repeated-failure counters (`blocked_patterns`: tool + failure
+  count, sorted worst-first) plus the effective `enabled` / `limit` config —
+  an operator can see exactly which calls the harness is blocking and why.
+
+### 3. Harness level — empty final-answer guard (`agent.py`, `config.py`, `.env.example`)
+- New `TITAN_EMPTY_FINAL_GUARD` (default `1`). Whitespace-only final answers
+  are never a silent success: the harness retries ONCE with a bounded system
+  prompt asking for the answer; if the second attempt is also empty the final
+  answer becomes an explicit notice while preserving the run state. Bounded
+  (`empty_retried`), disabled-by-env, and only fires on truly empty content.
+
+### Verification
+- `tests/test_evidence_critique.py` — **+3 Phase 28 tests** (7 total):
+  caution section surfaces repeated failures (≥2), sorted worst-first with
+  the lower counts omitted, and clean guards produce no caution section.
+- `tests/test_guard_state.py` — **3 deterministic tests**: the endpoint is
+  auth-gated (401/403), returns config + empty counters, and lists seeded
+  blocked patterns sorted worst-first with the tool field extracted.
+- `tests/test_empty_final.py` — **4 deterministic tests**: one bounded retry
+  then normal finalize (grounding still runs), second empty → explicit
+  notice, disabled-by-env immediate notice, and a bounded retry after tool
+  use with the reflection pass still applied.
+- Full suite: **478 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🧭 Phase 25–27 — MULTI-LEVEL STRENGTHENING (context + harness + tool funnel)
 
 Three levers at three different levels, shipped together:

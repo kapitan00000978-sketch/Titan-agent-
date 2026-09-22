@@ -161,3 +161,52 @@ def test_evidence_deduplicates_paths(tmp_path):
     files_line = [ln for ln in block.splitlines() if "Files written/edited" in ln]
     assert len(files_line) == 1
     assert files_line[0].count("a.txt") == 1
+
+
+def _agent_with_guards(tmp_path, failures):
+    agent = TitanAgent(
+        llm=_RecordingLLM([]),
+        memory=MemoryManager(tmp_path / "e4.db"),
+        core_memory_path=tmp_path / "e4_core.db",
+    )
+    agent._guard_failures = dict(failures)
+    return agent
+
+
+def test_evidence_surfaces_repeated_failures(tmp_path):
+    """Phase 28: tools whose identical call keeps failing are called out in the
+    evidence block so the critic sees exactly what not to repeat."""
+    agent = _agent_with_guards(
+        tmp_path,
+        {"web_fetch\x00{}": 3, "read_file\x00{}": 1},
+    )
+    block = agent._build_tool_evidence([{"role": "tool", "name": "memory_save",
+                                         "tool_call_id": "x", "content": "ok"}])
+    assert "Repeated failures this run" in block
+    assert "web_fetch: failed 3×" in block
+    assert "read_file: failed 1×" not in block  # below the >=2 threshold
+
+
+def test_evidence_caution_sorted_by_failure_count(tmp_path):
+    """Phase 28: the caution list is sorted worst-first."""
+    agent = _agent_with_guards(
+        tmp_path,
+        {
+            "grep\x00{}": 2,
+            "web_fetch\x00{}": 7,
+            "curl\x00{}": 5,
+        },
+    )
+    block = agent._build_tool_evidence([])
+    lines = [ln for ln in block.splitlines() if "failed" in ln]
+    assert len(lines) == 3
+    assert "web_fetch: failed 7×" in lines[0]
+    assert "curl: failed 5×" in lines[1]
+    assert "grep: failed 2×" in lines[2]
+
+
+def test_evidence_no_caution_when_guard_clean(tmp_path):
+    """Phase 28: no repeated failures -> no caution section (stability)."""
+    agent = _agent_with_guards(tmp_path, {})
+    block = agent._build_tool_evidence([])
+    assert "Repeated failures this run" not in block

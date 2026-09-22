@@ -21,6 +21,7 @@ from .config import (
     WORKSPACE_DIR,
     auto_postcheck_enabled,
     cancel_on_tool_error,
+    empty_final_guard_enabled,
     final_grounding_enabled,
     full_access_enabled,
     objective_reanchor_enabled,
@@ -153,6 +154,12 @@ POSTCHECK_PROMPT = """You just edited files in the workspace. Before you finaliz
 Then output the FINAL answer to the user (in their language, markdown, complete and precise), ending with a short "Verified:" note listing exactly what you checked and the real result.
 
 Do not repeat the history — output the verification tool call(s) you need, or the final answer.
+"""
+
+# Phase 30: shown ONCE when a run ends with a whitespace-only final answer so
+# the model gets a bounded chance to actually answer instead of a silent
+# empty success.
+EMPTY_FINAL_PROMPT = """Your previous response contained no answer. Produce the FINAL answer to the user's request NOW — in their language, markdown, complete and precise. If the task depends on real state (files, commands, web), use the tools first; otherwise answer directly. Do not repeat the history and do not return empty content.
 """
 
 ORIGINAL_TASK_MARKER = "## ORIGINAL TASK (re-anchored)"
@@ -1101,10 +1108,13 @@ class TitanAgent:
             return None
 
     def _build_tool_evidence(self, messages: list[dict[str, Any]], limit: int = 12) -> str:
-        """Phase 25: a deterministic list of what ACTUALLY happened with tools,
-        built from the real tool round-trips already in the conversation and fed
-        to the critic so it argues against facts instead of vibes. No LLM call,
-        no parsing heuristics beyond the message shape the harness itself wrote."""
+        """Phase 25 + 28: a deterministic list of what ACTUALLY happened with
+        tools, built from the real tool round-trips already in the conversation
+        and fed to the critic so it argues against facts instead of vibes. No
+        LLM call, no parsing heuristics beyond the message shape the harness
+        itself wrote. Phase 28 adds a caution section sourced from the per-run
+        repeated-failure guard counters, so the critic also sees which exact
+        calls kept failing."""
         files: list[str] = []
         for m in messages:
             for tc in m.get("tool_calls") or []:
@@ -1136,6 +1146,26 @@ class TitanAgent:
             parts.append(
                 "Files written/edited: " + ", ".join(dict.fromkeys(files))
             )
+        # Phase 28: repeated-failure caution from the per-run guard counters
+        # (tools whose identical call already failed >=2 times this run).
+        repeats = sorted(
+            (
+                (k.split("\x00", 1)[0], v)
+                for k, v in self._guard_failures.items()
+                if v >= 2
+            ),
+            key=lambda kv: -kv[1],
+        )
+        if repeats:
+            caution = [
+                (
+                    "⚠ Repeated failures this run — do NOT repeat these calls; "
+                    "change the arguments, switch tools, or fix the prerequisites:"
+                )
+            ]
+            for tname, count in repeats[:6]:
+                caution.append(f"- {tname}: failed {count}×")
+            parts.append("\n".join(caution))
         return "\n".join(parts)
 
     def _run_used_write_tool(self, messages: list[dict[str, Any]]) -> bool:
@@ -1914,6 +1944,7 @@ class TitanAgent:
         run_tools: list[str] = []
         reflect_done = False
         postcheck_done = False  # Phase 26: bounded auto post-check for edit runs
+        empty_retried = False   # Phase 30: bounded retry on whitespace-only finals
         # Phase 23: per-run consecutive identical-failure counters, keyed by
         # "tool\x00canonical-args". Reset on every run_task.
         self._guard_failures: dict[str, int] = {}
@@ -1992,6 +2023,23 @@ class TitanAgent:
 
             # ---- No tool calls: candidate final answer ----
             final_text = response.content or ""
+
+            # ---- Phase 30: bounded retry on whitespace-only finals ----
+            # An empty "answer" is never a valid final. Ask ONCE more (bounded);
+            # if the model still returns nothing the emission point below turns
+            # it into an explicit notice instead of a silent empty success.
+            if (
+                empty_final_guard_enabled()
+                and not empty_retried
+                and not final_text.strip()
+            ):
+                empty_retried = True
+                messages.append({"role": "system", "content": EMPTY_FINAL_PROMPT})
+                yield AgentEvent(
+                    "status",
+                    "Empty response — asking the model to produce the answer...",
+                )
+                continue
 
             # ---- Phase 20: ground zero-tool answers (anti-hallucination) ----
             # A model that answered without touching a tool once is the classic
@@ -2163,6 +2211,14 @@ class TitanAgent:
                     "status", "Post-check: verifying edited files before finalizing..."
                 )
                 continue
+
+            # Phase 30: an empty answer that survives the bounded retry is
+            # turned into an explicit notice — never a silent empty success.
+            if not final_text.strip():
+                final_text = (
+                    "⚠ The model produced an empty final answer. The run state "
+                    "and partial results above are preserved."
+                )
 
             yield AgentEvent("final_answer", final_text)
             await self._finalize_run(session_id, user_input, final_text, mode, strategy, auto_commit)
