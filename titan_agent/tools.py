@@ -1526,7 +1526,10 @@ class ToolRegistry:
             else:
                 # Unix: use wmctrl
                 try:
-                    result = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True, timeout=3, check=False)
+                    result = await asyncio.to_thread(
+                        subprocess.run, ["wmctrl", "-l"],
+                        capture_output=True, text=True, timeout=3, check=False,
+                    )
                     if result.returncode == 0:
                         return result.stdout[:3000]
                     return "(wmctrl not available)"
@@ -1595,12 +1598,12 @@ class ToolRegistry:
                 # Unix: use wmctrl/xdotool
                 try:
                     if action == "close":
-                        subprocess.run(["wmctrl", "-c", title], timeout=3, check=False)
+                        await asyncio.to_thread(subprocess.run, ["wmctrl", "-c", title], timeout=3, check=False)
                     elif action in ("minimize", "maximize", "restore"):
                         state_map = {"minimize": "-b add,iconic", "maximize": "-b add,maximized_vert,maximized_horz", "restore": "-b remove,maximized_vert,maximized_horz"}
-                        subprocess.run(["wmctrl", "-r", title, state_map[action]], timeout=3, check=False)
+                        await asyncio.to_thread(subprocess.run, ["wmctrl", "-r", title, state_map[action]], timeout=3, check=False)
                     elif action == "foreground":
-                        subprocess.run(["wmctrl", "-a", title], timeout=3, check=False)
+                        await asyncio.to_thread(subprocess.run, ["wmctrl", "-a", title], timeout=3, check=False)
                     return f"Window {action}: {title}"
                 except (OSError, subprocess.SubprocessError):
                     return "(wmctrl not installed)"

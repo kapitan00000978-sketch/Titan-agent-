@@ -72,8 +72,10 @@ class TestReflector:
     async def test_returns_parsed_result(self):
         llm = MockLLM(
             [
-                '{"insight": "tool failed repeatedly", "correction": "try different tool", '
-                '"halt": false, "confidence": 0.9}'
+                (
+                    '{"insight": "tool failed repeatedly", "correction": "try different tool", '
+                    '"halt": false, "confidence": 0.9}'
+                )
             ]
         )
         reflector = Reflector(llm=llm)

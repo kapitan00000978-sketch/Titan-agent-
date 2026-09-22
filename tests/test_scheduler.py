@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from titan_agent.scheduler import CronScheduler, _matches_cron, _parse_cron
 
@@ -25,9 +25,9 @@ def test_parse_cron_star_and_ranges():
 
 def test_matches_cron():
     p = _parse_cron("0 9 * * 1")  # 09:00 on Monday
-    assert _matches_cron(p, datetime(2026, 9, 21, 9, 0)) is True   # Mon 2026-09-21
-    assert _matches_cron(p, datetime(2026, 9, 21, 9, 30)) is False  # wrong minute
-    assert _matches_cron(p, datetime(2026, 9, 22, 9, 0)) is False   # Tuesday
+    assert _matches_cron(p, datetime(2026, 9, 21, 9, 0, tzinfo=timezone.utc)) is True   # Mon 2026-09-21
+    assert _matches_cron(p, datetime(2026, 9, 21, 9, 30, tzinfo=timezone.utc)) is False  # wrong minute
+    assert _matches_cron(p, datetime(2026, 9, 22, 9, 0, tzinfo=timezone.utc)) is False   # Tuesday
 
 
 def test_add_remove_toggle(tmp_path):
@@ -137,7 +137,6 @@ def test_runner_error_marks_job_failed(tmp_path):
 
 def test_jobs_json_persistence(tmp_path):
     jobs_file = tmp_path / "jobs.json"
-    calls = []
 
     async def runner(prompt, sid, mode, effort):
         return "ok"

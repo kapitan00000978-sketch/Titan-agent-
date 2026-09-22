@@ -113,7 +113,7 @@ def test_agent_dispatch_telegram_status(tmp_path):
     finally:
         try:
             asyncio.run(agent.mcp.stop_all())
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - cleanup must never fail the test
             pass
     assert "Telegram control:" in res
     assert "DISABLED" in res
@@ -139,7 +139,7 @@ def test_agent_dispatch_telegram_send_refusal(tmp_path):
         try:
             if agent is not None:
                 asyncio.run(agent.mcp.stop_all())
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - cleanup must never fail the test
             pass
     assert "Telegram:" in res
     assert "not allowed" in res

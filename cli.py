@@ -6,8 +6,8 @@ if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-    except Exception:
-        pass
+    except (AttributeError, OSError, ValueError):
+        pass  # best-effort: keep default streams if reconfigure is unsupported
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -93,7 +93,7 @@ async def main():
                     console.print(f"[bold red]Unknown mode: {new_mode}. Valid: {', '.join(VALID_MODES)}[/bold red]")
                 continue
             # Effort level command (also accepts `/effort high`)
-            if lower_input.startswith("effort ") or lower_input.startswith("/effort "):
+            if lower_input.startswith(("effort ", "/effort ")):
                 new_effort = lower_input.split(None, 1)[1].strip()
                 if new_effort in VALID_EFFORTS:
                     effort = new_effort
@@ -285,7 +285,7 @@ async def main():
             console.print("\n[bold red]Process cancelled.[/bold red]")
             await mcp.stop_all()
             break
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - top-level loop must survive and report any error
             console.print(f"[bold red]Unexpected error:[/bold red] {e}")
 
 if __name__ == "__main__":

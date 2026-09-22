@@ -176,7 +176,7 @@ class TestLLMEvaluator:
 
         evaluator = LLMEvaluator(llm=ShortLLM())
         candidates = [
-            ReasoningTrace(task="t", steps=[ReasoningStep(content="a")] if False else []),
+            ReasoningTrace(task="t", steps=[]),
             ReasoningTrace(task="t"),
             ReasoningTrace(task="t"),
         ]

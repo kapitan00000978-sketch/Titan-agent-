@@ -10,8 +10,8 @@ if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-    except Exception:
-        pass
+    except (AttributeError, OSError, ValueError):
+        pass  # best-effort: keep default streams if reconfigure is unsupported
 
 
 def main():
@@ -55,8 +55,8 @@ def main():
         if not args.no_browser:
             try:
                 webbrowser.open(url)
-            except Exception:
-                pass
+            except (OSError, webbrowser.Error) as e:
+                print(f"⚠️  Could not open browser automatically: {e}")
 
         uvicorn.run("titan_agent.server:app", host=SERVER_HOST, port=port, reload=False)
 
