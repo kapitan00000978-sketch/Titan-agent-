@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from .config import (
     provider_default_model,
     refinement_rounds,
     reviewer_model,
+    tool_record_enabled,
 )
 from .core.guardrails.hitl import ApprovalStatus, HumanInTheLoop
 from .core.guardrails.policy import Decision, PolicyEngine
@@ -37,6 +39,7 @@ from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .skills import SkillRegistry
 from .telegram import TelegramError, TelegramManager
+from .tool_stats import TOOL_STATS, ToolStatsCollector
 from .tools import ToolRegistry
 
 log = logging.getLogger(__name__)
@@ -460,6 +463,7 @@ class TitanAgent:
         hitl: HumanInTheLoop | None = None,
         hitl_timeout: float = 120.0,
         reviewer_llm: Any | None = None,
+        tool_stats: ToolStatsCollector | None = None,
     ):
         self.llm = llm or LLMClient()
         # Phase 21: dedicated reviewer for the critic/reflection pass. When
@@ -469,6 +473,10 @@ class TitanAgent:
         self.reviewer_llm = reviewer_llm
         self._reviewer_client: Any | None = None
         self._reviewer_tried = False
+        # Phase 22: per-tool telemetry. Defaults to the process-wide collector
+        # so the server endpoint sees every agent's record; an isolated
+        # collector can be injected for deterministic tests.
+        self.tool_stats = tool_stats or TOOL_STATS
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
@@ -797,6 +805,23 @@ class TitanAgent:
             },
         ]
 
+    def _build_tool_stats_definition(self) -> list[dict[str, Any]]:
+        """Phase 22: the agent can query its own tool execution record mid-run
+        and adapt (e.g. stop retrying a tool that keeps failing)."""
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "tool_stats",
+                    "description": "Returns a JSON summary of YOUR tool usage so far in this session: per-tool calls, successes, failures, error rate, avg latency and last error. Use it when you are unsure whether a tool keeps failing — if a tool's error rate is high, switch approach instead of repeating it.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                    },
+                },
+            }
+        ]
+
     def _build_tools_list(self) -> list[dict[str, Any]]:
         all_tools = list(self.tools.get_tool_definitions())
         # Add memory tools (agent-level, routed through MemoryManager)
@@ -807,6 +832,8 @@ class TitanAgent:
         all_tools.extend(self._build_telegram_tool_definitions())
         # Add Git tools (agent-level, Aider-style git-first workflow)
         all_tools.extend(self._build_git_tool_definitions())
+        # Phase 22: per-tool telemetry introspection (agent-level)
+        all_tools.extend(self._build_tool_stats_definition())
         # Add MCP tools if connected
         all_tools.extend(self.mcp.get_all_tools())
         # Phase 9: drop tools the role may not use (visible AND enforced).
@@ -849,6 +876,13 @@ class TitanAgent:
             param_hint = ", ".join(params.keys()) if params else "no params"
             lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
         for t in self._build_git_tool_definitions():
+            fn = t.get("function", {})
+            if not self._policy_allows(str(fn.get("name", ""))):
+                continue
+            params = fn.get("parameters", {}).get("properties", {})
+            param_hint = ", ".join(params.keys()) if params else "no params"
+            lines.append(f"- {fn.get('name')}({param_hint}): {fn.get('description', '')}")
+        for t in self._build_tool_stats_definition():
             fn = t.get("function", {})
             if not self._policy_allows(str(fn.get("name", ""))):
                 continue
@@ -1021,6 +1055,34 @@ class TitanAgent:
             return None
 
     async def execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
+        # Phase 22: telemetry wrapper. Every tool execution — classic loop,
+        # structured strategies, cron, queue, direct calls — funnels through
+        # here, so the shared collector records success/failure, latency and
+        # output size without changing any caller's behavior (exceptions still
+        # propagate exactly as before; the record happens first).
+        start = time.monotonic()
+        try:
+            result = await self._execute_tool_unified(name, args)
+        except Exception as exc:
+            self.tool_stats.record(
+                name,
+                ok=False,
+                latency_ms=(time.monotonic() - start) * 1000.0,
+                error=type(exc).__name__,
+                output_chars=0,
+            )
+            raise
+        ok = not (isinstance(result, str) and result.startswith("Error"))
+        self.tool_stats.record(
+            name,
+            ok=ok,
+            latency_ms=(time.monotonic() - start) * 1000.0,
+            error=None if ok else "tool_error",
+            output_chars=len(result) if isinstance(result, str) else 0,
+        )
+        return result
+
+    async def _execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
         # Phase 9: per-role tool policy enforced for EVERY tool family
         # (terminal / memory / skill / telegram / git / mcp) — a researcher
         # cannot commit, a reviewer cannot write.
@@ -1037,6 +1099,8 @@ class TitanAgent:
                     "Error: approval required but not granted "
                     f"(tool='{name}' was not approved by the human)."
                 )
+        if name == "tool_stats":
+            return json.dumps(self.tool_stats.summary(), ensure_ascii=False)
         if name == "memory_save":
             key = str(args.get("key", "")).strip()
             value = str(args.get("value", "")).strip()
@@ -1550,6 +1614,13 @@ class TitanAgent:
         skill_block = self.skills.build_system_block(user_input)
         if skill_block:
             system_content += skill_block
+        # Phase 22: adaptive tool record (opt-in via TITAN_TOOL_RECORD). When
+        # enabled, tools that failed repeatedly in recent runs are surfaced so
+        # the model adapts instead of retrying a broken approach.
+        if tool_record_enabled():
+            tool_block = self.tool_stats.prompt_block()
+            if tool_block:
+                system_content += "\n\n" + tool_block
         if mode == "deep":
             system_content += "\n\n" + DEEP_THINKING_PROMPT
         elif mode == "deep_search":

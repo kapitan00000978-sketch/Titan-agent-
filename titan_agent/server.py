@@ -22,6 +22,7 @@ from .mcp_client import MCPManager
 from .memory import MemoryManager
 from .scheduler import CronScheduler
 from .telegram import TelegramError, TelegramManager
+from .tool_stats import TOOL_STATS
 from .tools import ToolRegistry
 
 
@@ -520,6 +521,21 @@ async def logs_recent(limit: int = 100, level: str = ""):
         "count": len(clipped),
         "total": len(records),
         "level_filter": level_hint or None,
+    }
+
+
+# ---- Phase 22: per-tool telemetry API --------------------------------------
+# GET /api/tools/stats exposes the process-wide tool execution record (same
+# collector every TitanAgent writes to by default). Auth-protected /api route.
+
+
+@app.get("/api/tools/stats")
+async def tools_stats():
+    """Per-tool success/failure/latency record for this process."""
+    summary = TOOL_STATS.summary()
+    return {
+        "totals": summary["totals"],
+        "tools": summary["tools"],
     }
 
 # ---- Phase 12: attach Bearer-token auth to every API route -------------------

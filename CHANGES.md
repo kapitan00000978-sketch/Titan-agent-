@@ -2,6 +2,46 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 📊 Phase 22 — PER-TOOL TELEMETRY + ADAPTIVE TOOL RECORD
+
+Weak models repeat the SAME failing tool call instead of switching approach.
+Phase 22 gives Titan visibility into its own tool record — and lets the model
+adapt mid-run — while giving operators a single endpoint for cost/latency truth.
+
+### 1. Telemetry wrapper (`titan_agent/agent.py`, new `tool_stats.py`)
+- Every tool execution funnels through `TitanAgent.execute_tool_unified`, now a
+  thin telemetry wrapper around the renamed `_execute_tool_unified`: it records
+  success/failure, latency (ms) and output size on a thread-safe, bounded
+  `ToolStatsCollector` WITHOUT changing any caller's behavior — exceptions still
+  propagate, error strings are detected by the `"Error"` prefix, policy/HITL
+  denials count as failures.
+- Default collector is the process-wide `TOOL_STATS` singleton, so the server
+  endpoint and the agent's own introspection see the same record across runs.
+  An isolated collector can be injected (`tool_stats=`) for deterministic tests.
+
+### 2. `tool_stats` introspection tool (`agent.py`)
+- The agent can query its own execution record mid-run (per-tool calls,
+  ok/errors, error rate, avg latency, last error) and switch approach when a
+  tool keeps failing. Wired into `_build_tools_list` AND the live catalog text.
+
+### 3. Adaptive tool record (`config.py`, `agent.py`)
+- `TITAN_TOOL_RECORD=1` (default `0`, opt-in) injects a `### TOOL RECORD`
+  block into future system prompts: only tools with ≥3 calls AND at least one
+  failure, worst error rate first (bounded at 8 lines). Healthy tools are never
+  surfaced; default-off keeps prompts byte-for-byte stable.
+
+### 4. `GET /api/tools/stats` (`server.py`)
+- Auth-protected endpoint (auto-guarded like every `/api` route) returning
+  `{totals, tools}` from the shared collector for dashboards/CLI.
+
+### Verification
+- `tests/test_tool_stats.py` — **10 deterministic tests** (isolated collectors,
+  real local memory tools, no network): success/error recording, exception
+  re-raise recording, `tool_stats` tool JSON, catalog wiring, summary math,
+  empty vs populated prompt block, opt-in injection, default absence, and the
+  auth-protected endpoint via TestClient (401 without token, 200 with).
+- Full suite: **446 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🧑‍⚖️ Phase 21 — DEDICATED REVIEWER MODEL + BOUNDED REFINEMENT
 
 The critic/reflection pass that polishes final answers normally runs on the

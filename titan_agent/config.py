@@ -165,6 +165,18 @@ def refinement_rounds() -> int:
         return 1
 
 
+# ---- Phase 22: per-tool telemetry ------------------------------------------
+# Tool execution stats are ALWAYS recorded (silent, requires nothing), but
+# surfacing them inside the system prompt is opt-in: with TITAN_TOOL_RECORD=1
+# tools that failed repeatedly in recent runs are listed so the model adapts
+# instead of retrying a broken pattern. Off by default -> prompt stays stable.
+def tool_record_enabled() -> bool:
+    """Inject the adaptive TOOL RECORD block into future system prompts."""
+    return os.getenv("TITAN_TOOL_RECORD", "0").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 
