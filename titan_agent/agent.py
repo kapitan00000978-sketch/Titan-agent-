@@ -24,6 +24,8 @@ from .config import (
     empty_final_guard_enabled,
     final_grounding_enabled,
     full_access_enabled,
+    malformed_guard_enabled,
+    malformed_guard_limit,
     objective_reanchor_enabled,
     parallel_tool_calls,
     provider_default_model,
@@ -32,6 +34,7 @@ from .config import (
     repeat_guard_limit,
     reviewer_model,
     tool_record_enabled,
+    tool_result_max_chars,
 )
 from .core.guardrails.hitl import ApprovalStatus, HumanInTheLoop
 from .core.guardrails.policy import Decision, PolicyEngine
@@ -530,6 +533,9 @@ class TitanAgent:
         # Phase 23: repeated identical-failure guard state. Always exists so
         # _emit_tool_results works standalone; run_task resets it per run.
         self._guard_failures: dict[str, int] = {}
+        # Phase 33: repeated malformed-arguments state (per tool NAME). Always
+        # exists so _emit_tool_results works standalone; run_task resets it.
+        self._malformed_calls: dict[str, int] = {}
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
@@ -1125,6 +1131,21 @@ class TitanAgent:
                         pass
         return list(dict.fromkeys(files))
 
+    def _cap_tool_result(self, result: Any) -> str:
+        """Phase 34: bound the size of a tool result that reaches the model's
+        conversation, so a huge tool output (a log dump, a whole-file read)
+        cannot flood the context window. Keeps an explicit truncation marker
+        with the original length so the model knows output was cut and how
+        large it actually was."""
+        text = str(result)
+        limit = tool_result_max_chars()
+        if len(text) <= limit:
+            return text
+        return (
+            f"{text[:limit]}\n… [tool output truncated: {len(text)} chars total, "
+            f"showing first {limit}]"
+        )
+
     def _build_tool_evidence(self, messages: list[dict[str, Any]], limit: int = 12) -> str:
         """Phase 25 + 28: a deterministic list of what ACTUALLY happened with
         tools, built from the real tool round-trips already in the conversation
@@ -1579,9 +1600,33 @@ class TitanAgent:
                     "Skipped: tool arguments could not be parsed as valid JSON. "
                     f"Raw arguments (truncated): {raw[:400]!r}"
                 )
+                # Phase 33: repeated malformed-arguments guard. Skipped calls
+                # never reach execute_tool_unified, so the Phase 27 guard cannot
+                # see them — a weak model could resend the SAME broken call
+                # forever. Count per tool NAME and block past the limit.
+                if malformed_guard_enabled():
+                    count = self._malformed_calls.get(t_name, 0) + 1
+                    self._malformed_calls[t_name] = count
+                    if count >= malformed_guard_limit():
+                        result = (
+                            "Error: repeated malformed-arguments guard — this "
+                            f"tool (tool='{t_name}') has now been sent {count} "
+                            "times with unparsable arguments in this run. STOP "
+                            "resending broken calls. Send ONE tool call with "
+                            "valid JSON arguments (properly escaped quotes and "
+                            "braces), or switch to a different approach."
+                        )
+                        yield AgentEvent(
+                            "status",
+                            f"Blocking malformed '{t_name}' calls "
+                            f"({count}/{malformed_guard_limit()}).",
+                        )
+                result = self._cap_tool_result(result)
                 yield AgentEvent("tool_result", {"name": t_name, "result": result})
             else:
-                result = result_map.get(id(tool_call), "Error: tool call vanished.")
+                result = self._cap_tool_result(
+                    result_map.get(id(tool_call), "Error: tool call vanished.")
+                )
                 yield AgentEvent("tool_result", {"name": t_name, "result": result})
             messages.append({
                 "role": "tool",
@@ -1955,6 +2000,9 @@ class TitanAgent:
         # Phase 23: per-run consecutive identical-failure counters, keyed by
         # "tool\x00canonical-args". Reset on every run_task.
         self._guard_failures: dict[str, int] = {}
+        # Phase 33: per-run repeated malformed-arguments counters, keyed by
+        # tool NAME. Reset on every run_task.
+        self._malformed_calls: dict[str, int] = {}
         grounded = False  # Phase 20: zero-tool answers get exactly ONE verification pass
 
         while iteration < max_steps:

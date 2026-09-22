@@ -238,6 +238,41 @@ def empty_final_guard_enabled() -> bool:
     )
 
 
+# ---- Phase 33: repeated malformed-arguments guard ----------------------------
+# Tool calls whose arguments cannot be parsed as valid JSON are skipped (they
+# must never run with empty arguments). But weak models re-send THE SAME
+# malformed call over and over, burning turns. The harness counts skipped
+# malformed calls per tool name within a run and, after
+# `TITAN_MALFORMED_GUARD_LIMIT` name-level skips, BLOCKS further malformed
+# calls from that tool with actionable guidance.
+def malformed_guard_enabled() -> bool:
+    """Block repeatedly malformed tool calls (default on)."""
+    return os.getenv("TITAN_MALFORMED_GUARD", "1").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
+def malformed_guard_limit() -> int:
+    """How many malformed calls of one tool are tolerated before blocking."""
+    try:
+        return max(1, int(os.getenv("TITAN_MALFORMED_GUARD_LIMIT", "2")))
+    except (TypeError, ValueError):
+        return 2
+
+
+# ---- Phase 34: tool-result size cap ------------------------------------------
+# A single oversized tool output (a 500KB log dump, a whole-file read) can
+# flood the model's context window. Tool results appended to the conversation
+# are capped at `TITAN_TOOL_RESULT_MAX_CHARS` with an explicit truncation
+# marker, so the model still knows the output was cut and how large it was.
+def tool_result_max_chars() -> int:
+    """Maximum characters of a tool result kept in the conversation."""
+    try:
+        return max(256, int(os.getenv("TITAN_TOOL_RESULT_MAX_CHARS", "4000")))
+    except (TypeError, ValueError):
+        return 4000
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

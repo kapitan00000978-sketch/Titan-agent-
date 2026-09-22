@@ -547,10 +547,17 @@ async def tools_stats():
 
 @app.get("/api/guard/state")
 async def guard_state():
-    """Per-run repeated-failure guard counters + effective config."""
-    from .config import repeat_guard_enabled, repeat_guard_limit
+    """Per-run repeated-failure + malformed-arguments guard counters and the
+    effective config."""
+    from .config import (
+        malformed_guard_enabled,
+        malformed_guard_limit,
+        repeat_guard_enabled,
+        repeat_guard_limit,
+    )
 
     counters = dict(getattr(agent, "_guard_failures", {}) or {})
+    malformed = dict(getattr(agent, "_malformed_calls", {}) or {})
     return {
         "enabled": repeat_guard_enabled(),
         "limit": repeat_guard_limit(),
@@ -563,6 +570,16 @@ async def guard_state():
                 counters.items(), key=lambda kv: -kv[1]
             )[:50]
         ],
+        "malformed": {
+            "enabled": malformed_guard_enabled(),
+            "limit": malformed_guard_limit(),
+            "patterns": [
+                {"tool": name, "skipped": count}
+                for name, count in sorted(
+                    malformed.items(), key=lambda kv: -kv[1]
+                )[:50]
+            ],
+        },
     }
 
 # ---- Phase 12: attach Bearer-token auth to every API route -------------------

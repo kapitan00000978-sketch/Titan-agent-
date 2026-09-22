@@ -2,6 +2,50 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🧭 Phase 33–35 — BROKEN-CALL GUARD + CONTEXT FLOOD CONTROL + OBSERVABILITY (trio #3)
+
+Three more levers at three levels:
+
+### 1. Tool level — repeated malformed-arguments guard (`agent.py`, `config.py`, `.env.example`)
+- Tool calls whose arguments cannot be parsed as JSON are skipped (they must
+  never run with empty arguments) — but such calls never reached
+  `execute_tool_unified`, so the Phase 27 guard could not see them and a weak
+  model could resend the SAME broken call forever.
+- New per-run counters keyed by tool NAME (`_malformed_calls`): after
+  `TITAN_MALFORMED_GUARD_LIMIT` (default 2, `TITAN_MALFORMED_GUARD` opt-out)
+  name-level skips, further malformed calls from that tool are BLOCKED with an
+  actionable error ("STOP resending broken calls — send ONE call with valid
+  JSON arguments…") and a `Blocking malformed '{tool}'` status event.
+- Counters reset per run.
+
+### 2. Context level — tool-result size cap (`agent.py`, `config.py`, `.env.example`)
+- A single oversized tool output (500KB log dump, whole-file read) could flood
+  the model's context window — there was NO truncation of tool results.
+- New `_cap_tool_result()` bounds every tool result appended to the
+  conversation at `TITAN_TOOL_RESULT_MAX_CHARS` (default 4000, minimum 256)
+  with an explicit marker: `… [tool output truncated: N chars total, showing
+  first M]` — the model knows output was cut and how large it really was.
+  Nothing under the cap changes; direct `execute_tool_unified` callers are
+  unaffected.
+
+### 3. Server level — guard observability mirror (`server.py`, `tests/test_guard_state.py`)
+- `GET /api/guard/state` now mirrors the malformed-arguments counters
+  (`malformed.{enabled,limit,patterns}`) alongside the existing
+  repeated-failure `blocked_patterns`, sorted worst-first — one endpoint to
+  see everything the harness is blocking.
+
+### Verification
+- `tests/test_malformed_guard.py` — **4 deterministic tests**: malformed calls
+  skipped then blocked past the limit (tool never executes, run still
+  finalizes with reflection), disabled-by-env pass-through, env-configured
+  limit, and per-run counter reset.
+- `tests/test_tool_result_cap.py` — **4 deterministic tests**: short results
+  unchanged, oversized marker with true total, env-configured limit, and an
+  end-to-end run where the capped result reaches the model truncated.
+- `tests/test_guard_state.py` — **+1 test** (4 total): malformed patterns
+  surfaced alongside blocked patterns.
+- Full suite: **489 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🧭 Phase 31–32 — VERIFICATION WITH NAMES + STRUCTURED-FUNNEL GUARD PROOF
 
 Two refinements that close the remaining gaps from Phases 26–27:

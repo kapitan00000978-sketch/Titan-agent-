@@ -24,6 +24,7 @@ def client() -> TestClient:
     yield TestClient(server_mod.app)
     # Restore a clean guard state on the live global agent after each test.
     server_mod.agent._guard_failures = {}
+    server_mod.agent._malformed_calls = {}
 
 
 def test_guard_state_requires_auth(client: TestClient) -> None:
@@ -33,6 +34,7 @@ def test_guard_state_requires_auth(client: TestClient) -> None:
 
 def test_guard_state_returns_config_and_empty_counters(client: TestClient) -> None:
     server_mod.agent._guard_failures = {}
+    server_mod.agent._malformed_calls = {}
     resp = client.get("/api/guard/state", headers={
         "Authorization": f"Bearer {os.environ.get('TITAN_API_KEY', _TEST_KEY)}"
     })
@@ -41,6 +43,10 @@ def test_guard_state_returns_config_and_empty_counters(client: TestClient) -> No
     assert body["enabled"] is True
     assert body["limit"] == 2
     assert body["blocked_patterns"] == []
+    # Phase 35: malformed-arguments guard section mirrored.
+    assert body["malformed"]["enabled"] is True
+    assert body["malformed"]["limit"] == 2
+    assert body["malformed"]["patterns"] == []
 
 
 def test_guard_state_lists_blocked_patterns(client: TestClient) -> None:
@@ -57,3 +63,19 @@ def test_guard_state_lists_blocked_patterns(client: TestClient) -> None:
     # sorted worst-first, tool field extracted from the composite key
     assert patterns[0] == {"tool": "grep", "failures": 5}
     assert [p["tool"] for p in patterns] == ["grep", "web_fetch", "read_file"]
+
+
+def test_guard_state_lists_malformed_patterns(client: TestClient) -> None:
+    """Phase 35: skipped malformed calls per tool name surface too."""
+    server_mod.agent._guard_failures = {}
+    server_mod.agent._malformed_calls = {
+        "write_file": 2,
+        "web_fetch": 7,
+    }
+    resp = client.get("/api/guard/state", headers={
+        "Authorization": f"Bearer {os.environ.get('TITAN_API_KEY', _TEST_KEY)}"
+    })
+    assert resp.status_code == 200
+    patterns = resp.json()["malformed"]["patterns"]
+    assert [p["tool"] for p in patterns] == ["web_fetch", "write_file"]
+    assert patterns[0] == {"tool": "web_fetch", "skipped": 7}
