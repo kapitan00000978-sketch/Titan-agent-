@@ -199,6 +199,19 @@ def repeat_guard_limit() -> int:
         return 2
 
 
+# ---- Phase 24: task re-anchoring after context compaction ------------------
+# Long runs lose the original objective when old messages get compacted,
+# especially with small models. When compaction actually drops messages, a
+# compact system reminder re-pins the ORIGINAL TASK right before the next
+# model call. Only fires when compaction happened, so short runs are
+# byte-for-byte unchanged.
+def objective_reanchor_enabled() -> bool:
+    """Re-pin the original task in the prompt after context compaction."""
+    return os.getenv("TITAN_TASK_REANCHOR", "1").strip().lower() in (
+        "1", "true", "yes"
+    )
+
+
 # MCP Config Path
 MCP_CONFIG_FILE = BASE_DIR / "mcp_servers.json"
 

@@ -2,6 +2,42 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🧭 Phase 24 — TASK RE-ANCHORING AFTER CONTEXT COMPACTION
+
+Long runs lose the ORIGINAL objective when old messages get compacted — worst
+with small models. Now, whenever compaction ACTUALLY drops messages, a compact
+system reminder re-pins the original task right before the next model call.
+
+### 1. Re-anchor on proactive per-iteration trim (`agent.py`, `config.py`)
+- Inside `run_task`'s loop, when the pre-chat `compact_messages_for_context`
+  pass trimmed anything, `_reanchor_task()` appends a system reminder
+  `## ORIGINAL TASK (re-anchored): keep working toward this exact objective — …`
+  (task truncated to `ORIGINAL_TASK_MAX_CHARS` = 800) and emits a
+  `Re-anchored to the original task after context compaction.` status event.
+- Because it is a `system` message it joins the never-dropped head region, so
+  it persists for the rest of the run; the duplicate guard means it is never
+  appended twice.
+
+### 2. Re-anchor on provider-window overflow halving
+- `_chat_with_recovery(..., anchor=)` is a new opt-in keyword (default `None`
+  → byte-for-byte unchanged for existing callers/tests). `run_task` passes the
+  user input on BOTH chat paths (main loop + grounding pass); after the
+  overflow-halving compact, `working` is re-anchored before the retry.
+
+### 3. Config
+- `TITAN_TASK_REANCHOR` (default `1`, opt-out) → `objective_reanchor_enabled()`.
+- `.env.example` documents the key. Short runs are EXACTLY unchanged (the
+  feature only fires after a compaction actually happened).
+
+### Verification
+- `tests/test_reanchor.py` — **6 deterministic tests**: in-run compaction
+  anchors the objective text + status event, no-compaction never anchors,
+  disabled-by-env, overflow-halving re-anchor through `_chat_with_recovery`,
+  `_anchor_block` content/truncation, and the no-duplicate guarantee. The
+  recording fake LLM answers the context summarizer's single-user prompt
+  separately so compaction never starves the scripted run queue.
+- Full suite: **458 passed, 1 skipped**, `ruff check .` clean.
+
 ## 🚦 Phase 23 — REPEATED TOOL-FAILURE GUARD (anti-retry-loop)
 
 Weak models re-send the SAME failing tool call with the SAME arguments over

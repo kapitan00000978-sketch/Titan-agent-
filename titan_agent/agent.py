@@ -22,6 +22,7 @@ from .config import (
     cancel_on_tool_error,
     final_grounding_enabled,
     full_access_enabled,
+    objective_reanchor_enabled,
     parallel_tool_calls,
     provider_default_model,
     refinement_rounds,
@@ -135,6 +136,28 @@ REFINE_PROMPT = """A dedicated reviewer just critiqued your work and produced a 
 
 Do not repeat the history — output only the final answer (or the tool call needed to finish the job).
 """
+
+ORIGINAL_TASK_MARKER = "## ORIGINAL TASK (re-anchored)"
+ORIGINAL_TASK_MAX_CHARS = 800
+
+
+def _anchor_block(task: str) -> dict[str, Any] | None:
+    """Phase 24: a compact system reminder that pins the original objective so
+    long runs do not drift after context compaction. None when there is
+    nothing meaningful to pin."""
+    t = str(task or "").strip()
+    if not t:
+        return None
+    if len(t) > ORIGINAL_TASK_MAX_CHARS:
+        t = t[: ORIGINAL_TASK_MAX_CHARS] + "…"
+    return {
+        "role": "system",
+        "content": (
+            f"{ORIGINAL_TASK_MARKER}: keep working toward this exact "
+            f"objective —\n{t}"
+        ),
+    }
+
 
 DEEP_THINKING_PROMPT = """You are currently operating in DEEP THINKING mode. Elevate your rigor:
 - Decompose the problem into explicit sub-problems and reason about each one in detail.
@@ -1487,6 +1510,22 @@ class TitanAgent:
         except Exception:  # noqa: BLE001 - summarization is best-effort
             return None
 
+    def _reanchor_task(self, messages: list[dict[str, Any]], task: str | None) -> None:
+        """Phase 24: right after context compaction, append a compact ORIGINAL
+        TASK reminder (unless one is already present) so the model does not
+        drift. Pure no-op when there is nothing to anchor, re-anchoring is
+        disabled, or a reminder already exists."""
+        if not task or not objective_reanchor_enabled():
+            return
+        if any(
+            ORIGINAL_TASK_MARKER in str(m.get("content") or "")
+            for m in messages
+        ):
+            return
+        block = _anchor_block(task)
+        if block:
+            messages.append(block)
+
     def _critic_llm(self) -> Any:
         """The model used for the critic/reflection pass.
 
@@ -1517,6 +1556,7 @@ class TitanAgent:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        anchor: str | None = None,
     ) -> tuple[Any, list[dict[str, Any]], list[str]]:
         """Robust model call for one loop iteration.
 
@@ -1569,6 +1609,9 @@ class TitanAgent:
                 )
                 if len(trimmed) < len(working):
                     working = trimmed
+                    # Phase 24: re-pin the original task right after overflow
+                    # compaction so the model does not drift mid-run.
+                    self._reanchor_task(working, anchor)
                     notes.append(
                         "Context overflow detected - trimmed older tool "
                         f"rounds to ~{len(trimmed)} messages and retrying."
@@ -1808,15 +1851,28 @@ class TitanAgent:
             # Phase 10: keep the in-run window inside the configured budget
             # proactively (a no-op until the context actually exceeds it), so
             # long runs never fight the provider window one step too late.
+            _before_len = len(messages)
             messages = await compact_messages_for_context(
                 messages, summarizer=self._summarize_context
             )
+            # Phase 24: if compaction actually dropped messages, re-pin the
+            # original task right before the next model call.
+            if len(messages) < _before_len:
+                self._reanchor_task(messages, user_input)
+                if any(
+                    ORIGINAL_TASK_MARKER in str(m.get("content") or "")
+                    for m in messages
+                ):
+                    yield AgentEvent(
+                        "status",
+                        "Re-anchored to the original task after context compaction.",
+                    )
 
             available_tools = self._build_tools_list()
 
             try:
                 response, messages, chat_notes = await self._chat_with_recovery(
-                    messages, available_tools
+                    messages, available_tools, anchor=user_input
                 )
             except (RuntimeError, OSError, aiohttp.ClientError) as e:
                 err_msg = f"Error connecting to LLM: {e!s}"
@@ -1885,7 +1941,7 @@ class TitanAgent:
                 ]
                 try:
                     gresp, grounding_msgs, gnotes = await self._chat_with_recovery(
-                        grounding_messages, available_tools
+                        grounding_messages, available_tools, anchor=user_input
                     )
                 except (RuntimeError, OSError, aiohttp.ClientError) as e:
                     yield AgentEvent("error", f"Grounding pass error: {e!s}")
