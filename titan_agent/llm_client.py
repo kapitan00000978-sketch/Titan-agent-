@@ -293,16 +293,21 @@ class LLMClient:
             import g4f.client
             try:
                 g4f_client = g4f.client.Client()
-                response = await asyncio.to_thread(
-                    g4f_client.chat.completions.create,
-                    model=self.model,
-                    messages=messages,
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        g4f_client.chat.completions.create,
+                        model=self.model or "gpt-4o",
+                        messages=messages,
+                    ),
+                    timeout=25.0
                 )
                 choice = response.choices[0] if hasattr(response, "choices") and response.choices else None
                 content = choice.message.content if choice and hasattr(choice, "message") and choice.message else ""
                 content = content or ""
                 cleaned_content, thoughts, parsed_tools = self._extract_thoughts_and_tools(str(content))
                 return LLMResponse(content=cleaned_content, tool_calls=parsed_tools, thoughts=thoughts)
+            except asyncio.TimeoutError:
+                raise RuntimeError("G4F free endpoint timed out after 25s. Switch to browser Puter.js UI or provide OpenRouter/Ollama.")
             except Exception as e:
                 raise RuntimeError(f"G4F API Error: {e}")
 
