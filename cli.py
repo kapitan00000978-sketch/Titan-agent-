@@ -1,5 +1,6 @@
 import asyncio
 import os
+import platform
 import sys
 
 if sys.platform == "win32":
@@ -14,10 +15,15 @@ if sys.platform == "win32":
 import argparse
 
 from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import InMemoryHistory
+from rich.columns import Columns
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 from titan_agent.agent import TitanAgent
 from titan_agent.commands import ALL_COMMANDS, expand_slash, parse_local
@@ -30,6 +36,87 @@ console = Console()
 VALID_MODES = ("fast", "deep", "deep_search")
 VALID_EFFORTS = ("auto", "low", "medium", "high", "ultra")
 VALID_STRATEGIES = ("auto", "plan", "react", "tot", "reflexion", "debate")
+
+# ─── Slash Command Autocompleter ──────────────────────────────────────
+class SlashCompleter(Completer):
+    """Autocomplete slash commands when user types '/'."""
+
+    def __init__(self, commands: dict[str, str]):
+        self._commands = commands
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor.lstrip()
+        if text.startswith("/"):
+            prefix = text[1:].lower()
+            for name, desc in sorted(self._commands.items()):
+                if name.startswith(prefix):
+                    yield Completion(
+                        f"/{name}",
+                        start_position=-len(text),
+                        display=f"/{name}",
+                        display_meta=desc[:60],
+                    )
+        elif not text:
+            # Show hint when empty
+            pass
+
+
+def _build_dashboard(provider: str, model: str, mode: str, effort: str, mcp_count: int, tool_count: int) -> Panel:
+    """Build a professional startup dashboard panel."""
+    # System info table
+    info_table = Table(show_header=False, box=None, padding=(0, 2))
+    info_table.add_column("Key", style="cyan bold", width=16)
+    info_table.add_column("Value", style="white")
+    info_table.add_row("🤖 Provider", f"{provider}")
+    info_table.add_row("🧠 Model", f"{model}")
+    info_table.add_row("⚡ Mode", f"{mode}")
+    info_table.add_row("💪 Effort", f"{effort}")
+    info_table.add_row("🔌 MCP Servers", f"{mcp_count} connected")
+    info_table.add_row("🔧 Tools", f"{tool_count} available")
+    info_table.add_row("💻 Platform", f"{platform.system()} {platform.release()}")
+
+    # Commands table
+    cmd_table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
+    cmd_table.add_column("Command", style="cyan", width=18)
+    cmd_table.add_column("Description", style="dim white")
+
+    cmd_items = sorted(ALL_COMMANDS.items())
+    for name, desc in cmd_items:
+        cmd_table.add_row(f"/{name}", desc[:50])
+
+    # Layout
+    layout_table = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    layout_table.add_column("System", ratio=1)
+    layout_table.add_column("Commands", ratio=1)
+    layout_table.add_row(info_table, cmd_table)
+
+    header = Text()
+    header.append("⚡ UNIVERSAL AGENT HP", style="bold cyan")
+    header.append(" — ", style="dim")
+    header.append("Autonomous AI Agent OS", style="italic white")
+    header.append("\n")
+    header.append("  Type naturally in English, Russian, or Uzbek. Type / for commands.", style="dim yellow")
+
+    dashboard = Panel(
+        layout_table,
+        title=header,
+        border_style="cyan",
+        subtitle="[dim]Type 'exit' to quit | 'mode deep' to switch | 'effort high' to change[/dim]",
+        padding=(1, 2),
+    )
+    return dashboard
+
+
+def _bottom_toolbar(provider: str, model: str, mode: str, effort: str):
+    """Bottom toolbar for prompt_toolkit showing current status."""
+    return HTML(
+        f'<b>⚡ Universal Agent HP</b> | '
+        f'<style fg="ansicyan">{provider}/{model}</style> | '
+        f'Mode: <style fg="ansiyellow">{mode}</style> | '
+        f'Effort: <style fg="ansigreen">{effort}</style> | '
+        f'<style fg="ansigray">/ for commands</style>'
+    )
+
 
 async def resolve_cli_provider() -> tuple[str, str]:
     """Puter.js is browser-only, so the CLI auto-falls back to local Ollama."""
@@ -75,27 +162,31 @@ async def main():
     mode = args.mode
     effort = args.effort
 
-    console.print(Panel.fit(
-        "[bold cyan]⚡ UNIVERSAL AGENT HP[/bold cyan] - [italic]Autonomous AI System, far beyond classic agents[/italic]\n"
-        "[dim]Model: " + model + f" ({provider}) | MCP System: Active | Mode: {mode} | Effort: {effort}[/dim]\n"
-        "[yellow]Type a command in Uzbek, Russian or English. Modes: fast | deep | deep_search (e.g. `mode deep`). "
-        "Effort levels: low | medium | high | ultra (e.g. `effort high`). "
-        "Slash commands: /plan, /review, /security-scan, /research, /fix, /test, /explain, "
-        "/remember, /handoff, /help, /status, /skills, /memory, /handoffs, /clear. "
-        "Type 'exit' to quit.[/yellow]",
-        border_style="cyan"
-    ))
-
     # Initialize MCP Manager
     mcp = MCPManager(MCP_CONFIG_FILE)
-    with console.status("[bold green]Checking MCP servers...", spinner="dots"):
+    with console.status("[bold green]⚡ Starting Universal Agent HP...", spinner="dots"):
         await mcp.start_all()
+
+    # Count MCP servers and tools
+    mcp_count = len([s for s in mcp.servers.values() if s.get("status") == "connected"]) if hasattr(mcp, 'servers') else 0
+    tool_count = len(mcp.get_all_tools()) if hasattr(mcp, 'get_all_tools') else 0
+
+    # Show professional dashboard
+    console.print()
+    console.print(_build_dashboard(provider, model, mode, effort, mcp_count, tool_count))
+    console.print()
 
     llm = LLMClient(provider=provider, model=model)
     agent = TitanAgent(mcp=mcp, llm=llm)
 
     session_id = "cli_session"
-    prompt_session = PromptSession(history=InMemoryHistory())
+    slash_completer = SlashCompleter(ALL_COMMANDS)
+    prompt_session = PromptSession(
+        history=InMemoryHistory(),
+        completer=slash_completer,
+        complete_while_typing=True,
+        bottom_toolbar=lambda: _bottom_toolbar(provider, model, mode, effort),
+    )
 
     single_shot_prompt = " ".join(args.prompt).strip() if args.prompt else None
 
@@ -172,7 +263,7 @@ async def main():
 
     while True:
         try:
-            user_input = await prompt_session.prompt_async("You> ")
+            user_input = await prompt_session.prompt_async("❯ ")
             if not user_input.strip():
                 continue
 
