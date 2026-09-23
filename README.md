@@ -50,22 +50,57 @@ LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS & REASONING RUNTIMES
 
 ---
 
-## 🆓 Built-in 100% FREE Models (Zero API Keys Required!)
+## 🤖 Supported Models (Zero-Key & Out-of-the-Box)
 
-Titan Agent has **native built-in support for free, keyless, and local models out-of-the-box**. You can run the entire system completely free without entering a single credit card or paid API key:
+Titan Agent requires **zero paid subscriptions or mandatory API keys**. It natively interfaces with both cutting-edge frontier cloud models and air-gapped local runtimes:
 
-| Provider | Access Mode | Cost | Supported Models | How to Run |
-|---|---|:---:|---|---|
-| **Puter.js** | Cloud (Keyless) | **FREE** | **500+ Models**: DeepSeek V4 Pro / R1, Claude 3.5 Sonnet, GPT-4o, Llama 3.3 70B, Qwen 2.5 | `python cli.py --provider puter --model deepseek/deepseek-v4-pro` |
-| **Completions.me** | Cloud Gateway | **FREE** | Claude Opus, GPT-5 class, Gemini Pro, Grok | `python cli.py --provider completions --model claude-sonnet-4.5` |
-| **Laya MLX** | Local (PC / Mac) | **FREE** | Local MLX-quantized models with hardware acceleration | `python cli.py --provider laya-mlx --model local` |
-| **Ollama** | Local (Offline) | **FREE** | DeepSeek-R1, Llama 3.2, Mistral, Qwen, CodeLlama | `python cli.py --provider ollama --model deepseek-r1:8b` |
-| **LM Studio** | Local (Offline) | **FREE** | Any GGUF model running on `localhost:1234` | `python cli.py --provider lmstudio --model local-model` |
-| **GPT4Free (`g4f`)** | Multi-Provider | **FREE** | Keyless OpenAI/Anthropic proxy scrapers | `python cli.py --provider g4f` |
-| **Python-tGPT (`tgpt`)** | Multi-Provider | **FREE** | Terminal-native keyless AI models | `python cli.py --provider tgpt` |
-| **OmniRoute** | Self-Hosted | **FREE** | Auto-routing smart gateway (`auto`, `auto/coding`, `auto/fast`, `auto/cheap`) | `python cli.py --provider omni --model auto` |
+### 🌐 Frontier Cloud Models (Keyless & Instant)
+- **DeepSeek V4 Pro & DeepSeek-R1** (Full 671B MoE deep reasoning)
+- **Claude 3.5 Sonnet & Claude 3.5 Haiku** (Anthropic frontier coding)
+- **Claude Opus 3 / 4.5** (Complex system architecture synthesis)
+- **GPT-4o & GPT-4o Mini** (Multimodal analysis & fast execution)
+- **GPT-5 Class Models** (Next-generation autonomous reasoning)
+- **Llama 3.3 (70B) & Llama 3.1 (405B)** (Open-weights scale intelligence)
+- **Qwen 2.5 (72B) & Qwen 2.5 Coder** (State-of-the-art polyglot code generation)
+- **Mistral Large 2 & Codestral** (High-precision technical execution)
+- **Grok Beta / Grok 2** (Real-time data-driven synthesis)
+*Accessed instantly via Puter.js, Completions.me gateway, GPT4Free (`g4f`), and Python-tGPT (`tgpt`).*
 
-> 💡 **Tip**: In `.env`, simply leave API keys blank and set `TITAN_PROVIDER=puter` or `TITAN_PROVIDER=ollama` to run Titan Agent 100% free forever!
+### 💻 Local & Air-Gapped Models (100% Offline & Private)
+- **Laya MLX**: Hardware-accelerated local Apple Silicon & PC engine (Apple Unified Memory / Metal optimized).
+- **Ollama**: Native execution for `deepseek-r1:8b/14b/32b`, `llama3.2`, `qwen2.5-coder`, `mistral`, `phi-4`, and `codellama`.
+- **LM Studio**: Any open-weights GGUF quantized model running on `localhost:1234`.
+- **OmniRoute**: Smart auto-routing load balancer across local nodes.
+
+> 💡 **Tip**: Leave all API keys blank in `.env` and run `python cli.py --provider puter --model deepseek/deepseek-v4-pro` or `--provider ollama --model deepseek-r1:8b` to run completely free!
+
+---
+
+## 🏆 Architectural Superiority: Why Titan Agent Outperforms Other AI Agents
+
+Unlike standard wrapper bots, single-prompt LLMs, or brittle ReAct loops, Titan Agent is engineered as an enterprise-grade autonomous software company. Here is how it compares directly against industry alternatives:
+
+### 1. Titan Agent vs. Hermes 3 & Single-Model Agents
+- **Context Degradation & Hallucination**: Hermes 3 and typical fine-tuned models operate within a single context window. As task steps multiply, prompt contamination causes them to forget instructions, hallucinate tool signatures, or lose track of files.
+- **Titan's Advantage**: Titan uses a **10-Layer Cognitive Hierarchy**. The **CEO Meta-Orchestrator** divides high-level intent across **4 Departmental Team Leads**, which dispatch work to **27 isolated Specialist Workers** (`staff.py`). Each worker runs with dedicated, scoped tool bundles—eliminating context bloat and hallucination.
+
+### 2. Titan Agent vs. Devin & Proprietary Cloud Agents
+- **Privacy & Vendor Lock-in**: Devin is a closed-source, cloud-only SaaS that requires streaming all proprietary corporate code to external third-party servers at high subscription costs.
+- **Titan's Advantage**: Titan Agent is **100% open-source, local-first, and air-gapped**. It runs entirely on your own machine using **Laya MLX or Ollama** with zero data leaving your perimeter.
+- **Safety & Reversibility**: If a cloud agent breaks your repository, manual Git recovery is tedious. Titan incorporates a **Level 9 Execution Sandbox with Filesystem Snapshots** (`core/sandbox/environment.py`). It computes SHA-256 pre-execution hashes and provides **one-click zero-loss transactional rollback**, automatically reverting altered code and removing rogue files.
+
+### 3. Titan Agent vs. AutoGPT, CrewAI & LangChain ReAct Frameworks
+- **Infinite Loops & Tool Thrashing**: Traditional ReAct frameworks run naive sequential loops (`thought -> action -> observation`). When a tool fails or throws an unhandled exception, they repeatedly hammer the same broken command until tokens or limits are exhausted.
+- **Titan's Advantage**:
+  - **DAG Wave Planner** (`core/dag/`): Replaces linear step-by-step loops with Kahn’s Directed Acyclic Graph topology. Independent subtasks execute concurrently in parallel waves, and failures trigger selective branch replanning rather than full workflow restarts.
+  - **Bayesian EWMA Tool Reliability Rating** (`core/tools/reliability.py`): Tracks real-time tool performance dynamically from Grade A to F. If a tool degrades, the agent automatically applies mitigation advice or reroutes to alternative tool paths.
+  - **Dual Reasoning Engines** (`core/reasoning/`): Combines a **Reflexion Engine** (self-evaluating against strict test suites before committing) and a **Multi-Agent Debate Arena** (pitching an Advocate against a Skeptic judged by an Arbitrator) to eliminate premature conclusions.
+
+### 4. Continuous Self-Improvement & Causal AST Code Intelligence
+- **Static vs. Evolving Intelligence**: Standard agents are static; they make the exact same mistakes in subsequent runs.
+- **Titan's Advantage**:
+  - **Causal Knowledge Graph & AST Blast Radius** (`core/memory/`): Statically analyzes your workspace AST to map class/function callers and computes the ripple blast-radius before making edits, preventing hidden regressions.
+  - **Level 10 Drift Detection & Self-Improvement** (`core/monitoring/`, `core/self_improvement/`): Continuously computes longitudinal drift across runs. When regression patterns emerge, Titan crystallizes lessons learned into permanent reusable playbooks and auto-tunes agent strategies.
 
 ---
 
