@@ -311,6 +311,43 @@ def _render_security_status() -> Panel:
     )
 
 
+def _render_banned_ips(action_arg: str = "") -> Panel:
+    """Render defensively banned IP addresses table or perform unban."""
+    from titan_agent.core.security.dual_shield import DualShieldOrchestrator
+    shield = DualShieldOrchestrator.get_instance()
+
+    parts = action_arg.strip().split(None, 1)
+    if parts and parts[0].lower() == "unban" and len(parts) > 1:
+        target_ip = parts[1].strip()
+        ok = shield.ip_defense.unban_ip(target_ip)
+        if ok:
+            return Panel(f"[bold green]✅ Successfully unbanned IP:[/bold green] [cyan]{target_ip}[/cyan]", title="[bold green]IP Unbanned[/bold green]", border_style="green")
+        return Panel(f"[bold red]❌ IP not found in ban list:[/bold red] [yellow]{target_ip}[/yellow]", title="[bold red]Unban Failed[/bold red]", border_style="red")
+
+    banned_list = shield.ip_defense.list_banned()
+    if not banned_list:
+        return Panel("[bold green]✅ No IP addresses currently banned. Perimeter is secure.[/bold green]", title="[bold cyan]🛡️ Defensive Banned IP List (0 Active)[/bold cyan]", border_style="green")
+
+    table = Table(show_header=True, header_style="bold red", box=None, padding=(0, 1), expand=True)
+    table.add_column("IP Address", style="bold red", width=18)
+    table.add_column("Location / ISP", style="white", ratio=2)
+    table.add_column("Reason", style="yellow", ratio=3)
+    table.add_column("Banned At", style="dim white", width=18)
+
+    for entry in banned_list:
+        t_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(entry.banned_at))
+        loc_str = f"{entry.country}, {entry.city} ({entry.isp})"
+        table.add_row(entry.ip, loc_str, entry.reason, t_str)
+
+    return Panel(
+        table,
+        title=f"[bold red]🛡️ Defensively Banned IP Addresses ({len(banned_list)} active)[/bold red]",
+        border_style="red",
+        subtitle="[dim]To unban an IP: /banned-ips unban <ip>[/dim]",
+        padding=(1, 2),
+    )
+
+
 def _bottom_toolbar(provider: str, model: str, mode: str, effort: str):
     """Bottom toolbar for prompt_toolkit showing current status."""
     return HTML(
@@ -506,6 +543,8 @@ async def main():
                         console.print(_build_dashboard(provider, model, mode, effort, mcp_count, tool_count))
                     elif name_l == "security-status":
                         console.print(_render_security_status())
+                    elif name_l == "banned-ips":
+                        console.print(_render_banned_ips(local.get("arg", "")))
                     elif name_l == "files":
                         console.print(_render_files_table(Path.cwd(), filter_str=local.get("arg", "")))
                     elif name_l == "status":

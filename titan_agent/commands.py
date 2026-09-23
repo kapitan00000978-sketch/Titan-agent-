@@ -153,6 +153,7 @@ LOCAL_COMMANDS = {
     "help": "List all slash commands and usage.",
     "dashboard": "Display interactive system and agent dashboard.",
     "security-status": "View real-time Dual-Shield security defense and sentinel status.",
+    "banned-ips": "View and manage defensively banned IP addresses and Geo-logs. Usage: /banned-ips [unban <ip>]",
     "files": "Browse workspace files and project structure. Usage: /files [filter]",
     "status": "Show current provider, model, mode and effort.",
     "mode": "Switch mode: fast, deep, deep_search. Usage: /mode deep",
