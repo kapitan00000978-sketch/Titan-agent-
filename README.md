@@ -1,7 +1,7 @@
 # ⚡ UNIVERSAL AGENT HP — Autonomous Cognitive AI Operating System
 ### *The First 10-Layer Autonomous AI Software Company in Your Terminal — 100% Free, Zero-Key, and Air-Gapped Private.*
 
-[![CI - Test Suite](https://img.shields.io/badge/Test%20Suite-600%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kapitan00000978-sketch/Titan-agent-)
+[![CI - Test Suite](https://img.shields.io/badge/Test%20Suite-600%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP)
 [![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Architecture](https://img.shields.io/badge/Architecture-Genesis%20Levels%201--10-purple.svg)](docs/titan-agent-master-architecture.md)
 [![Models](https://img.shields.io/badge/Models-500+%20Keyless%20%26%20Local-orange.svg)](#-supported-models-zero-key--out-of-the-box)
@@ -186,8 +186,8 @@ Unlike standard wrapper bots, single-prompt LLMs, or brittle ReAct loops, Univer
 
 ### Step 1: Clone the Repository
 ```bash
-git clone https://github.com/kapitan00000978-sketch/Titan-agent-.git
-cd Titan-agent-
+git clone https://github.com/kapitan00000978-sketch/Universal-Agent-HP.git
+cd Universal-Agent-HP
 ```
 
 ### Step 2: Create and Activate Virtual Environment
