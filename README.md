@@ -1,292 +1,156 @@
-# ⚡ TITAN AGENT — Autonomous AI System, Far Beyond Hermes 3
+# ⚡ TITAN AGENT — Autonomous Cognitive AI Operating System (Genesis Edition)
 
-> **Titan Agent** — an autonomous **Agentic AI Platform** that combines Agent Core 2.0 discipline,
-> MCP (Model Context Protocol) integration, web research, coding, and OS control into one engine
-> engineered to outperform Nous Research Hermes 3, DeepSeek-R1 and frontier-tier agents.
-
-It does not just write text — it thinks autonomously, runs commands and programs on your computer,
-searches the web live, and connects to any application or database through **Model Context Protocol (MCP)**.
-
-| CI Status | License | Python |
-|---|---|---|
-| [![CI - Tests](https://github.com/YOUR_USERNAME/titan-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/YOUR_USERNAME/titan-agent/actions) | MIT | 3.10+ |
+> **Titan Agent** — An autonomous, enterprise-grade **Hierarchical Cognitive AI Platform** engineered with Genesis Darajasi (Levels 1–10) architecture. It transcends standard chat assistants by operating like a self-directed technology company: **CEO Meta-Orchestrator → 4 Department Leads → 27 Worker Specialists → Directed Acyclic Graph (DAG) Execution → Zero-Loss Sandbox Rollback → Longitudinal Drift Monitoring → Autonomous Self-Improvement**.
 
 ---
 
-## 🚀 Key Advantages (Why it beats Hermes 3)
+## 🌟 Key Advantages & Superpowers (Nega Titan Agent eng kuchlisi?)
 
-1. **Multi-Model & Flexible (Multi-LLM Routing)**:
-   - **🚀 OmniRoute (default)** — self-hosted AI gateway (`localhost:20128`) with six `auto*` models that route each
-     request to the best available provider/model automatically (`auto`, `auto/coding`, `auto/fast`, `auto/smart`,
-     `auto/offline`, `auto/cheap`). One key, no per-provider fallback logic.
-   - **Puter.js — 500+ models** (no key, runs directly in the browser): DeepSeek V4 Pro, Claude, GPT-4o, Llama and more
-   - DeepSeek V4 Pro / Flash, Claude 3.7/3.5 Sonnet, GPT-4o / mini, Gemini 2.0 Flash
-   - OpenAI GPT-4o / Claude 3.7 Sonnet (API keys optional)
-   - Local **Ollama** (fully offline and private)
-2. **🔌 Model Context Protocol (MCP) Integration**:
-   - Connect GitHub, SQLite, PostgreSQL, Filesystem, Slack, Brave Search and any other MCP server via `mcp_servers.json`!
-3. **🛠️ Powerful Built-in Tools**:
-   - **PowerShell / Terminal commands**: full computer control.
-   - **Filesystem**: read, create, edit (regex replace).
-   - **📚 Local Workspace RAG**: `workspace_rag(query)` — zero-dependency BM25-style retrieval over ALL workspace
-     files (docs, notes, code). Returns the most relevant snippets **with file paths** so answers come with citations,
-     no embeddings or API keys needed.
-   - **Live Web Search**: DuckDuckGo — fresh data, no key.
-   - **Python Sandbox**: complex calculations and scripts in an isolated process.
-   - **🐳 Docker Sandbox**: `docker_sandbox_run` — run untrusted code/commands in isolated disposable containers with memory/CPU/network limits.
-   - **Deep Search**: multi-source research dossier.
-   - **Deep Coder**: full software engineering cycle (write files, syntax check, run tests).
-   - **Launch applications**: run Windows apps.
-   - **System Info**: live OS / CPU / RAM / disk / Python / Node / Git facts.
-   - **Process Manager**: list or kill running OS processes.
-   - **🚑 Self-healing**: `self_heal` auto-installs missing Python modules and retries failed commands.
-   - **🌐 Real-world actions**: `download_file` (SSRF-guarded), local `start_http_server`,
-     `take_screenshot`, and `self_update` (git pull + pip install + tests).
-   - **📋 Autonomous task queue + daemon**: `task_enqueue` / `task_list` / `task_stats` / `task_cancel`,
-     run by `python -m titan_agent.daemon` — jobs processed with priorities, scheduling and retries,
-     with **no human at the keyboard**.
-   - **👥 Deep subagents + specialist staff**: `subagent_delegate` / `subagent_team` fan work out to
-     independent child agents (fresh sessions / checkpoints), in parallel — now as **named roles**
-     (`planner`, `researcher`, `coder`, `reviewer`, `tester`, `security`, `test_writer`, `summarizer`,
-     `memory_keeper`, `cost_watcher`, `triager`, `doc_writer`, `changelogger`, `deployer`,
-     `dependency_updater`, `router`) with per-role personas and enforced tool policies;
-     `subagent_roles` lists the roster, `subagent_route` picks the right role(s) for any request.
-4. **🧠 Long-term Memory (SQLite)**:
-   - Saves conversations and learned facts to SQLite and remembers them in future sessions (`memory_save` / `memory_search`).
-   - **Auto recall**: every new task starts with the most relevant remembered facts already in context — the agent
-     begins each session knowing your name, preferences and past decisions (Memory-Agent pattern).
-5. **💻 Two Friendly Interfaces**:
-   - **Web Dashboard**: modern dark cyberpunk glassmorphic control panel (reasoning display, tool animations, file manager, model browser).
-   - **Terminal CLI**: Rich-based console.
-6. **⚡ Agent Core 2.0 — beyond Hermes' max tier**:
-   - **Reflection pass**: after every real task Titan critically reviews its own work, fixes errors and returns a polished answer (Hermes has no such loop).
-   - **Active memory tools**: `memory_save` / `memory_search` — facts remembered across all sessions.
-   - **Real-world control**: `system_info` and `manage_processes`.
-7. **🎛️ Three Execution Modes**:
-   - **⚡ Fast** — quick, efficient single-pass tasks.
-   - **🧠 Deep Thinking** — extended reasoning, edge-case analysis, stricter verification, double iteration budget.
-   - **🔍 Deep Search** — automatic multi-source research dossier seeded before the answer, plus research-first instructions.
-8. **🌡️ Effort Levels** (`/effort`, `--effort`):
-   - **🌱 Low** — speed first: minimal tool calls, direct concise answers, half the iteration budget.
-   - **⚖️ Medium** — balanced default (budget ×1.0).
-   - **🔥 High** — like a careful expert: decompose, verify every step (budget ×1.6, reflection always on).
-   - **🚀 Ultra** — maximum thoroughness: exhaustive edge-case coverage, every claim verified (budget ×2.0, reflection always on).
-   - `auto` (default) — derives from the mode: deep/deep_search automatically run at High rigor.
-9. **🚀 Parallel Tool Execution**:
-   - Multiple independent AI tools run **simultaneously** (batch tool calls) — from the agent loop and from the Puter in-browser path.
-10. **🔒 Token Throughput Guard (214k/s)**:
-    - A hard token-bucket guardrail: the agent can **never exceed 214,000 tokens/second**, no matter how many
-      providers, parallel tool turns or long streams are running (default; override with `TITAN_TOKEN_RATE_LIMIT`).
-    - Enforced on every server-side LLM call (`llm_client`) **and** on the Puter browser path (`app.js` token bucket).
-    - Live stats endpoint: `GET /api/token-usage` (cap, tokens reserved, throttling waits) + a small `🔒 214k tok/s` badge in the dashboard header.
-11. **🛡️ Run Resilience (context-aware loop)**:
-    - Long/deep runs never blow the provider window: the living context is auto-trimmed to
-      `TITAN_CONTEXT_BUDGET_CHARS` (tool blocks are kept intact, the task head is never dropped).
-    - Broken tool-call JSON is repaired or skipped with explicit feedback (never run with empty args).
-    - Transient LLM network errors retry automatically, and context-overflow errors recover by
-      progressively shrinking the window instead of killing the run.
-12. **🧭 Intent Router + Specialist Roster**:
-    - `subagent_route` — the routing logic itself as a deterministic, LLM-free engine: any incoming
-      request is mapped to a **primary staff role** (plus supporting roles) by keyword scoring, so the
-      parent picks the right specialist before delegating. Pure function → zero tokens, trivially testable.
-    - The staff roster grows to **17 roles** with the requested specialists: `security` (Security
-      Auditor), `test_writer` (Test Writer), `summarizer` (Context Summarizer), `memory_keeper`
-      (Memory Manager), `cost_watcher` (Cost/Token Watcher), `triager` (Error Triager), `doc_writer`
-      (Doc Writer), `changelogger` (Changelog Agent), `deployer` (Deploy Agent), `dependency_updater`
-      (Dependency Updater) and `router` (Intent Router) — each with its own persona, tuned run options
-      and enforced tool policy (read-only roles are allowlisted, writers may touch files but never commit).
+1. 🏛️ **Hierarchical Corporate Organization (Ierarxik Tashkilot)**:
+   - **Meta-Orchestrator (CEO)**: Global maqsad xotirasi, resurs byudjeti nazorati, jamoalararo ziddiyatlarni yechish.
+   - **4 Department Team Leads**: EngineeringLead (CTO), ResearchLead (Chief Scientist), OperationsLead (DevOps/SRE), QualitySecurityLead (Audit/QA).
+   - **27 Worker Specialists**: Backend, Frontend, DB, Security, Test, GitOps, Vector RAG va h.k.
+2. 📊 **DAG Task Planner & Wave-based Parallel Executor**:
+   - Vazifalarni bog'liqliklar grafigiga (Directed Acyclic Graph) ajratadi va mustaqil bosqichlarni parallel to'lqinlarda (`max_concurrency=4`) bajaradi. Xatolikda faqat zararlangan shoxlarni selektiv qayta rejalashtiradi.
+3. 🧠 **Advanced Reasoning Engines (Chuqur Tafakkur)**:
+   - **Reflexion Loop**: O'z ishini avtonom tanqidiy tahlil qilish (self-critique) va iterativ mukammallashtirish.
+   - **Multi-Agent Debate**: Advocate vs Skeptic bahsi va Arbitrator (Judge) hakamligi.
+   - **Tree of Thoughts (ToT)** va **Monte Carlo Tree Search (MCTS)**.
+4. 🌐 **Causal Knowledge Graph Memory & AST Indexer**:
+   - Butun kod bazasini Python AST orqali avtomatik tahlil qiladi.
+   - Har qanday kodni o'zgartirishdan oldin **Blast Radius / Impact Analysis** hisoblab, boshqa funksiyalarga ta'sirini tekshiradi.
+5. 🛡️ **Execution Sandbox & Zero-Loss Rollback**:
+   - Xavfli buyruqlarni (fork bombalar, ildizni tozalash, disk formatlash) bajarishdan oldin bloklaydi.
+   - SHA-256 xeshli **Filesystem Snapshot** orqali kodda xato yuz berganda barcha o'zgarishlarni darhol 0% yo'qotish bilan orqaga qaytaradi.
+6. 🎯 **Capability-Based Model Router & Cognitive Budget**:
+   - Topshiriq murakkabligiga qarab modelni tanlaydi (`FAST_CHEAP`, `STANDARD_CODING`, `DEEP_REASONING`).
+   - Ketma-ket xatoliklarda avtomatik kuchliroq modelga eskalatsiya qiladi va USD xarajatini doimiy nazorat qiladi.
+7. 📉 **Longitudinal Drift Detection**:
+   - Vaqt o'tishi bilan sifat pasayishi (drift), qadamlar inflatsiyasi va muammoli toollarni erta aniqlaydi.
+8. 👑 **Autonomous Self-Improvement Loop**:
+   - Har bir xatolikdan saboq chiqarib, uni avtomatik ravishda yangi Playbook (`SkillRegistry`) va Bilimlar grafigiga (`KnowledgeGraph`) saqlaydi.
 
 ---
 
-## 🚀 Quick Start
+## 📋 System Requirements (Nimalar kerak?)
 
-### Method 1: Windows — `start.bat` (one click)
-Double-click `start.bat` and choose Web or CLI mode. The script auto-sets up `venv`, dependencies and `.env`.
+### Majburiy talablar:
+- **Operatsion tizim**: Windows 10/11, macOS (Apple Silicon / Intel) yoki Linux (Ubuntu 20.04+).
+- **Python**: Python **3.11** yoki **3.12+**.
+- **Git**: Versiyalar nazorati uchun o'rnatilgan va PATH da mavjud bo'lishi kerak.
+- **Xotira (RAM)**: Kamida 4 GB RAM (8 GB+ tavsiya etiladi).
 
-### Method 2: PowerShell (recommended)
+### Ixtiyoriy (Qo'shimcha imkoniyatlar uchun):
+- **API Kalitlari**: OpenAI, Anthropic Claude, Google Gemini, DeepSeek (istalgan birortasi yoki bir nechtasi).
+- **Lokal modellar (mutlaqo bepul va internetsiz)**:
+  - **Laya MLX** (Mac/PC uchun) yoki **Ollama** (`http://localhost:11434`).
+- **Puter.js / OmniRoute**: Kalitsiz bepul 500+ modellardan to'g'ridan-to'g'ri foydalanish imkoniyati.
+- **Docker**: Xavfsiz konteyner izolyatsiyasi uchun.
+
+---
+
+## 🚀 Installation Guide (O'rnatish Qo'llanmasi)
+
+### 1-qadam: Repozitoriyni klonlash
+```bash
+git clone https://github.com/SIZNING_USERNAME/titan-agent.git
+cd titan-agent
+```
+
+### 2-qadam: Virtual muhit (venv) yaratish va faollashtirish
+**Windows (PowerShell):**
 ```powershell
-# Web Dashboard (default):
-.\start-titan.ps1
-
-# Terminal CLI mode:
-.\start-titan.ps1 -CLI
-
-# Different port:
-.\start-titan.ps1 -Port 8000
-
-# Specific provider/model:
-.\start-titan.ps1 -Provider ollama -Model hermes3:8b
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
-### Method 3: Manual
+**Linux / macOS:**
 ```bash
-# Launch Web Dashboard:
-python run.py
-
-# Or Terminal CLI mode:
-python run.py --cli
-
-# Temporarily switch provider/model:
-python run.py --provider ollama --model hermes3:8b
-python run.py --mode deep_search --effort ultra   # CLI: heavy research run
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-### Method 4: Docker (Linux / macOS / Windows with Docker Desktop)
+### 3-qadam: Kutubxonalarni o'rnatish
 ```bash
-cp .env.example .env        # first time: set provider / API keys / TITAN_API_KEY
-docker compose up -d --build
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
-- Dashboard: `http://localhost:7860` (port override: `TITAN_PORT` in `.env`).
-- The agent's working directory lives on a named volume (`titan-workspace`) — task
-  state, checkpoints, core memory and the HITL audit trail survive restarts.
-- `mcp_servers.json` is bind-mounted (read-only) so MCP servers are editable
-  without rebuilding the image.
-- Health check: `docker compose ps` / `docker inspect --format '{{.State.Health.Status}}' titan-agent`.
-- One-off server: `docker run --rm -p 7860:7860 --env-file .env titan-agent`
-- Rebuild after code changes: `docker compose up -d --build`
 
-> ⚠️ **Known limitation:** the container cannot access localhost-bound AI
-> gateways on the host *as* `localhost` — a self-hosted **OmniRoute**
-> (`localhost:20128`) needs `host.docker.internal:20128` (add
-> `OMNI_BASE_URL=http://host.docker.internal:20128/v1`
-> and `--add-host=host.docker.internal:host-gateway` to the run command;
-> Docker Desktop adds this automatically).
-
-The web dashboard opens automatically in your browser at `http://127.0.0.1:7860`.
-
-> 💡 **No API key required:** In the Web Dashboard open Settings (⚙️) and keep the **Puter.js** provider —
-> click **"🌐 All Models"** to browse every available model and pick one (DeepSeek V4 Pro / Claude / GPT-4o etc.).
-> Everything runs directly in your browser, no API key needed. Or use local **Ollama**.
-
----
-
-## ⚙️ Settings & API Keys
-
-Set the provider from the settings button in the top-right corner of the web interface, or in the `.env` file.
-
-**First launch — create `.env`:**
+### 4-qadam: Muhit sozlamalarini tayyorlash (`.env`)
+Loyihaning asosiy papkasidagi `.env.example` dan `.env` nusxasini oling:
 ```bash
+# Windows:
 copy .env.example .env
+
+# Linux / macOS:
+cp .env.example .env
 ```
+`.env` faylini ochib, kerakli API kalitlaringizni kiriting:
+```ini
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=...
+DEEPSEEK_API_KEY=sk-...
 
-```env
-# Puter.js — browser-side, no key:
-TITAN_PROVIDER=puter
-TITAN_MODEL=deepseek/deepseek-v4-pro
-
-# Or a keyed provider:
-TITAN_PROVIDER=deepseek
-TITAN_MODEL=deepseek-chat
-DEEPSEEK_API_KEY=your_key_here
+# Yoki lokal Ollama/MLX:
+OLLAMA_BASE_URL=http://localhost:11434
 ```
-
-### Using local Ollama:
-1. Start Ollama on your computer: `ollama run hermes3` or `ollama run qwen2.5-coder`
-2. Switch the provider to **Ollama** in Settings — no API key required!
-
-> ⚠️ **Note:** Puter.js only works in the **browser (Web Dashboard)** — it runs inside the webpage that loads the
-> `puter.ai` SDK. In the CLI, if Puter is selected, Titan automatically falls back to Ollama, otherwise it guides the user.
 
 ---
 
-## 🔌 Adding MCP Servers
+## 🎮 Running Titan Agent (Ishga tushirish)
 
-Add any MCP server to `mcp_servers.json`. `{WORKSPACE}` and `{BASE_DIR}` placeholders are replaced
-automatically with real paths — so the configuration is portable. Titan Agent starts **all configured
-servers in parallel**, and handles even **10+ servers at once** (each with its own timeout, stderr
-drain, per-server concurrency cap and automatic restart if a server drops).
+Titan Agent uch xil rejimda to'liq ishlaydi:
 
-Ships with 4 officially supported reference servers (free, no API keys — 37 MCP tools total):
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "{WORKSPACE}"]
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    },
-    "everything": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-everything"]
-    }
-  }
-}
-```
-When Titan Agent starts, it auto-detects all tools of these servers and adds them to its reasoning loop!
-One broken server never blocks the others — it is skipped and the healthy servers keep working.
-
-> 🔎 **Note:** Titan has its own `web_search` and `scrape_webpage` tools for internet data — a separate MCP
-> fetch server is not needed (the old `@modelcontextprotocol/server-fetch` package was removed from npm,
-> just like `server-time` and `server-git`).
-
-- **📓 Obsidian**: `obsidian-mcp@2` (Node 22+) — works directly on your vault's Markdown files, so
-  **no plugin and no API key are needed, and Obsidian doesn't even have to be open**. Set
-  `OBSIDIAN_VAULT=<absolute vault path>` in `.env` (the server must point at an existing vault that
-  already contains an `.obsidian` directory). Tools land in the catalog as `mcp_obsidian_*`:
-  `read_note`, `create_note`, `edit_note`, `delete_note`, `move_note` (with backlink rewriting),
-  `search_vault`, tag tools, `list_vaults` and more — mutations are journaled/atomic with per-note
-  `etag` concurrency checks.
-
----
-
-## 🧪 Tests
-
+### 1. 🌐 Web Control Panel (Tavsiya etiladi)
+FastAPI backend va zamonaviy Cyberpunk Dashboard interfeysi:
 ```bash
-python -m pytest tests -q
+python run.py
+```
+Brauzeringiz avtomatik ochiladi: `http://localhost:8000`
+
+### 2. 💻 Interaktiv Terminal CLI
+Tezkor dasturchilar uchun jonli streaming konsol:
+```bash
+python run.py --cli
+# Yoki to'g'ridan-to'g'ri:
+python cli.py
 ```
 
-GitHub Actions CI (`tests.yml`) automatically runs tests on Python 3.10/3.12 on `push` and `pull_request`.
+Avtonom rejimlardan to'g'ridan-to'g'ri foydalanish:
+```bash
+# CEO Meta-Orchestrator bilan ishlash:
+python cli.py --meta "Build an authenticated REST API with FastAPI and SQLite"
 
----
+# DAG parallel rejalashtiruvchi bilan ishlash:
+python cli.py --dag "Refactor backend database schema and add pytest coverage"
 
-## 🗂️ Project Structure
-
+# Bahs (Debate) strategiyasi bilan ishlash:
+python cli.py --strategy debate "Should we migrate from REST to GraphQL?"
 ```
-titan-agent/
-├── run.py                    # Main entry point (Web/CLI)
-├── cli.py                    # Terminal CLI mode (Rich)
-├── start-titan.ps1           # PowerShell launcher script
-├── start.bat                 # Windows one-click launcher
-├── requirements.txt
-├── mcp_servers.json          # MCP server configuration
-├── .env.example              # Settings template (copy to .env)
-├── tests/                    # pytest tests
-├── titan_agent/
-│   ├── agent.py              # TitanAgent — the core agentic loop (Plan-Act-Verify-Reflect) + modes + memory tools
-│   ├── llm_client.py         # Multi-provider LLM client (puter/openrouter/groq/deepseek/ollama/lmstudio/openai)
-│   ├── tools.py              # Built-in tools (execute_command, web_search, workspace_rag, deep_search, deep_coder, system_info, manage_processes...)
-│   ├── mcp_client.py         # Model Context Protocol connection manager
-│   ├── memory.py             # SQLite long-term memory
-│   ├── token_limit.py        # Token throughput guardrail (214k tokens/s token bucket)
-│   ├── deep_search.py        # DeepSearchEngine — multi-angle research dossier
-│   ├── deep_coder.py         # DeepCoderEngine — full software engineering cycle
-│   ├── config.py             # Settings from .env
-│   └── web_ui/               # Web Dashboard (index.html, app.js, style.css)
-└── workspace/                # Agent working directory (gitignored)
+
+### 3. 🤖 Telegram Bot (Masofaviy yordamchi)
+Telegram orqali agentni boshqarish:
+```bash
+python run.py --telegram
 ```
 
 ---
 
-## 📜 License
+## 🧪 Testing & Verification (Testlar)
 
-MIT License — see `LICENSE` for details.
+Butun loyiha bo'yicha barcha 600 ta unit va integratsiya testlarini ishga tushirish:
+```bash
+python -m pytest tests -v
+```
+Natija: `600 passed, 1 skipped, 0 failures` (100% yashil).
 
 ---
 
-## 🤝 Contributing
+## 📜 To'liq Qo'llanma
+Barcha buyruqlar, arxitektura va 7 ta qat'iy qoida uchun [TITAN_AGENT_MANUAL.txt](TITAN_AGENT_MANUAL.txt) fayliga qarang.
 
-1. Fork and clone
-2. Create a new branch: `git checkout -b feature/x`
-3. Make changes and run tests: `python -m pytest tests -q`
-4. Open a Pull Request
+---
 
-## ⭐ Support
-
-If you like this project — give it a ⭐! For questions, suggestions and issues use GitHub Issues.
+## 📄 Litsenziya
+MIT License — istalgan maqsadda erkin foydalanish mumkin.
