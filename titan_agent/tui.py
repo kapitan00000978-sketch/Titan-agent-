@@ -15,9 +15,9 @@ from titan_agent.core.reasoning.types import ActionType
 
 
 class TitanOS(App):
-    """The main TUI Application for Titan Agent."""
+    """The main TUI Application for Universal Agent HP."""
     
-    TITLE = "Titan OS"
+    TITLE = "Universal Agent HP"
     SUB_TITLE = "Terminal AI Operating System"
 
     CSS = """

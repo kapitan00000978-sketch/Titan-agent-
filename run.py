@@ -26,6 +26,7 @@ def main():
     parser.add_argument("--mode", default=None, help="CLI mode: fast, deep or deep_search (default: fast)")
     parser.add_argument("--effort", default=None, help="Effort level: auto, low, medium, high or ultra (default: auto)")
     parser.add_argument("--telegram", action="store_true", help="Launch Telegram Bot mode")
+    parser.add_argument("--tui", action="store_true", help="Launch full-screen Terminal TUI mode (OpenCode/Textual style)")
 
     args = parser.parse_args()
 
@@ -47,6 +48,10 @@ def main():
     if args.telegram:
         from titan_agent.telegram_bot import run_bot_standalone
         asyncio.run(run_bot_standalone())
+    elif args.tui:
+        from titan_agent.tui import TitanOS
+        app = TitanOS()
+        app.run()
     elif args.cli:
         from cli import main as cli_main
         asyncio.run(cli_main())
