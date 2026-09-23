@@ -894,7 +894,36 @@ async function sendPuterMessage(prompt, card, statusLine) {
     // Reserve the estimated token budget against the 214k tokens/s guardrail.
     const estTokens = Math.ceil((prompt.length + modeNote.length + effortNote.length) / 4) + 4096;
     await acquireTokens(estTokens);
-    const response = await puter.ai.chat(messages, { model: fullModelId, stream: true });
+
+    // Auto-authenticate with Puter if not signed in yet
+    if (typeof puter !== "undefined" && puter.auth && typeof puter.auth.isSignedIn === "function") {
+      if (!puter.auth.isSignedIn()) {
+        statusLine.innerHTML = `🔑 Ro'yxatdan o'tish oynasi ochilmoqda (Puter Auth)...`;
+        try {
+          await puter.auth.signIn();
+        } catch (authErr) {
+          console.warn("Puter auth popup skipped/dismissed:", authErr);
+        }
+      }
+    }
+
+    let response;
+    try {
+      response = await puter.ai.chat(messages, { model: fullModelId, stream: true });
+    } catch (chatErr) {
+      const errMsg = String(chatErr && chatErr.message ? chatErr.message : chatErr).toLowerCase();
+      if (errMsg.includes("auth") || errMsg.includes("sign in") || errMsg.includes("login") || errMsg.includes("unauthorized") || errMsg.includes("quota")) {
+        statusLine.innerHTML = `🔑 Puter avtorizatsiyasi talab qilinmoqda — oyna ochilmoqda...`;
+        if (typeof puter !== "undefined" && puter.auth && typeof puter.auth.signIn === "function") {
+          await puter.auth.signIn();
+          response = await puter.ai.chat(messages, { model: fullModelId, stream: true });
+        } else {
+          throw chatErr;
+        }
+      } else {
+        throw chatErr;
+      }
+    }
 
     let fullText = "";
     for await (const part of response) {
