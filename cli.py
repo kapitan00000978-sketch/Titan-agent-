@@ -13,6 +13,8 @@ if sys.platform == "win32":
             except (OSError, ValueError):
                 pass  # best-effort: keep default streams if reconfigure is unsupported
 import argparse
+import time
+from pathlib import Path
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
@@ -37,28 +39,132 @@ VALID_MODES = ("fast", "deep", "deep_search")
 VALID_EFFORTS = ("auto", "low", "medium", "high", "ultra")
 VALID_STRATEGIES = ("auto", "plan", "react", "tot", "reflexion", "debate")
 
-# ─── Slash Command Autocompleter ──────────────────────────────────────
-class SlashCompleter(Completer):
-    """Autocomplete slash commands when user types '/'."""
+# ─── Universal Completer (Slash Commands + @ File Selection) ─────────
+class UniversalCompleter(Completer):
+    """Autocomplete slash commands ('/') and workspace files ('@')."""
 
-    def __init__(self, commands: dict[str, str]):
+    def __init__(self, commands: dict[str, str], workspace_root: Path | None = None):
         self._commands = commands
+        self._root = workspace_root or Path.cwd()
+        self._ignored_dirs = {
+            ".git", ".pytest_cache", ".ruff_cache", "__pycache__",
+            "node_modules", ".venv", "venv", ".idea", ".vscode", "dist", "build",
+            ".system_generated", "universal_agent_hp.egg-info",
+        }
+
+    def _get_workspace_files(self, prefix: str) -> list[tuple[str, bool, int]]:
+        """List files and folders matching prefix relative to workspace root."""
+        results: list[tuple[str, bool, int]] = []
+        prefix_clean = prefix.replace("\\", "/").lower()
+        
+        try:
+            for root, dirs, files in os.walk(self._root):
+                # Filter out ignored dirs in-place
+                dirs[:] = [d for d in dirs if d not in self._ignored_dirs and not d.startswith(".")]
+                
+                rel_dir = os.path.relpath(root, self._root).replace("\\", "/")
+                if rel_dir == ".":
+                    rel_dir = ""
+
+                # Folders
+                for d in dirs:
+                    rel_path = f"{rel_dir}/{d}" if rel_dir else d
+                    if prefix_clean in rel_path.lower():
+                        results.append((rel_path + "/", True, 0))
+                        if len(results) >= 40:
+                            return results
+
+                # Files
+                for f in files:
+                    if f.startswith("."):
+                        continue
+                    rel_path = f"{rel_dir}/{f}" if rel_dir else f
+                    if prefix_clean in rel_path.lower():
+                        full_p = Path(root) / f
+                        try:
+                            size = full_p.stat().st_size
+                        except OSError:
+                            size = 0
+                        results.append((rel_path, False, size))
+                        if len(results) >= 40:
+                            return results
+        except Exception:
+            pass
+        return results
 
     def get_completions(self, document, complete_event):
-        text = document.text_before_cursor.lstrip()
-        if text.startswith("/"):
-            prefix = text[1:].lower()
+        text_before = document.text_before_cursor
+        stripped = text_before.lstrip()
+
+        # 1. Slash commands at the start of input
+        if stripped.startswith("/") and " " not in stripped:
+            prefix = stripped[1:].lower()
             for name, desc in sorted(self._commands.items()):
                 if name.startswith(prefix):
                     yield Completion(
                         f"/{name}",
-                        start_position=-len(text),
+                        start_position=-len(stripped),
                         display=f"/{name}",
                         display_meta=desc[:60],
                     )
-        elif not text:
-            # Show hint when empty
-            pass
+            return
+
+        # 2. @ File mentions anywhere in input
+        words = text_before.split()
+        if text_before.endswith(" ") or not words:
+            return
+
+        current_word = words[-1]
+        if current_word.startswith("@"):
+            file_prefix = current_word[1:]
+            for rel_path, is_dir, size in self._get_workspace_files(file_prefix):
+                if is_dir:
+                    display_text = f"📁 {rel_path}"
+                    meta = "directory"
+                else:
+                    display_text = f"📄 {rel_path}"
+                    if size < 1024:
+                        meta = f"{size} B"
+                    elif size < 1024 * 1024:
+                        meta = f"{size / 1024:.1f} KB"
+                    else:
+                        meta = f"{size / (1024 * 1024):.1f} MB"
+
+                yield Completion(
+                    f"@{rel_path}",
+                    start_position=-len(current_word),
+                    display=display_text,
+                    display_meta=meta,
+                )
+
+
+def _resolve_file_mentions(text: str, root_dir: Path) -> tuple[str, list[str]]:
+    """Scan prompt for @filepath references and attach file contents into context."""
+    words = text.split()
+    attached_files = []
+    file_contexts = []
+
+    for word in words:
+        # Strip potential trailing punctuation
+        clean_word = word.rstrip(",;.:!?")
+        if clean_word.startswith("@") and len(clean_word) > 1:
+            rel_name = clean_word[1:]
+            target = root_dir / rel_name
+            if target.is_file():
+                try:
+                    content = target.read_text(encoding="utf-8", errors="replace")
+                    # Limit attached content size to 64KB per file
+                    if len(content) > 65536:
+                        content = content[:65536] + "\n... [truncated, file exceeds 64KB] ..."
+                    file_contexts.append(f"\n\n--- [Referenced File: @{rel_name}] ---\n```\n{content}\n```")
+                    attached_files.append(rel_name)
+                except Exception:
+                    pass
+
+    if file_contexts:
+        expanded_prompt = text + "".join(file_contexts)
+        return expanded_prompt, attached_files
+    return text, []
 
 
 def _build_dashboard(provider: str, model: str, mode: str, effort: str, mcp_count: int, tool_count: int) -> Panel:
@@ -73,6 +179,7 @@ def _build_dashboard(provider: str, model: str, mode: str, effort: str, mcp_coun
     info_table.add_row("💪 Effort", f"{effort}")
     info_table.add_row("🔌 MCP Servers", f"{mcp_count} connected")
     info_table.add_row("🔧 Tools", f"{tool_count} available")
+    info_table.add_row("📁 Workspace", f"{Path.cwd().name}")
     info_table.add_row("💻 Platform", f"{platform.system()} {platform.release()}")
 
     # Commands table
@@ -95,16 +202,76 @@ def _build_dashboard(provider: str, model: str, mode: str, effort: str, mcp_coun
     header.append(" — ", style="dim")
     header.append("Autonomous AI Agent OS", style="italic white")
     header.append("\n")
-    header.append("  Type naturally in English, Russian, or Uzbek. Type / for commands.", style="dim yellow")
+    header.append("  Type naturally in English, Russian, or Uzbek. Use @file to attach files, / for commands.", style="dim yellow")
 
     dashboard = Panel(
         layout_table,
         title=header,
         border_style="cyan",
-        subtitle="[dim]Type 'exit' to quit | 'mode deep' to switch | 'effort high' to change[/dim]",
+        subtitle="[dim]Type @ to select files | /dashboard to refresh | /files to browse[/dim]",
         padding=(1, 2),
     )
     return dashboard
+
+
+def _render_files_table(root_dir: Path, filter_str: str = "") -> Panel:
+    """Render a clean Rich table of workspace files."""
+    table = Table(show_header=True, header_style="bold cyan", box=None, padding=(0, 1), expand=True)
+    table.add_column("Type", width=6, justify="center")
+    table.add_column("File / Directory", style="white", ratio=3)
+    table.add_column("Size", style="green", width=12, justify="right")
+    table.add_column("Modified", style="dim white", width=20)
+
+    ignored_dirs = {
+        ".git", ".pytest_cache", ".ruff_cache", "__pycache__",
+        "node_modules", ".venv", "venv", ".idea", ".vscode", "dist", "build",
+        ".system_generated", "universal_agent_hp.egg-info",
+    }
+    
+    count = 0
+    filter_lower = filter_str.lower().strip()
+
+    for root, dirs, files in os.walk(root_dir):
+        dirs[:] = [d for d in dirs if d not in ignored_dirs and not d.startswith(".")]
+        rel_dir = os.path.relpath(root, root_dir).replace("\\", "/")
+        if rel_dir == ".":
+            rel_dir = ""
+
+        for f in sorted(files):
+            if f.startswith("."):
+                continue
+            rel_path = f"{rel_dir}/{f}" if rel_dir else f
+            if filter_lower and filter_lower not in rel_path.lower():
+                continue
+
+            full_p = Path(root) / f
+            try:
+                st = full_p.stat()
+                sz = st.st_size
+                mtime_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(st.st_mtime))
+                if sz < 1024:
+                    sz_str = f"{sz} B"
+                elif sz < 1024 * 1024:
+                    sz_str = f"{sz / 1024:.1f} KB"
+                else:
+                    sz_str = f"{sz / (1024 * 1024):.1f} MB"
+            except OSError:
+                sz_str = "-"
+                mtime_str = "-"
+
+            # Extension icon
+            ext = full_p.suffix.lower()
+            icon = "🐍" if ext == ".py" else ("📜" if ext in (".md", ".txt") else ("⚙️" if ext in (".json", ".toml", ".yaml", ".yml", ".env") else "📄"))
+
+            table.add_row(icon, rel_path, sz_str, mtime_str)
+            count += 1
+            if count >= 60:
+                break
+        if count >= 60:
+            break
+
+    title_text = f"[bold cyan]📁 Workspace Files ({count} shown){f' [filter: {filter_str}]' if filter_str else ''}[/bold cyan]"
+    return Panel(table, title=title_text, border_style="cyan", subtitle="[dim]Use @filename in your prompt to attach file content automatically[/dim]")
 
 
 def _bottom_toolbar(provider: str, model: str, mode: str, effort: str):
@@ -114,6 +281,7 @@ def _bottom_toolbar(provider: str, model: str, mode: str, effort: str):
         f'<style fg="ansicyan">{provider}/{model}</style> | '
         f'Mode: <style fg="ansiyellow">{mode}</style> | '
         f'Effort: <style fg="ansigreen">{effort}</style> | '
+        f'<style fg="ansimagenta">@ for files</style> | '
         f'<style fg="ansigray">/ for commands</style>'
     )
 
@@ -180,10 +348,10 @@ async def main():
     agent = TitanAgent(mcp=mcp, llm=llm)
 
     session_id = "cli_session"
-    slash_completer = SlashCompleter(ALL_COMMANDS)
+    universal_completer = UniversalCompleter(ALL_COMMANDS, workspace_root=Path.cwd())
     prompt_session = PromptSession(
         history=InMemoryHistory(),
-        completer=slash_completer,
+        completer=universal_completer,
         complete_while_typing=True,
         bottom_toolbar=lambda: _bottom_toolbar(provider, model, mode, effort),
     )
@@ -297,6 +465,10 @@ async def main():
                             title="[bold magenta]Slash Commands[/bold magenta]",
                             border_style="magenta"
                         ))
+                    elif name_l == "dashboard":
+                        console.print(_build_dashboard(provider, model, mode, effort, mcp_count, tool_count))
+                    elif name_l == "files":
+                        console.print(_render_files_table(Path.cwd(), filter_str=local.get("arg", "")))
                     elif name_l == "status":
                         console.print(f"[bold cyan]Provider:[/bold cyan] {provider} | [bold cyan]Model:[/bold cyan] {model}\n"
                                       f"[bold cyan]Mode:[/bold cyan] {mode} | [bold cyan]Effort:[/bold cyan] {effort}")
@@ -439,9 +611,14 @@ async def main():
                 await mcp.stop_all()
                 break
 
+            # Resolve @file mentions and auto-attach file content into prompt
+            resolved_input, attached_files = _resolve_file_mentions(user_input, Path.cwd())
+            if attached_files:
+                console.print(f"[dim cyan]📎 Attached {len(attached_files)} file(s): {', '.join(attached_files)}[/dim cyan]")
+
             console.print(f"\n[bold magenta]⚡ Titan is working (mode: {mode}, effort: {effort})...[/bold magenta]")
 
-            async for event in agent.run_task(user_input, session_id=session_id, mode=mode, effort=effort):
+            async for event in agent.run_task(resolved_input, session_id=session_id, mode=mode, effort=effort):
                 if event.type == "thought":
                     console.print(Panel(
                         f"[italic dim]{event.data}[/italic dim]",

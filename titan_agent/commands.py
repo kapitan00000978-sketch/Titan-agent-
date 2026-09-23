@@ -103,6 +103,8 @@ COMMANDS = {
 # Commands handled locally (no LLM call needed).
 LOCAL_COMMANDS = {
     "help": "List all slash commands and usage.",
+    "dashboard": "Display interactive system and agent dashboard.",
+    "files": "Browse workspace files and project structure. Usage: /files [filter]",
     "status": "Show current provider, model, mode and effort.",
     "mode": "Switch mode: fast, deep, deep_search. Usage: /mode deep",
     "effort": "Switch effort: auto, low, medium, high, ultra. Usage: /effort high",
