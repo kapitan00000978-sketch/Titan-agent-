@@ -29,10 +29,10 @@ from titan_agent.tools import ToolRegistry
 
 
 def test_specialists_genesis_roster():
-    """Verify all 27 specialists exist and are properly configured."""
-    assert len(SPECIALISTS) == 27
+    """Verify all specialists exist and are properly configured."""
+    assert len(SPECIALISTS) == 29
     catalog = staff_catalog()
-    assert len(catalog) == 26  # generalist excluded from specialized catalog
+    assert len(catalog) == 28  # generalist excluded from specialized catalog
 
     new_roles = [
         "data_validator",

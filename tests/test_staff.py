@@ -304,6 +304,8 @@ def test_staff_catalog_lists_non_generalist_roles():
         "data_validator", "hallucination_checker", "translator", "scheduler_agent",
         "notification_agent", "rate_limiter_agent", "critic_agent", "fallback_agent",
         "performance_optimizer", "db_architect",
+        # Dual-Shield Cyber Defense roster
+        "blue_team", "red_team",
     }
     for e in catalog:
         assert e["title"] and e["description"]

@@ -1344,6 +1344,15 @@ class TitanAgent:
                     "Error: approval required but not granted "
                     f"(tool='{name}' was not approved by the human)."
                 )
+        # Dual-Shield Cyber Defense Sentinel Check
+        if name in ("execute_command", "tool_execute_command", "docker_sandbox_run", "tool_docker_sandbox_run"):
+            cmd = str(args.get("command") or args.get("cmd") or "")
+            if cmd:
+                from titan_agent.core.security.dual_shield import DualShieldOrchestrator
+                shield = DualShieldOrchestrator.get_instance()
+                allowed, block_msg, _red_resp = await shield.evaluate_command(cmd, session_id="tool_exec", llm_client=self.llm)
+                if not allowed:
+                    return f"Error: {block_msg}"
         if name == "tool_stats":
             return json.dumps(self.tool_stats.summary(), ensure_ascii=False)
         if name == "memory_save":
@@ -1901,6 +1910,19 @@ class TitanAgent:
                 yield AgentEvent("final_answer", cp.final_answer)
                 self.memory.add_message(session_id, "assistant", cp.final_answer)
                 return
+
+        # Dual-Shield Cyber Defense Evaluation (Blue Team continuous + Emergency Red Team)
+        from titan_agent.core.security.dual_shield import DualShieldOrchestrator
+        shield = DualShieldOrchestrator.get_instance()
+        allowed, block_msg, red_resp = await shield.evaluate_prompt(user_input, session_id=session_id, llm_client=self.llm)
+        if not allowed:
+            yield AgentEvent("error", block_msg)
+            if red_resp:
+                yield AgentEvent("thought", f"⚔️ Emergency Red Team Triggered:\n{red_resp.forensic_summary}")
+                yield AgentEvent("final_answer", f"🚫 **Task Blocked by Dual-Shield Cyber Defense**\n\n{block_msg}\n\n```\n{red_resp.forensic_summary}\n```")
+            else:
+                yield AgentEvent("final_answer", f"🛡️ **Blocked by Blue Team Sentinel**\n\n{block_msg}")
+            return
 
         # Save user message to memory
         self.memory.add_message(session_id, "user", user_input)

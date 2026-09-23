@@ -98,12 +98,33 @@ COMMANDS = {
             "decisions, and next steps. Keep it concise and actionable.\n\nNOTE: {arg}"
         ),
     },
+    "blue-team": {
+        "description": "Run continuous blue team defensive audit and policy verification.",
+        "mode": "deep",
+        "effort": "high",
+        "template": (
+            "Run a thorough BLUE TEAM defensive security audit on the following target. "
+            "Inspect for prompt injection vulnerabilities, secret leaks, unauthorized access points, "
+            "and security policy compliance. Produce a hardened defense plan.\n\nDEFENSE TARGET: {arg}"
+        ),
+    },
+    "red-team": {
+        "description": "Trigger emergency / manual red team adversarial penetration and counter-strike.",
+        "mode": "deep",
+        "effort": "ultra",
+        "template": (
+            "Conduct an EMERGENCY RED TEAM adversarial penetration test and exploit analysis on the following target. "
+            "Deconstruct potential attack vectors, test boundary conditions, classify MITRE ATT&CK techniques, "
+            "and generate immediate containment countermeasures.\n\nATTACK/AUDIT TARGET: {arg}"
+        ),
+    },
 }
 
 # Commands handled locally (no LLM call needed).
 LOCAL_COMMANDS = {
     "help": "List all slash commands and usage.",
     "dashboard": "Display interactive system and agent dashboard.",
+    "security-status": "View real-time Dual-Shield security defense and sentinel status.",
     "files": "Browse workspace files and project structure. Usage: /files [filter]",
     "status": "Show current provider, model, mode and effort.",
     "mode": "Switch mode: fast, deep, deep_search. Usage: /mode deep",

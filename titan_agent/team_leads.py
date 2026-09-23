@@ -350,12 +350,18 @@ class QualitySecurityLead(BaseTeamLead):
         "tester",
         "critic_agent",
         "fallback_agent",
+        "blue_team",
+        "red_team",
     )
 
     def pick_role_for_task(self, task: str, requested_role: str | None = None) -> str:
         if requested_role and requested_role in self.managed_roles:
             return requested_role
         t = task.lower()
+        if any(k in t for k in ["red team", "pentest", "penetration", "exploit", "counter-strike", "attack simulation"]):
+            return "red_team"
+        if any(k in t for k in ["blue team", "sentinel", "defense", "hardening", "monitor"]):
+            return "blue_team"
         if any(k in t for k in ["security", "vulnerability", "leak", "audit", "injection"]):
             return "security"
         if any(k in t for k in ["test", "verify", "run test", "assert", "fail"]):
@@ -364,7 +370,7 @@ class QualitySecurityLead(BaseTeamLead):
             return "critic_agent"
         if any(k in t for k in ["fallback", "recovery", "degrade", "backup"]):
             return "fallback_agent"
-        return "security"
+        return "blue_team"
 
     async def verify_and_filter(
         self,

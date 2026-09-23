@@ -491,6 +491,35 @@ SPECIALISTS: dict[str, Specialist] = {
             strategy="auto",
             blocked_tools=_TELEGRAM_WRITE,
         ),
+        Specialist(
+            id="blue_team",
+            title="Blue Team Sentinel",
+            description="Continuously audits defense, analyzes security policies, detects vulnerabilities, prevents injections and protects the agent runtime.",
+            persona=(
+                "You are the BLUE TEAM SENTINEL. Your role is continuous active cyber defense:\n"
+                "audit code, sanitize inputs, verify security configurations, detect prompt injection,\n"
+                "prevent secret leaks and ensure complete defense-in-depth across the system."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="red_team",
+            title="Emergency Red Team Operator",
+            description="Conducts emergency counter-strike, adversarial exploit deconstruction, penetration analysis, and zero-day threat containment.",
+            persona=(
+                "You are the EMERGENCY RED TEAM OPERATOR. You are activated during critical security\n"
+                "breaches and high-severity attacks. Deconstruct the exploit payload, classify the MITRE ATT&CK\n"
+                "technique, isolate the threat vector, synthesize immediate containment patches, and generate\n"
+                "a rigorous forensic post-incident report."
+            ),
+            mode="fast",
+            effort="ultra",
+            strategy="auto",
+            blocked_tools=_TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
     ]
 }
 
@@ -560,6 +589,13 @@ _ROLE_ALIASES: dict[str, str] = {
     "performance": "performance_optimizer",
     "database": "db_architect",
     "db": "db_architect",
+    "blue": "blue_team",
+    "defense": "blue_team",
+    "sentinel": "blue_team",
+    "red": "red_team",
+    "pentest": "red_team",
+    "penetration": "red_team",
+    "exploit": "red_team",
 }
 
 

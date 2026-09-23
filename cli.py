@@ -274,6 +274,43 @@ def _render_files_table(root_dir: Path, filter_str: str = "") -> Panel:
     return Panel(table, title=title_text, border_style="cyan", subtitle="[dim]Use @filename in your prompt to attach file content automatically[/dim]")
 
 
+def _render_security_status() -> Panel:
+    """Render real-time Dual-Shield Cyber Defense Sentinel Panel."""
+    from titan_agent.core.security.dual_shield import DualShieldOrchestrator
+    shield = DualShieldOrchestrator.get_instance()
+    status = shield.get_security_status()
+
+    sec_table = Table(show_header=False, box=None, padding=(0, 2))
+    sec_table.add_column("Property", style="bold cyan", width=22)
+    sec_table.add_column("Status", style="white")
+
+    sec_table.add_row("🛡️ Blue Team Sentinel", "[bold green]ALWAYS-ON (Active Monitoring & Intercept)[/bold green]")
+    sec_table.add_row("🚫 Threats Blocked", f"{status['blue_team']['blocked_threats']}")
+    sec_table.add_row("⚔️ Emergency Red Team", f"[bold {'red' if status['red_team']['total_counter_strikes'] else 'yellow'}]{status['red_team']['state']}[/bold {'red' if status['red_team']['total_counter_strikes'] else 'yellow'}]")
+    sec_table.add_row("💥 Red Counter-Strikes", f"{status['red_team']['total_counter_strikes']}")
+    sec_table.add_row("🔒 Quarantined Sessions", f"{status['blue_team']['stats']['quarantined_sessions']}")
+    sec_table.add_row("📋 Total Incidents Logged", f"{status['total_recorded_incidents']}")
+
+    recent = status['red_team']['recent_incidents']
+    if recent:
+        inc_rows = "\n".join(f"- [bold red]{inc['id']}[/bold red] ({inc['vector']})" for inc in recent)
+    else:
+        inc_rows = "[dim green]No critical breaches detected. Perimeter secure.[/dim green]"
+
+    full_layout = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    full_layout.add_column("Telemetry", ratio=1)
+    full_layout.add_column("Recent Incidents", ratio=1)
+    full_layout.add_row(sec_table, Panel(inc_rows, title="[bold red]Emergency Incidents[/bold red]", border_style="red" if recent else "green"))
+
+    return Panel(
+        full_layout,
+        title="[bold green]🛡️ DUAL-SHIELD CYBER DEFENSE STATUS[/bold green]",
+        border_style="green",
+        subtitle="[dim]Blue Team monitors 24/7 | Red Team activates only on critical threat detection[/dim]",
+        padding=(1, 2),
+    )
+
+
 def _bottom_toolbar(provider: str, model: str, mode: str, effort: str):
     """Bottom toolbar for prompt_toolkit showing current status."""
     return HTML(
@@ -467,6 +504,8 @@ async def main():
                         ))
                     elif name_l == "dashboard":
                         console.print(_build_dashboard(provider, model, mode, effort, mcp_count, tool_count))
+                    elif name_l == "security-status":
+                        console.print(_render_security_status())
                     elif name_l == "files":
                         console.print(_render_files_table(Path.cwd(), filter_str=local.get("arg", "")))
                     elif name_l == "status":
