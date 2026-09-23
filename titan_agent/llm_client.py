@@ -292,13 +292,16 @@ class LLMClient:
         if self.provider == "g4f":
             import g4f.client
             try:
-                g4f_client = g4f.client.AsyncClient()
-                response = await g4f_client.chat.completions.create(
+                g4f_client = g4f.client.Client()
+                response = await asyncio.to_thread(
+                    g4f_client.chat.completions.create,
                     model=self.model,
                     messages=messages,
                 )
-                content = response.choices[0].message.content or ""
-                cleaned_content, thoughts, parsed_tools = self._extract_thoughts_and_tools(content)
+                choice = response.choices[0] if hasattr(response, "choices") and response.choices else None
+                content = choice.message.content if choice and hasattr(choice, "message") and choice.message else ""
+                content = content or ""
+                cleaned_content, thoughts, parsed_tools = self._extract_thoughts_and_tools(str(content))
                 return LLMResponse(content=cleaned_content, tool_calls=parsed_tools, thoughts=thoughts)
             except Exception as e:
                 raise RuntimeError(f"G4F API Error: {e}")

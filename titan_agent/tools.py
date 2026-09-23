@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 import urllib.request
+import shlex
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -1592,7 +1593,11 @@ class ToolRegistry:
         llm = LLMClient()
         
         async def runner(script: str) -> str:
-            return await self.tool_docker_sandbox_run(script=script, image="python:3.11-slim", timeout_seconds=60)
+            return await self.tool_docker_sandbox_run(
+                command=f"python -c {shlex.quote(script)}",
+                image="python:3.11-slim",
+                timeout=60.0,
+            )
             
         verifier = DeepVerifier(llm, sandbox_runner=runner)
         result = await verifier.self_heal_loop(code, intent, max_iterations=3)
