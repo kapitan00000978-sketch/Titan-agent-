@@ -410,7 +410,7 @@ async def main():
         await mcp.start_all()
 
     # Count MCP servers and tools
-    mcp_count = len([s for s in mcp.servers.values() if s.get("status") == "connected"]) if hasattr(mcp, 'servers') else 0
+    mcp_count = len([s for s in mcp.servers.values() if getattr(s, 'is_connected', False) or (isinstance(s, dict) and s.get("status") == "connected")]) if hasattr(mcp, 'servers') else 0
     tool_count = len(mcp.get_all_tools()) if hasattr(mcp, 'get_all_tools') else 0
 
     # Show professional dashboard
