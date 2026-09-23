@@ -50,6 +50,25 @@ LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS & REASONING RUNTIMES
 
 ---
 
+## 🆓 Built-in 100% FREE Models (Zero API Keys Required!)
+
+Titan Agent has **native built-in support for free, keyless, and local models out-of-the-box**. You can run the entire system completely free without entering a single credit card or paid API key:
+
+| Provider | Access Mode | Cost | Supported Models | How to Run |
+|---|---|:---:|---|---|
+| **Puter.js** | Cloud (Keyless) | **FREE** | **500+ Models**: DeepSeek V4 Pro / R1, Claude 3.5 Sonnet, GPT-4o, Llama 3.3 70B, Qwen 2.5 | `python cli.py --provider puter --model deepseek/deepseek-v4-pro` |
+| **Completions.me** | Cloud Gateway | **FREE** | Claude Opus, GPT-5 class, Gemini Pro, Grok | `python cli.py --provider completions --model claude-sonnet-4.5` |
+| **Laya MLX** | Local (PC / Mac) | **FREE** | Local MLX-quantized models with hardware acceleration | `python cli.py --provider laya-mlx --model local` |
+| **Ollama** | Local (Offline) | **FREE** | DeepSeek-R1, Llama 3.2, Mistral, Qwen, CodeLlama | `python cli.py --provider ollama --model deepseek-r1:8b` |
+| **LM Studio** | Local (Offline) | **FREE** | Any GGUF model running on `localhost:1234` | `python cli.py --provider lmstudio --model local-model` |
+| **GPT4Free (`g4f`)** | Multi-Provider | **FREE** | Keyless OpenAI/Anthropic proxy scrapers | `python cli.py --provider g4f` |
+| **Python-tGPT (`tgpt`)** | Multi-Provider | **FREE** | Terminal-native keyless AI models | `python cli.py --provider tgpt` |
+| **OmniRoute** | Self-Hosted | **FREE** | Auto-routing smart gateway (`auto`, `auto/coding`, `auto/fast`, `auto/cheap`) | `python cli.py --provider omni --model auto` |
+
+> 💡 **Tip**: In `.env`, simply leave API keys blank and set `TITAN_PROVIDER=puter` or `TITAN_PROVIDER=ollama` to run Titan Agent 100% free forever!
+
+---
+
 ## 🌟 Key Technical Innovations & Specifications
 
 ### 1. 🏛️ Hierarchical Delegation & Role Specialization (Level 1 & 2)
