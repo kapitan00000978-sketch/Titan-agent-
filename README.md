@@ -1,21 +1,24 @@
 # ⚡ UNIVERSAL AGENT HP — Autonomous Cognitive AI Operating System
 ### *The First 10-Layer Autonomous AI Software Company in Your Terminal — 100% Free, Zero-Key, and Air-Gapped Private.*
 
-[![CI - Test Suite](https://img.shields.io/badge/Test%20Suite-600%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP)
+[![CI - Test Suite](https://img.shields.io/badge/Test%20Suite-623%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP)
 [![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
+[![Cyber Defense](https://img.shields.io/badge/Security-Dual--Shield%20Blue%2FRed%20Team-red.svg)](#-dual-shield-enterprise-cyber-defense-architecture)
 [![Architecture](https://img.shields.io/badge/Architecture-Genesis%20Levels%201--10-purple.svg)](docs/titan-agent-master-architecture.md)
 [![Models](https://img.shields.io/badge/Models-500+%20Keyless%20%26%20Local-orange.svg)](#-supported-models-zero-key--out-of-the-box)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > 💡 **Stop paying $500/month for cloud coding agents that hallucinate, leak private corporate code, and get trapped in infinite loops.**  
-> **Universal Agent HP** replaces brittle single-prompt bots with an enterprise-grade autonomous software organization: a **CEO Meta-Orchestrator**, **4 Department Leads**, and **27 Worker Specialists** executing concurrent **DAG dependency waves** with **SHA-256 zero-loss rollback** and **continuous self-improvement**. Run frontier intelligence (**DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-4o**) completely free with **zero API keys**, or 100% offline via **local Apple MLX & Ollama**.
+> **Universal Agent HP** replaces brittle single-prompt bots with an enterprise-grade autonomous software organization: a **CEO Meta-Orchestrator**, **4 Department Leads**, and **29 Worker Specialists** executing concurrent **DAG dependency waves** with **SHA-256 zero-loss rollback**, **Dual-Shield Blue/Red Team Cyber Defense**, and **continuous self-improvement**. Run frontier intelligence (**DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-4o**) completely free with **zero API keys**, or 100% offline via **local Apple MLX & Ollama**.
 
 ---
 
 ### 🔥 Why Developers & Teams Choose Universal Agent HP:
 - 🚀 **100% Free Forever, Zero API Keys Required**: Instant out-of-the-box access to 500+ frontier models (DeepSeek-R1, Claude 3.5, GPT-4o) via Puter.js, or run completely offline with Laya MLX / Ollama.
-- 🏢 **An Entire Tech Company in One CLI**: Not a toy prompt-wrapper. Universal Agent HP routes tasks through a CEO, 4 Team Leads (CTO, Chief Scientist, DevOps, QA), and 27 isolated specialists.
+- 🏢 **An Entire Tech Company in One CLI**: Not a toy prompt-wrapper. Universal Agent HP routes tasks through a CEO, 4 Team Leads (CTO, Chief Scientist, DevOps, QA/Security), and 29 isolated specialists.
+- 🛡️ **Dual-Shield Enterprise Cyber Defense**: Continuous 24/7 **Blue Team Sentinel** monitor + emergency **Red Team Counter-Strike** unit with SAST OWASP scanner, Shannon entropy secret redaction, and defensive IP banning.
 - ⚡ **Kahn's DAG Wave Execution**: No more slow sequential loops. Independent tasks run concurrently in parallel waves; failing branches replan dynamically without losing completed work.
+- 📁 **Seamless `@file` Autocompletion & Context Attachment**: Mention files with `@` to automatically inspect, attach, and reason over files directly from the terminal.
 - 🛡️ **Zero-Loss Filesystem Rollback**: Real byte-level SHA-256 snapshots before destructive actions. One command restores your codebase to its exact original state if an agent makes a mistake.
 - 🧠 **AST Causal Intelligence & Blast-Radius**: Calculates caller/callee ripples before editing code so unexpected regression bugs are eliminated before they happen.
 - 📈 **Continuous Self-Improvement (Level 10)**: Diagnoses drift, turns failed test runs into permanent playbooks, and self-tunes its reasoning prompts autonomously.
@@ -43,11 +46,13 @@ LEVEL 2 — 4 DEPARTMENT TEAM LEADS
                                      │
          ┌───────────────────────────┴───────────────────────────┐
          ▼                                                       ▼
-LEVEL 3 — 27 SPECIALIST WORKER ROLES
+========================================================================================
+LEVEL 3 — 29 SPECIALIST WORKER ROLES
   ├── Backend Specialist              ├── Database Specialist         ├── Security Auditor
   ├── Frontend Specialist             ├── Refactoring Specialist      ├── Performance Engineer
   ├── Vector RAG Specialist           ├── Test Engineer               ├── Browser Automation Lead
-  └── (18 Additional Specialized Roles dispatched dynamically per task context)
+  ├── Blue Team Defense Sentinel      ├── Emergency Red Team Operator ├── API Architect
+  └── (17 Additional Specialized Roles dispatched dynamically per task context)
 ========================================================================================
                                      │
 LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS & REASONING RUNTIMES
@@ -60,6 +65,68 @@ LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS & REASONING RUNTIMES
   └── Level 10: Drift Detection & Autonomous Self-Improvement Benchmark Suite
 ========================================================================================
 ```
+
+---
+
+## 🛡️ Dual-Shield Enterprise Cyber Defense Architecture
+
+Universal Agent HP features a military-grade, dual-shield cybersecurity architecture combining continuous 24/7 in-line threat monitoring with autonomous emergency counter-strike and containment:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              INCOMING USER PROMPT / TOOL CALL                          │
+└───────────────────────────────────────────┬────────────────────────────────────────────┘
+                                            │
+                                            ▼
+                  ┌───────────────────────────────────────────────────┐
+                  │   🛡️ ALWAYS-ON BLUE TEAM SENTINEL (24/7 Active)   │
+                  │   - Prompt Injection & Jailbreak (DAN) Detection  │
+                  │   - Lethal Command Interception (rm -rf, reverse) │
+                  │   - Shannon Entropy & Hardcoded Secret Scanning   │
+                  │   - SAST AST Analysis & OWASP Top 10 Verification │
+                  └─────────────────────────┬─────────────────────────┘
+                                            │
+                     ┌──────────────────────┴──────────────────────┐
+                     │                                             │
+      [ThreatScore < 0.85: BENIGN]                 [ThreatScore >= 0.85: CRITICAL BREACH]
+                     │                                             │
+                     ▼                                             ▼
+        ┌─────────────────────────┐               ┌─────────────────────────────────┐
+        │  ✅ Safe Execution Path  │               │  🚨 EMERGENCY RED TEAM ACTIVATED│
+        │  - Guardrailed Sandbox  │               │  - Threat Deconstruction        │
+        │  - Transaction Snapshot │               │  - Runtime Session Quarantine   │
+        │  - Normal Workflows     │               │  - Defensive IP Banning & Geo   │
+        └─────────────────────────┘               │  - Zero-Day Patch Synthesis     │
+                                                  │  - MITRE ATT&CK Forensic Report │
+                                                  └─────────────────────────────────┘
+```
+
+### The 5 Cyber Defense Pillars:
+
+#### 1. 🔍 SAST (Static Application Security Testing) & OWASP Top 10
+- **Live In-Line Code Audit**: Audits Python, JavaScript, and shell scripts on the fly.
+- **Vulnerability Signatures**: Detects SQL Injection (`SEC-INJ-001`), Subprocess `shell=True` command injections (`SEC-INJ-002`), Insecure `pickle.loads` deserialization (`SEC-DESER-001`), dynamic `eval`/`exec` execution (`SEC-DYN-001`), disabled SSL verification (`SEC-CONF-001`), and SSRF to cloud metadata `169.254.169.254` (`SEC-SSRF-001`).
+- **Slash Command**: `/sast @file.py` | **Tool**: `sast_scan`
+
+#### 2. 📦 Supply-Chain & Dependency CVE Auditor
+- **Manifest Scanning**: Audits `requirements.txt`, `pyproject.toml`, and `package.json` against known CVE vulnerability databases.
+- **Protocol & MitM Guards**: Rejects unencrypted `http://` package repositories and suggests exact safe upgrade versions.
+- **Slash Command**: `/deps-audit requirements.txt` | **Tool**: `dependency_audit`
+
+#### 3. 🔑 Shannon Entropy Secret Scanner & Auto-Redaction
+- **High-Entropy Blob Detection**: Mathematical Shannon entropy calculation ($H = -\sum p \log_2 p$) identifies obfuscated tokens, private keys, and high-entropy hashes.
+- **Credential Pattern Interceptor**: Catches AWS keys (`AKIA...`), OpenAI/Anthropic tokens (`sk-...`), GitHub PATs (`ghp_...`), Slack tokens, and PEM private keys.
+- **Zero-Leak Redaction**: Automatically sanitizes terminal output and log files (`[REDACTED_SECRET]`).
+- **Slash Command**: `/secret-scan @.env` | **Tool**: `secret_scan`
+
+#### 4. 🌐 Defensive IP Banning & Geo-Logging Threat Intelligence
+- **Connection Telemetry**: Resolves caller IP address, ASN/ISP, country, and city coordinates.
+- **Automated Defensive Banning**: High-severity intrusion attempts trigger immediate server-level IP bans (`auto-ban`) with whitelist protection for local interfaces.
+- **Slash Command**: `/banned-ips` | **Tool**: `IPDefenseManager`
+
+#### 5. 📊 MITRE ATT&CK Threat Modeling & Automated Forensic Reporting
+- **Taxonomy Mapping**: Classifies incidents under MITRE ATT&CK techniques (`TA0002` Execution, `T1059.004` Shell, `T1055.012` LLM Prompt Injection, `T1552` Credential Access).
+- **Forensic Audit Dossier**: Automatically generates timestamped, audit-ready incident reports detailing payload telemetry, containment actions, and synthesized counter-rules.
 
 ---
 
@@ -294,6 +361,16 @@ universal --strategy reflexion "Write an optimal concurrent LRU Cache in Python"
 #### 📋 Interactive Slash Commands (inside CLI session):
 | Command | Description |
 |---|---|
+| `@filename` | Mention and auto-attach workspace file contents to agent context |
+| `/dashboard` | Display rich real-time AI & system status dashboard |
+| `/files [filter]` | Browse and explore workspace files, sizes, and formats |
+| `/security-status` | Display Dual-Shield Blue & Red Team real-time defense status |
+| `/sast <file>` | Run SAST & OWASP Top 10 code security audit |
+| `/deps-audit [manifest]`| Audit project dependencies & manifests for known CVEs |
+| `/secret-scan <file>` | Scan text/code for high-entropy secrets and sensitive tokens |
+| `/banned-ips [unban]` | View defensively banned IP addresses & Geo-location logs |
+| `/blue-team <target>` | Trigger continuous Blue Team defensive security verification |
+| `/red-team <target>` | Conduct emergency Red Team adversarial penetration simulation |
 | `/plan <task>` | Deep planning mode with full analysis |
 | `/review <code>` | Code review with security & quality audit |
 | `/fix <issue>` | Auto-diagnose and fix bugs |
@@ -324,7 +401,7 @@ universal --web
 *Access via: `http://localhost:8000` (Features live streaming, DAG visualizer, model routing inspect, and tool reliability logs).*
 
 ### 2. 💻 Interactive Terminal CLI
-Full-featured terminal console with syntax highlighting, streaming output, and REPL slash commands:
+Full-featured terminal console with syntax highlighting, streaming output, `@file` autocompletion, and REPL slash commands:
 ```bash
 universal
 # Or: python run.py --cli
@@ -351,6 +428,7 @@ universal --telegram
 
 | Category | Key Tools | Description |
 |---|---|---|
+| **Cyber Defense & Security** | `sast_scan`, `dependency_audit`, `secret_scan`, `docker_sandbox_run` | SAST OWASP scanner, supply-chain CVE auditor, entropy secret redaction, and isolated Docker container sandboxing. |
 | **Genesis Meta** | `orchestrator_run`, `team_delegate`, `team_status` | CEO Meta-Orchestrator delegation across 4 department leads. |
 | **Task Graph (DAG)** | `dag_plan_and_run`, `dag_visualize` | Topological wave execution and selective failure replanning. |
 | **Cognitive Reasoning** | `debate_solve`, `reflexion_solve` | Adversarial debates and iterative self-critique loops. |
@@ -381,7 +459,7 @@ rootdir: C:\Users\user\Videos\demo1
 configfile: pytest.ini
 
 ...
-================== 600 passed, 1 skipped in 74.25s (0:01:14) ==================
+================== 623 passed, 1 skipped in 65.73s (0:01:05) ==================
 All checks passed! (Ruff linting clean)
 ```
 
