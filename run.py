@@ -43,8 +43,23 @@ def main():
 
     # Import here so the env overrides take effect
     from titan_agent.config import SERVER_HOST, SERVER_PORT
+    import socket
 
-    port = args.port or SERVER_PORT
+    def _find_free_port(host: str, start_port: int) -> int:
+        p = start_port
+        while p < start_port + 200:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind((host if host != "0.0.0.0" else "127.0.0.1", p))
+                    return p
+                except OSError:
+                    p += 1
+        return start_port
+
+    requested_port = args.port or SERVER_PORT
+    port = _find_free_port(SERVER_HOST, requested_port)
+    if port != requested_port:
+        print(f"ℹ️ Port {requested_port} is busy. Automatically switched to available port {port}.")
 
     if args.telegram:
         from titan_agent.telegram_bot import run_bot_standalone
@@ -57,7 +72,8 @@ def main():
         from cli import main as cli_main
         asyncio.run(cli_main())
     else:
-        url = f"http://{SERVER_HOST}:{port}"
+        display_host = "localhost" if SERVER_HOST in ("0.0.0.0", "127.0.0.1") else SERVER_HOST
+        url = f"http://{display_host}:{port}"
         print("\n" + "="*60)
         print("⚡ UNIVERSAL AGENT HP IS STARTING")
         print(f"🌐 Web Control Panel: {url}")
