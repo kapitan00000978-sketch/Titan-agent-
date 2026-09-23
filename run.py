@@ -17,7 +17,7 @@ if sys.platform == "win32":
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Titan Agent - Ultra-powerful Autonomous AI Agent")
+    parser = argparse.ArgumentParser(description="Universal Agent HP - Ultra-powerful Autonomous AI Agent")
     parser.add_argument("--cli", action="store_true", help="Launch interactive Terminal CLI mode")
     parser.add_argument("--port", type=int, default=None, help="Web server port (default: from .env, usually 7860)")
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
@@ -53,7 +53,7 @@ def main():
     else:
         url = f"http://{SERVER_HOST}:{port}"
         print("\n" + "="*60)
-        print("⚡ TITAN AGENT IS STARTING")
+        print("⚡ UNIVERSAL AGENT HP IS STARTING")
         print(f"🌐 Web Control Panel: {url}")
         print("🔌 MCP Protocol & Multi-Model System Active")
         print("="*60 + "\n")

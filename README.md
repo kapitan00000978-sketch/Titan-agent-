@@ -1,4 +1,4 @@
-# ⚡ TITAN AGENT — Autonomous Cognitive AI Operating System
+# ⚡ UNIVERSAL AGENT HP — Autonomous Cognitive AI Operating System
 ### *The First 10-Layer Autonomous AI Software Company in Your Terminal — 100% Free, Zero-Key, and Air-Gapped Private.*
 
 [![CI - Test Suite](https://img.shields.io/badge/Test%20Suite-600%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kapitan00000978-sketch/Titan-agent-)
@@ -8,13 +8,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > 💡 **Stop paying $500/month for cloud coding agents that hallucinate, leak private corporate code, and get trapped in infinite loops.**  
-> **Titan Agent** replaces brittle single-prompt bots with an enterprise-grade autonomous software organization: a **CEO Meta-Orchestrator**, **4 Department Leads**, and **27 Worker Specialists** executing concurrent **DAG dependency waves** with **SHA-256 zero-loss rollback** and **continuous self-improvement**. Run frontier intelligence (**DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-4o**) completely free with **zero API keys**, or 100% offline via **local Apple MLX & Ollama**.
+> **Universal Agent HP** replaces brittle single-prompt bots with an enterprise-grade autonomous software organization: a **CEO Meta-Orchestrator**, **4 Department Leads**, and **27 Worker Specialists** executing concurrent **DAG dependency waves** with **SHA-256 zero-loss rollback** and **continuous self-improvement**. Run frontier intelligence (**DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-4o**) completely free with **zero API keys**, or 100% offline via **local Apple MLX & Ollama**.
 
 ---
 
-### 🔥 Why Developers & Teams Choose Titan Agent:
+### 🔥 Why Developers & Teams Choose Universal Agent HP:
 - 🚀 **100% Free Forever, Zero API Keys Required**: Instant out-of-the-box access to 500+ frontier models (DeepSeek-R1, Claude 3.5, GPT-4o) via Puter.js, or run completely offline with Laya MLX / Ollama.
-- 🏢 **An Entire Tech Company in One CLI**: Not a toy prompt-wrapper. Titan routes tasks through a CEO, 4 Team Leads (CTO, Chief Scientist, DevOps, QA), and 27 isolated specialists.
+- 🏢 **An Entire Tech Company in One CLI**: Not a toy prompt-wrapper. Universal Agent HP routes tasks through a CEO, 4 Team Leads (CTO, Chief Scientist, DevOps, QA), and 27 isolated specialists.
 - ⚡ **Kahn's DAG Wave Execution**: No more slow sequential loops. Independent tasks run concurrently in parallel waves; failing branches replan dynamically without losing completed work.
 - 🛡️ **Zero-Loss Filesystem Rollback**: Real byte-level SHA-256 snapshots before destructive actions. One command restores your codebase to its exact original state if an agent makes a mistake.
 - 🧠 **AST Causal Intelligence & Blast-Radius**: Calculates caller/callee ripples before editing code so unexpected regression bugs are eliminated before they happen.
@@ -65,7 +65,7 @@ LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS & REASONING RUNTIMES
 
 ## 🤖 Supported Models (Zero-Key & Out-of-the-Box)
 
-Titan Agent requires **zero paid subscriptions or mandatory API keys**. It natively interfaces with both cutting-edge frontier cloud models and air-gapped local runtimes:
+Universal Agent HP requires **zero paid subscriptions or mandatory API keys**. It natively interfaces with both cutting-edge frontier cloud models and air-gapped local runtimes:
 
 ### 🌐 Frontier Cloud Models (Keyless & Instant)
 - **DeepSeek V4 Pro & DeepSeek-R1** (Full 671B MoE deep reasoning)
@@ -89,31 +89,31 @@ Titan Agent requires **zero paid subscriptions or mandatory API keys**. It nativ
 
 ---
 
-## 🏆 Architectural Superiority: Why Titan Agent Outperforms Other AI Agents
+## 🏆 Architectural Superiority: Why Universal Agent HP Outperforms Other AI Agents
 
-Unlike standard wrapper bots, single-prompt LLMs, or brittle ReAct loops, Titan Agent is engineered as an enterprise-grade autonomous software company. Here is how it compares directly against industry alternatives:
+Unlike standard wrapper bots, single-prompt LLMs, or brittle ReAct loops, Universal Agent HP is engineered as an enterprise-grade autonomous software company. Here is how it compares directly against industry alternatives:
 
-### 1. Titan Agent vs. Hermes 3 & Single-Model Agents
+### 1. Universal Agent HP vs. Hermes 3 & Single-Model Agents
 - **Context Degradation & Hallucination**: Hermes 3 and typical fine-tuned models operate within a single context window. As task steps multiply, prompt contamination causes them to forget instructions, hallucinate tool signatures, or lose track of files.
-- **Titan's Advantage**: Titan uses a **10-Layer Cognitive Hierarchy**. The **CEO Meta-Orchestrator** divides high-level intent across **4 Departmental Team Leads**, which dispatch work to **27 isolated Specialist Workers** (`staff.py`). Each worker runs with dedicated, scoped tool bundles—eliminating context bloat and hallucination.
+- **Universal Agent HP's Advantage**: Universal Agent HP uses a **10-Layer Cognitive Hierarchy**. The **CEO Meta-Orchestrator** divides high-level intent across **4 Departmental Team Leads**, which dispatch work to **27 isolated Specialist Workers** (`staff.py`). Each worker runs with dedicated, scoped tool bundles—eliminating context bloat and hallucination.
 
-### 2. Titan Agent vs. Devin & Proprietary Cloud Agents
+### 2. Universal Agent HP vs. Devin & Proprietary Cloud Agents
 - **Privacy & Vendor Lock-in**: Devin is a closed-source, cloud-only SaaS that requires streaming all proprietary corporate code to external third-party servers at high subscription costs.
-- **Titan's Advantage**: Titan Agent is **100% open-source, local-first, and air-gapped**. It runs entirely on your own machine using **Laya MLX or Ollama** with zero data leaving your perimeter.
-- **Safety & Reversibility**: If a cloud agent breaks your repository, manual Git recovery is tedious. Titan incorporates a **Level 9 Execution Sandbox with Filesystem Snapshots** (`core/sandbox/environment.py`). It computes SHA-256 pre-execution hashes and provides **one-click zero-loss transactional rollback**, automatically reverting altered code and removing rogue files.
+- **Universal Agent HP's Advantage**: Universal Agent HP is **100% open-source, local-first, and air-gapped**. It runs entirely on your own machine using **Laya MLX or Ollama** with zero data leaving your perimeter.
+- **Safety & Reversibility**: If a cloud agent breaks your repository, manual Git recovery is tedious. Universal Agent HP incorporates a **Level 9 Execution Sandbox with Filesystem Snapshots** (`core/sandbox/environment.py`). It computes SHA-256 pre-execution hashes and provides **one-click zero-loss transactional rollback**, automatically reverting altered code and removing rogue files.
 
-### 3. Titan Agent vs. AutoGPT, CrewAI & LangChain ReAct Frameworks
+### 3. Universal Agent HP vs. AutoGPT, CrewAI & LangChain ReAct Frameworks
 - **Infinite Loops & Tool Thrashing**: Traditional ReAct frameworks run naive sequential loops (`thought -> action -> observation`). When a tool fails or throws an unhandled exception, they repeatedly hammer the same broken command until tokens or limits are exhausted.
-- **Titan's Advantage**:
+- **Universal Agent HP's Advantage**:
   - **DAG Wave Planner** (`core/dag/`): Replaces linear step-by-step loops with Kahn’s Directed Acyclic Graph topology. Independent subtasks execute concurrently in parallel waves, and failures trigger selective branch replanning rather than full workflow restarts.
   - **Bayesian EWMA Tool Reliability Rating** (`core/tools/reliability.py`): Tracks real-time tool performance dynamically from Grade A to F. If a tool degrades, the agent automatically applies mitigation advice or reroutes to alternative tool paths.
   - **Dual Reasoning Engines** (`core/reasoning/`): Combines a **Reflexion Engine** (self-evaluating against strict test suites before committing) and a **Multi-Agent Debate Arena** (pitching an Advocate against a Skeptic judged by an Arbitrator) to eliminate premature conclusions.
 
 ### 4. Continuous Self-Improvement & Causal AST Code Intelligence
 - **Static vs. Evolving Intelligence**: Standard agents are static; they make the exact same mistakes in subsequent runs.
-- **Titan's Advantage**:
+- **Universal Agent HP's Advantage**:
   - **Causal Knowledge Graph & AST Blast Radius** (`core/memory/`): Statically analyzes your workspace AST to map class/function callers and computes the ripple blast-radius before making edits, preventing hidden regressions.
-  - **Level 10 Drift Detection & Self-Improvement** (`core/monitoring/`, `core/self_improvement/`): Continuously computes longitudinal drift across runs. When regression patterns emerge, Titan crystallizes lessons learned into permanent reusable playbooks and auto-tunes agent strategies.
+  - **Level 10 Drift Detection & Self-Improvement** (`core/monitoring/`, `core/self_improvement/`): Continuously computes longitudinal drift across runs. When regression patterns emerge, Universal Agent HP crystallizes lessons learned into permanent reusable playbooks and auto-tunes agent strategies.
 
 ---
 
@@ -244,7 +244,7 @@ TITAN_AUTONOMOUS=true
 
 ## 🎮 Execution Modes
 
-Titan Agent can be operated through three interfaces:
+Universal Agent HP can be operated through three interfaces:
 
 ### 1. 🌐 Web Control Panel (Modern Cyberpunk Dashboard)
 Launches the FastAPI server and opens the browser interface:
@@ -280,7 +280,7 @@ python cli.py --staff SecurityAuditor "Scan codebase for injection vectors and h
 ```
 
 ### 3. 🤖 Remote Telegram Bot
-Control and interact with Titan Agent securely from your phone:
+Control and interact with Universal Agent HP securely from your phone:
 ```bash
 python run.py --telegram
 ```
@@ -308,7 +308,7 @@ python run.py --telegram
 
 ## 🧪 Comprehensive Verification & Test Suite
 
-Titan Agent maintains a 100% green test pass rate across all 30 phases:
+Universal Agent HP maintains a 100% green test pass rate across all 30 phases:
 
 ```bash
 python -m pytest tests -v
@@ -328,7 +328,7 @@ All checks passed! (Ruff linting clean)
 ---
 
 ## 📖 Operational Rules & Manual
-For the exhaustive 380-line English operational rulebook, laws of engagement, and troubleshooting instructions, refer to **[TITAN_AGENT_MANUAL.txt](TITAN_AGENT_MANUAL.txt)**.
+For the exhaustive 380-line English operational rulebook, laws of engagement, and troubleshooting instructions, refer to **[UNIVERSAL_AGENT_HP_MANUAL.txt](UNIVERSAL_AGENT_HP_MANUAL.txt)** (or [TITAN_AGENT_MANUAL.txt](TITAN_AGENT_MANUAL.txt)).
 
 ---
 

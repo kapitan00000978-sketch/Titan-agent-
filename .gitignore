@@ -36,6 +36,8 @@ htmlcov/
 *.log
 workspace/
 _staging/
+knowledge_graph.json
+skills/learned-*.md
 $null
 # ===== Packaging =====
 *.zip

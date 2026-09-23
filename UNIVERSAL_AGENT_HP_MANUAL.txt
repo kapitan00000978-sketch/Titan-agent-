@@ -1,0 +1,401 @@
+================================================================================
+           UNIVERSAL AGENT HP: COMPLETE OPERATIONAL MANUAL & RULES GUIDE
+               GENESIS COGNITIVE ARCHITECTURE (LEVELS 1 - 10)
+================================================================================
+
+DOCUMENT VERSION : 2.0 (Genesis Edition)
+SYSTEM STATUS    : Production Ready
+COVERAGE         : Architecture, CLI, Web UI, Telegram, Tools, Reasoning, Rules
+LANGUAGE         : English
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. SYSTEM OVERVIEW & ARCHITECTURAL HIERARCHY
+2. PREREQUISITES & ENVIRONMENT CONFIGURATION
+3. LAUNCHING UNIVERSAL AGENT HP (RUN MODES)
+4. INTERACTIVE CLI & COMMAND-LINE INTERFACE FLAGS
+5. COGNITIVE REASONING STRATEGIES & PLANNING ENGINES
+6. KNOWLEDGE GRAPH MEMORY & AST INTEL
+7. MODEL ROUTER & COGNITIVE BUDGET MANAGEMENT
+8. EXECUTION SANDBOX, ISOLATION & ZERO-LOSS ROLLBACK
+9. DRIFT DETECTION & PERFORMANCE MONITORING
+10. SELF-IMPROVEMENT LOOP & REGRESSION EVAL SUITE
+11. MANDATORY AGENT RULES OF ENGAGEMENT (OPERATIONAL LAWS)
+12. TROUBLESHOOTING & FREQUENTLY ASKED QUESTIONS
+
+================================================================================
+1. SYSTEM OVERVIEW & ARCHITECTURAL HIERARCHY
+================================================================================
+Universal Agent HP operates as a hierarchical, corporate-level cognitive organization:
+
+LEVEL 1 — META-ORCHESTRATOR (Chief Executive Agent):
+  • Persistent brain maintaining the project's global mission and multi-turn goals.
+  • Manages resource budget (tokens, execution time, cost).
+  • Dispatches top-level tasks to appropriate departmental Leads and arbitrates
+    conflicts between teams.
+
+LEVEL 2 — 4 DEPARTMENT TEAM LEADS:
+  1. EngineeringLead (CTO/Lead Architect):
+     Decomposes features, architecture, and coding tasks into discrete sub-goals.
+  2. ResearchLead (Chief Scientist):
+     Drives internet searches, documentation lookups, vector RAG, and multi-hop fact verification.
+  3. OperationsLead (DevOps / SRE Lead):
+     Oversees terminal commands, Docker environments, git repositories, and migrations.
+  4. QualitySecurityLead (QA & Security Auditor):
+     Audits code security, runs test suites, catches drift, and triggers sandbox rollbacks.
+
+LEVEL 3 — 27 SPECIALIST WORKER AGENTS:
+  • Backend Specialist, Frontend Specialist, Database Specialist, Refactoring Specialist,
+    Security Auditor, Test Engineer, Vector RAG Specialist, Browser Automation Specialist,
+    and 19 other specialized roles invoked on-demand.
+
+LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS:
+  • Level 4: Directed Acyclic Graph (DAG) Task Planner & Wave-Based Executor.
+  • Level 5: Reflexion Engine & Multi-Agent Debate Arena.
+  • Level 6: Causal Knowledge Graph Memory with AST Codebase Indexing.
+  • Level 7: Dynamic Tool Discovery, Sandboxing & Bayesian EWMA Reliability.
+  • Level 8: Capability-Based Model Routing & Cognitive USD Budget Tracker.
+  • Level 9: Execution Sandbox with Filesystem Snapshot & Zero-Loss Rollback.
+  • Level 10: Drift Detection & Autonomous Self-Improvement Loop.
+
+================================================================================
+2. PREREQUISITES & ENVIRONMENT CONFIGURATION
+================================================================================
+Requirements:
+  • Python 3.11 or Python 3.12+
+  • Git installed and in PATH
+  • Optional: Docker (for air-gapped Docker sandboxing)
+  • Optional: Local LLM runner (Laya MLX on Apple Silicon / Ollama on PC/Mac/Linux)
+
+Configuration (.env):
+  Copy `.env.example` to `.env` in the project root:
+    cp .env.example .env
+
+Key Parameters:
+  • OPENAI_API_KEY      : OpenAI API key (gpt-4o, gpt-4o-mini, o3-mini)
+  • ANTHROPIC_API_KEY   : Anthropic API key (claude-3-5-sonnet, claude-3-5-haiku)
+  • GEMINI_API_KEY      : Google Gemini API key (gemini-1.5-pro, gemini-1.5-flash)
+  • DEEPSEEK_API_KEY    : DeepSeek API key (deepseek-coder, deepseek-reasoner)
+  • LAYA_MLX_URL        : http://127.0.0.1:8080 (for local Mac / PC MLX runner)
+  • OLLAMA_HOST         : http://127.0.0.1:11434 (for local Ollama runner)
+  • TELEGRAM_BOT_TOKEN  : Telegram bot token (if running in Telegram mode)
+  • SERVER_PORT         : Default is 8000
+  • COGNITIVE_BUDGET    : Maximum USD budget before safety alerts (default: 5.00)
+
+FREE BUILT-IN & LOCAL MODELS (NO API KEYS NEEDED):
+  1. Puter.js (Cloud Keyless):
+     Provides free access to 500+ frontier models: DeepSeek V4 Pro, Claude 3.5 Sonnet,
+     GPT-4o, and Llama 3.3 without any API key or credit card.
+     Usage: python cli.py --provider puter --model deepseek/deepseek-v4-pro
+  2. Completions.me:
+     Free OpenAI-compatible gateway (Claude Opus, GPT-5 class, Gemini Pro).
+     Usage: python cli.py --provider completions --model claude-sonnet-4.5
+  3. Laya MLX (Local Mac / PC):
+     Hardware-accelerated local model inference on localhost:8080.
+     Usage: python cli.py --provider laya-mlx --model local
+  4. Ollama (Offline Local Models):
+     Run DeepSeek-R1, Llama 3.2, Qwen 2.5, Mistral privately on localhost:11434.
+     Usage: python cli.py --provider ollama --model deepseek-r1:8b
+  5. LM Studio:
+     Local GGUF execution on localhost:1234.
+     Usage: python cli.py --provider lmstudio --model local-model
+  6. GPT4Free (g4f) & tGPT (tgpt):
+     Keyless automated scrapers built directly into the client.
+  7. OmniRoute:
+     Self-hosted gateway (localhost:20128) with auto-routing smart models (auto/coding, auto/fast).
+
+================================================================================
+3. LAUNCHING UNIVERSAL AGENT HP (RUN MODES)
+================================================================================
+Universal Agent HP provides three unified entry points via `run.py`:
+
+MODE A: WEB CONTROL PANEL (Recommended for UI & Visualization)
+  Command:
+    python run.py
+  Description:
+    Launches FastAPI server and automatically opens browser at http://localhost:8000.
+    Features live chat, staff roster, DAG visualization, model routing breakdown,
+    tool reliability telemetry, and knowledge graph viewer.
+  Flags:
+    --port <port>       : Custom port (e.g. python run.py --port 8080)
+    --no-browser        : Suppresses automatic browser launch
+
+MODE B: INTERACTIVE CLI (Recommended for Terminal Power Users)
+  Command:
+    python run.py --cli
+    # OR directly:
+    python cli.py
+  Description:
+    Launches rich interactive command prompt with streaming output, hotkeys,
+    and slash commands (/help, /clear, /status, /model, /tools, /dag).
+
+MODE C: TELEGRAM BOT (Remote Agent Assistant)
+  Command:
+    python run.py --telegram
+  Description:
+    Runs the Telegram daemon connecting to the configured TELEGRAM_BOT_TOKEN.
+    Allows talking to Titan, checking system status, running commands, and receiving
+    notifications directly from your phone.
+
+================================================================================
+4. INTERACTIVE CLI & COMMAND-LINE INTERFACE FLAGS
+================================================================================
+You can invoke Titan non-interactively or with specialized autonomous modes:
+
+1. CEO META-ORCHESTRATOR EXECUTION:
+   python cli.py --meta "Build an authentication REST API with JWT in FastAPI"
+   Executes task using Daraja 1 Meta-Orchestrator and 4 Team Leads.
+
+2. DIRECTED ACYCLIC GRAPH (DAG) PARALLEL PLANNER:
+   python cli.py --dag "Refactor backend database schema and update endpoints"
+   Decomposes goal into dependency graph, executes independent tasks in parallel waves.
+
+3. REASONING STRATEGY SELECTION:
+   python cli.py --strategy debate "Should we use PostgreSQL or MongoDB for telemetry?"
+   python cli.py --strategy reflexion "Write an optimized LRU cache in Python"
+   Available strategies: standard, tot, mcts, debate, reflexion, dag, meta.
+
+4. TARGET A SPECIFIC STAFF SPECIALIST:
+   python cli.py --staff BackendDev "Implement rate limiting middleware"
+   python cli.py --staff SecurityAuditor "Scan codebase for SQL injection vulnerabilities"
+
+5. SPECIFY PROVIDER & MODEL:
+   python cli.py --provider deepseek --model deepseek-reasoner "Solve logic problem"
+   python cli.py --provider laya_mlx "Explain quantum computing locally"
+
+6. REPL SLASH COMMANDS (Inside CLI):
+   /help             - Shows help manual
+   /status           - Shows agent health, token spend, active models
+   /model <tier>     - Switch model tier (fast, standard, deep)
+   /dag <goal>       - Trigger inline DAG execution
+   /debate <query>   - Launch multi-agent debate
+   /rollback <snap>  - Revert workspace to filesystem snapshot
+   /clear            - Reset current conversation context
+   /exit             - Exit CLI session
+
+================================================================================
+5. COGNITIVE REASONING STRATEGIES & PLANNING ENGINES
+================================================================================
+Universal Agent HP offers six distinct reasoning engines:
+
+1. STANDARD (ReAct Loop):
+   Ideal for quick lookups, simple edits, and single-file modifications.
+
+2. TREE OF THOUGHTS (ToT):
+   Generates multiple parallel branching hypotheses, scores them, and selects the
+   optimal trajectory.
+
+3. MONTE CARLO TREE SEARCH (MCTS):
+   Four-phase loop: Selection -> Expansion -> Simulation -> Backpropagation.
+   Best for formal algorithmic problems and game-tree explorations.
+
+4. MULTI-AGENT DEBATE:
+   Spawns two adversarial agents:
+     • Advocate (proposes thesis and architecture)
+     • Skeptic (identifies edge cases, security flaws, race conditions)
+     • Judge/Arbitrator (synthesizes the winning compromise)
+   Tool: debate_solve(question, rounds)
+
+5. REFLEXION LOOP:
+   Autonomous self-critique engine:
+     Initial Solution -> Self-Critique Evaluation -> Refined Solution.
+   Iterates up to 3 cycles until score meets threshold.
+   Tool: reflexion_solve(task)
+
+6. TASK GRAPH (DAG) PLANNER:
+   Uses topological sort and Kahn's algorithm to compute dependency waves.
+   Independent tasks execute concurrently (`max_concurrency=4`).
+   If a task fails, performs selective replanning on only downstream nodes.
+   Tool: dag_plan_and_run(goal), dag_visualize(goal)
+
+================================================================================
+6. KNOWLEDGE GRAPH MEMORY & AST INTEL
+================================================================================
+Titan maintains a persistent causal and structural graph of the workspace:
+
+CAPABILITIES:
+  • AST Workspace Indexer: Automatically parses Python source files, extracting
+    classes, functions, inheritance hierarchies, and import dependencies.
+  • Causal Fact Graph: Stores semantic associations, constraints, and operational rules.
+  • Blast Radius / Impact Analysis: Before editing a function or file, calculates
+    all downstream callers and affected components to prevent unintended breakage.
+
+TOOLS:
+  • kg_query(entity_id, depth)        : Queries multi-hop relations around an entity.
+  • kg_impact_analysis(entity_id)     : Calculates affected blast-radius.
+  • kg_add_fact(source, rel, target)  : Inserts semantic relationship.
+  • kg_index_workspace(max_files)     : Scans AST of workspace files into graph.
+
+================================================================================
+7. MODEL ROUTER & COGNITIVE BUDGET MANAGEMENT
+================================================================================
+Prevents prompt token waste while ensuring high-complexity tasks get elite reasoning:
+
+MODEL TIERS:
+  1. FAST_CHEAP (e.g. gpt-4o-mini, gemini-1.5-flash, claude-3-5-haiku):
+     Lightweight tasks: summaries, file reads, formatting, status checks.
+  2. STANDARD_CODING (e.g. claude-3-5-sonnet, gpt-4o, deepseek-coder):
+     General software engineering, API development, refactoring, test suites.
+  3. DEEP_REASONING (e.g. o3-mini, deepseek-reasoner, o1):
+     Architectural trade-offs, formal logic, multi-agent debates, race condition debugging.
+
+DYNAMIC FAILURE ESCALATION:
+  If a task fails or triggers retries, the router automatically escalates:
+    FAST_CHEAP  -->  STANDARD_CODING  -->  DEEP_REASONING
+
+COGNITIVE BUDGET:
+  Tracks cumulative input/output tokens and real-time USD expenditure.
+  Emits safety warnings when budget limit is approached.
+
+TOOLS:
+  • model_route(task, prior_failures) : Recommends optimal tier and pricing estimate.
+  • model_budget_status()             : Renders token spend and USD expense report.
+
+================================================================================
+8. EXECUTION SANDBOX, ISOLATION & ZERO-LOSS ROLLBACK
+================================================================================
+Guarantees that exploratory or unsafe code never damages your host workspace:
+
+FILESYSTEM SNAPSHOTS:
+  • Captures point-in-time byte snapshots of all workspace files up to 5 MB per file.
+  • Automatically ignores transient dirs (.git, .venv, __pycache__, node_modules).
+  • Computes SHA-256 integrity hashes and structured diffs (added/removed/modified).
+
+TRANSACTIONAL ROLLBACK:
+  • Modified files are reverted to exact original bytes.
+  • Deleted files are recreated.
+  • Malicious or newly created temporary files are safely removed.
+
+SAFE RUNNER & SECURITY SCREENING:
+  • Scans code before execution, blocking dangerous patterns:
+    - Fork bombs (:(){ :|:& };:)
+    - Root / disk wiping (rm -rf /, format C:)
+    - Destructive file deletion calls
+  • Subprocess isolation with strict timeout enforcement (default: 30s).
+  • Auto-Rollback: If script crashes or times out, instantly reverts all changes.
+
+TOOLS:
+  • sandbox_execute(code, language, timeout, rollback_on_failure) : Executes code safely.
+  • sandbox_snapshot_create(name)    : Captures named workspace snapshot.
+  • sandbox_snapshot_rollback(name)  : Restores workspace to snapshot state.
+
+================================================================================
+9. DRIFT DETECTION & PERFORMANCE MONITORING
+================================================================================
+Monitors agent quality over time to detect regressions and performance decay:
+
+TELEMETRY TRACKING:
+  • Logs task ID, timestamp, domain category, success/failure, step count,
+    latency duration, tokens used, and failing tools.
+  • Persists to `.titan/drift_metrics.json`.
+
+SLIDING-WINDOW COMPARATIVE ANALYSIS:
+  • Compares recent window of N tasks against historical baseline.
+  • Detects:
+    - Success Rate Drop (>= 20% -> WARNING, >= 35% -> CRITICAL).
+    - Step Inflation (>= 1.8x -> detects exploratory thrashing / infinite loops).
+    - Latency Degradation.
+
+ROOT-CAUSE DIAGNOSTICS:
+  • Identifies which tools fail most frequently.
+  • Issues actionable mitigation advice (e.g. upgrade model tier, activate DAG planner).
+
+TOOLS:
+  • drift_record_task(...)           : Logs execution telemetry.
+  • drift_check(window_size, drop)   : Analyzes health and returns drift report.
+  • drift_status()                   : Shows cumulative success rate and metrics.
+
+================================================================================
+10. SELF-IMPROVEMENT LOOP & REGRESSION EVAL SUITE
+================================================================================
+Enables Universal Agent HP to learn from its past mistakes across sessions:
+
+1. FAILURE ANALYSIS:
+   Examines execution tracebacks and classifies failure into:
+     • AST syntax error -> generates surgical replacement rule.
+     • Timeout error -> generates DAG task decomposition rule.
+     • Tool failure -> generates parameter validation rule.
+   Tool: self_improve_analyze_failure(task_id, prompt, failure_log, failed_tools)
+
+2. PROMPT EVOLUTION:
+   Synthesizes system prompt refinements incorporating lessons learned as unified diffs.
+
+3. LESSON CRYSTALLIZATION:
+   Permanently saves distilled insight into:
+     • SkillRegistry: Saved as auto-injected playbook in `skills/`.
+     • KnowledgeGraph: Linked as causal avoidance rule.
+   Tool: self_improve_crystallize_lesson(lesson_title, guidance, category)
+
+4. REGRESSION EVAL BENCHMARK SUITE:
+   Automated regression suite verifying coding, reasoning, security, and git tasks.
+   Calculates pass rate, average quality score, and execution duration.
+   Tool: self_improve_eval_run(category)
+
+================================================================================
+11. MANDATORY AGENT RULES OF ENGAGEMENT (OPERATIONAL LAWS)
+================================================================================
+The following rules MUST be followed by the agent at all times during operation:
+
+LAW 1 — ZERO DATA LOSS:
+  Before performing any bulk modification or high-risk refactoring, the agent MUST
+  take a snapshot using `sandbox_snapshot_create`. If an error occurs, it MUST
+  rollback or heal the corrupted state.
+
+LAW 2 — READ BEFORE EDITING:
+  The agent must NEVER blindly edit a file without first viewing the relevant lines
+  or checking its AST relationships.
+
+LAW 3 — SURGICAL MODIFICATION OVER BLIND OVERWRITES:
+  For Python code, prefer `ast_patch_file` or targeted diffs over full-file
+  overwrites to prevent indentation or syntax breakages.
+
+LAW 4 — CONTEXT EFFICIENCY:
+  Do not overload system prompts with all 60+ tool schemas. Use `tool_discover`
+  or dynamic domain bundles to inject only relevant tools.
+
+LAW 5 — ESCALATE ON REPEATED FAILURES:
+  If a task fails on FAST_CHEAP model tier, do not loop endlessly on the same tier.
+  Escalate to STANDARD_CODING or DEEP_REASONING via `model_route`.
+
+LAW 6 — CONCURRENT INDEPENDENCE:
+  Tasks that do not depend on each other MUST be planned via DAG and executed
+  in parallel waves to maximize performance and minimize turnaround time.
+
+LAW 7 — PERMANENT LEARNING:
+  When a novel error is encountered and resolved, the resolution MUST be crystallized
+  via `self_improve_crystallize_lesson` so future tasks benefit immediately.
+
+================================================================================
+12. TROUBLESHOOTING & FREQUENTLY ASKED QUESTIONS
+================================================================================
+Q1: Web UI does not start or port 8000 is occupied.
+A1: Launch on another port:
+    python run.py --port 8085
+
+Q2: How do I run Titan completely locally without external API keys?
+A2: Install and start Laya MLX or Ollama. Set in your `.env`:
+    LAYA_MLX_URL=http://127.0.0.1:8080
+    OLLAMA_HOST=http://127.0.0.1:11434
+    Then run:
+    python cli.py --provider laya_mlx --model local
+
+Q3: A command modified files incorrectly. How do I revert?
+A3: If you captured a snapshot:
+    python cli.py --meta "/rollback <snapshot_name>"
+    Or via tool:
+    sandbox_snapshot_rollback(name="<snapshot_name>")
+
+Q4: How do I run the full self-test suite to verify system integrity?
+A4: Run pytest across the whole repository:
+    python -m pytest tests
+    Expected output: 600+ passed, 0 failures.
+
+Q5: How do I check current token and financial expenditure?
+A5: Use the budget status tool:
+    python cli.py "/model"
+    Or programmatically call `model_budget_status()`.
+
+================================================================================
+END OF UNIVERSAL AGENT HP OPERATIONAL MANUAL
+================================================================================
