@@ -1,11 +1,24 @@
-# ⚡ TITAN AGENT — Autonomous Cognitive AI Operating System (Genesis Edition)
+# ⚡ TITAN AGENT — Autonomous Cognitive AI Operating System
+### *The First 10-Layer Autonomous AI Software Company in Your Terminal — 100% Free, Zero-Key, and Air-Gapped Private.*
 
 [![CI - Test Suite](https://img.shields.io/badge/Test%20Suite-600%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kapitan00000978-sketch/Titan-agent-)
 [![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Architecture](https://img.shields.io/badge/Architecture-Genesis%20Levels%201--10-purple.svg)](docs/titan-agent-master-architecture.md)
+[![Models](https://img.shields.io/badge/Models-500+%20Keyless%20%26%20Local-orange.svg)](#-supported-models-zero-key--out-of-the-box)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Titan Agent** is an enterprise-grade **Autonomous Hierarchical Cognitive AI Operating System** built on the Genesis Architecture (Levels 1–10). Unlike single-prompt bots or sequential ReAct loops, Titan Agent functions like an autonomous tech enterprise: **CEO Meta-Orchestrator → 4 Department Leads → 27 Worker Specialists → Directed Acyclic Graph (DAG) Parallel Execution → Zero-Loss Sandbox Rollback → Longitudinal Drift Detection → Autonomous Self-Improvement Loop**.
+> 💡 **Stop paying $500/month for cloud coding agents that hallucinate, leak private corporate code, and get trapped in infinite loops.**  
+> **Titan Agent** replaces brittle single-prompt bots with an enterprise-grade autonomous software organization: a **CEO Meta-Orchestrator**, **4 Department Leads**, and **27 Worker Specialists** executing concurrent **DAG dependency waves** with **SHA-256 zero-loss rollback** and **continuous self-improvement**. Run frontier intelligence (**DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-4o**) completely free with **zero API keys**, or 100% offline via **local Apple MLX & Ollama**.
+
+---
+
+### 🔥 Why Developers & Teams Choose Titan Agent:
+- 🚀 **100% Free Forever, Zero API Keys Required**: Instant out-of-the-box access to 500+ frontier models (DeepSeek-R1, Claude 3.5, GPT-4o) via Puter.js, or run completely offline with Laya MLX / Ollama.
+- 🏢 **An Entire Tech Company in One CLI**: Not a toy prompt-wrapper. Titan routes tasks through a CEO, 4 Team Leads (CTO, Chief Scientist, DevOps, QA), and 27 isolated specialists.
+- ⚡ **Kahn's DAG Wave Execution**: No more slow sequential loops. Independent tasks run concurrently in parallel waves; failing branches replan dynamically without losing completed work.
+- 🛡️ **Zero-Loss Filesystem Rollback**: Real byte-level SHA-256 snapshots before destructive actions. One command restores your codebase to its exact original state if an agent makes a mistake.
+- 🧠 **AST Causal Intelligence & Blast-Radius**: Calculates caller/callee ripples before editing code so unexpected regression bugs are eliminated before they happen.
+- 📈 **Continuous Self-Improvement (Level 10)**: Diagnoses drift, turns failed test runs into permanent playbooks, and self-tunes its reasoning prompts autonomously.
 
 ---
 
