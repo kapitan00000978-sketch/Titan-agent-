@@ -35,33 +35,38 @@ OMNI_BASE_URL = os.getenv("OMNI_BASE_URL", "http://localhost:20128/v1")
 OMNI_MODEL = os.getenv("OMNI_MODEL", "auto")
 OMNI_AUTO_MODELS = ("auto", "auto/coding", "auto/fast", "auto/smart", "auto/offline", "auto/cheap")
 
-# If an API key is present, default to that provider; otherwise seamlessly use local Ollama!
-# Precedence: OpenRouter -> OmniRoute -> Kimi K3 -> GLM-5.3 Flash -> DeepSeek -> Groq -> OpenAI -> Ollama.
-if OPENROUTER_API_KEY:
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "openrouter")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", "nousresearch/hermes-3-llama-3.1-405b:free")
-elif OMNI_API_KEY:
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "omni")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", OMNI_MODEL)
-elif KIMI_API_KEY:
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "kimi")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", KIMI_MODEL)
-elif GLM_API_KEY:
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "glm")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", GLM_MODEL)
+# Default provider resolution:
+env_provider = os.getenv("TITAN_PROVIDER")
+env_model = os.getenv("TITAN_MODEL")
+
+if env_provider:
+    DEFAULT_PROVIDER = env_provider
+    DEFAULT_MODEL = env_model or ("gpt-4o" if env_provider == "g4f" else ("auto" if env_provider == "omni" else "hermes3:8b"))
+elif OPENROUTER_API_KEY:
+    DEFAULT_PROVIDER = "openrouter"
+    DEFAULT_MODEL = "nousresearch/hermes-3-llama-3.1-405b:free"
 elif DEEPSEEK_API_KEY:
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "deepseek")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", "deepseek-chat")
+    DEFAULT_PROVIDER = "deepseek"
+    DEFAULT_MODEL = "deepseek-chat"
 elif GROQ_API_KEY:
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "groq")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", "llama-3.3-70b-versatile")
+    DEFAULT_PROVIDER = "groq"
+    DEFAULT_MODEL = "llama-3.3-70b-versatile"
 elif OPENAI_API_KEY:
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "openai")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", "gpt-4o")
+    DEFAULT_PROVIDER = "openai"
+    DEFAULT_MODEL = "gpt-4o"
+elif KIMI_API_KEY:
+    DEFAULT_PROVIDER = "kimi"
+    DEFAULT_MODEL = KIMI_MODEL
+elif GLM_API_KEY:
+    DEFAULT_PROVIDER = "glm"
+    DEFAULT_MODEL = GLM_MODEL
+elif OMNI_API_KEY:
+    DEFAULT_PROVIDER = "omni"
+    DEFAULT_MODEL = OMNI_MODEL
 else:
-    # Default to Local Ollama hermes3:8b directly installed on user's machine!
-    DEFAULT_PROVIDER = os.getenv("TITAN_PROVIDER", "ollama")
-    DEFAULT_MODEL = os.getenv("TITAN_MODEL", "hermes3:8b")
+    # 100% Free zero-key out-of-the-box provider: g4f (GPT4Free)
+    DEFAULT_PROVIDER = "g4f"
+    DEFAULT_MODEL = "gpt-4o"
 
 # ---- Phase 13: provider fallback chain -------------------------------
 # When the primary LLM provider fails with a network / rate-limit / server
