@@ -215,16 +215,42 @@
           <div class="form-group">
             <label for="provider-select">LLM Provider</label>
             <select id="provider-select">
-              <option value="omni">🚀 OmniRoute (auto-routing — Claude/DeepSeek/GLM)</option>
-              <option value="puter">🌐 Puter.js (DeepSeek V4 — Instant, No API Key)</option>
+              <option value="puter">🌐 Puter.js (DeepSeek V4 / Claude 3.5 — Instant, No Key)</option>
+              <option value="g4f">✨ GPT4Free (100% Free, Zero-Key)</option>
+              <option value="gemini">💎 Google Gemini (Free Key — 1,500 req/day)</option>
+              <option value="groq">⚡ Groq Cloud (Free Ultra-Fast LPU — 30 req/min)</option>
+              <option value="openrouter">🚀 OpenRouter (20+ Free Models)</option>
+              <option value="sambanova">⚡ SambaNova (Free Fast LLaMA 3.3 70B & Qwen)</option>
+              <option value="github">🐙 GitHub Models (Free with GitHub Token)</option>
+              <option value="mistral">🌪️ Mistral AI (Codestral Free Tier)</option>
+              <option value="huggingface">🤗 Hugging Face (Free Inference Token)</option>
               <option value="ollama">🖥️ Ollama (Local Model on Your Computer)</option>
-              <option value="openrouter">OpenRouter (DeepSeek, Claude, Llama 3)</option>
               <option value="deepseek">DeepSeek API (DeepSeek-V3 / R1)</option>
-              <option value="groq">Groq (Ultra-fast Llama 3)</option>
-              <option value="completions">Completions.me (FREE — Claude Opus / GPT-5 / Gemini / Grok)</option>
+              <option value="completions">Completions.me (FREE Gateway)</option>
               <option value="lmstudio">LM Studio (Local server: 1234)</option>
               <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+              <option value="omni">🚀 OmniRoute (auto-routing — Claude/DeepSeek/GLM)</option>
             </select>
+          </div>
+
+          <!-- Free API Key Providers Hub -->
+          <div class="form-group" style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:8px; padding:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:12px; font-weight:bold; color:var(--accent-emerald);">🎁 100% Free API Key Platforms:</span>
+              <span style="font-size:11px; color:var(--text-muted);">Click to auto-configure</span>
+            </div>
+            <div id="free-providers-chips" style="display:flex; gap:5px; flex-wrap:wrap;">
+              <button type="button" class="tiny-btn free-prov-btn" data-prov="gemini" data-model="gemini-2.0-flash" data-url="https://generativelanguage.googleapis.com/v1beta/openai/" data-portal="https://aistudio.google.com/app/apikey" style="border-color:#38bdf8; color:#38bdf8;">💎 Google Gemini</button>
+              <button type="button" class="tiny-btn free-prov-btn" data-prov="groq" data-model="llama-3.3-70b-versatile" data-url="https://api.groq.com/openai/v1" data-portal="https://console.groq.com/keys" style="border-color:#f59e0b; color:#f59e0b;">⚡ Groq LPU</button>
+              <button type="button" class="tiny-btn free-prov-btn" data-prov="openrouter" data-model="meta-llama/llama-3.3-70b-instruct:free" data-url="https://openrouter.ai/api/v1" data-portal="https://openrouter.ai/keys" style="border-color:#10b981; color:#10b981;">🚀 OpenRouter (Free)</button>
+              <button type="button" class="tiny-btn free-prov-btn" data-prov="sambanova" data-model="Meta-Llama-3.3-70B-Instruct" data-url="https://api.sambanova.ai/v1" data-portal="https://cloud.sambanova.ai/apis" style="border-color:#c084fc; color:#c084fc;">⚡ SambaNova</button>
+              <button type="button" class="tiny-btn free-prov-btn" data-prov="github" data-model="gpt-4o" data-url="https://models.inference.ai.azure.com" data-portal="https://github.com/settings/tokens" style="border-color:#e2e8f0; color:#e2e8f0;">🐙 GitHub Models</button>
+              <button type="button" class="tiny-btn free-prov-btn" data-prov="mistral" data-model="codestral-latest" data-url="https://api.mistral.ai/v1" data-portal="https://console.mistral.ai/api-keys/" style="border-color:#fb923c; color:#fb923c;">🌪️ Mistral / Codestral</button>
+            </div>
+            <div id="free-portal-info" style="margin-top:8px; font-size:11px; display:none; padding:6px 8px; background:rgba(0,0,0,0.3); border-radius:6px;">
+              <span id="free-portal-msg"></span>
+              <a id="free-portal-link" href="#" target="_blank" style="color:var(--accent-emerald); font-weight:bold; margin-left:6px; text-decoration:underline;">🔑 Bepul API Key olish ↗</a>
+            </div>
           </div>
 
           <div class="form-group">

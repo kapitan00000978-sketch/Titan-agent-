@@ -226,6 +226,12 @@ async def update_config(req: ConfigUpdateRequest):
         "full_access": full_access_enabled(),
     }
 
+@app.get("/api/free-providers")
+async def get_free_providers_endpoint():
+    """Return catalog of free API key providers and models."""
+    from titan_agent.free_providers import get_free_providers
+    return {"providers": get_free_providers()}
+
 @app.get("/api/mcp/tools")
 async def get_mcp_tools():
     servers_info = {}

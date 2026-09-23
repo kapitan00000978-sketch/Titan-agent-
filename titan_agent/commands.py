@@ -152,6 +152,7 @@ COMMANDS = {
 LOCAL_COMMANDS = {
     "help": "List all slash commands and usage.",
     "dashboard": "Display interactive system and agent dashboard.",
+    "free-models": "View all free API key platforms, registration portals, and free models. Usage: /free-models [provider]",
     "security-status": "View real-time Dual-Shield security defense and sentinel status.",
     "banned-ips": "View and manage defensively banned IP addresses and Geo-logs. Usage: /banned-ips [unban <ip>]",
     "files": "Browse workspace files and project structure. Usage: /files [filter]",

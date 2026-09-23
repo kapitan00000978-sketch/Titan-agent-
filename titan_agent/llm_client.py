@@ -23,6 +23,16 @@ from .config import (
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     OPENROUTER_API_KEY,
+    GEMINI_API_KEY,
+    GEMINI_BASE_URL,
+    SAMBANOVA_API_KEY,
+    SAMBANOVA_BASE_URL,
+    GITHUB_TOKEN,
+    GITHUB_MODELS_BASE_URL,
+    MISTRAL_API_KEY,
+    MISTRAL_BASE_URL,
+    HUGGINGFACE_API_KEY,
+    HUGGINGFACE_BASE_URL,
     provider_default_model,
     provider_fallback_chain,
     provider_fallback_models,
@@ -38,6 +48,11 @@ log = logging.getLogger(__name__)
 _PROVIDER_API_KEY_ATTR = {
     "openrouter": "OPENROUTER_API_KEY",
     "groq": "GROQ_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "sambanova": "SAMBANOVA_API_KEY",
+    "github": "GITHUB_TOKEN",
+    "mistral": "MISTRAL_API_KEY",
+    "huggingface": "HUGGINGFACE_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
     "kimi": "KIMI_API_KEY",
     "glm": "GLM_API_KEY",
@@ -119,6 +134,26 @@ class LLMClient:
             # Completions.me — free OpenAI-compatible gateway (Claude Opus/GPT-5/Gemini/Grok).
             self.base_url = COMPLETIONS_BASE_URL
             self.api_key = COMPLETIONS_API_KEY
+        elif self.provider == "gemini":
+            # Google AI Studio (Gemini 2.0 Flash / Pro)
+            self.base_url = GEMINI_BASE_URL
+            self.api_key = GEMINI_API_KEY
+        elif self.provider == "sambanova":
+            # SambaNova Cloud (LLaMA 3.3 70B, Qwen 2.5 Coder)
+            self.base_url = SAMBANOVA_BASE_URL
+            self.api_key = SAMBANOVA_API_KEY
+        elif self.provider == "github":
+            # GitHub Models (GPT-4o, Phi-4, LLaMA)
+            self.base_url = GITHUB_MODELS_BASE_URL
+            self.api_key = GITHUB_TOKEN
+        elif self.provider == "mistral":
+            # Mistral AI / Codestral
+            self.base_url = MISTRAL_BASE_URL
+            self.api_key = MISTRAL_API_KEY
+        elif self.provider == "huggingface":
+            # Hugging Face Serverless Inference
+            self.base_url = HUGGINGFACE_BASE_URL
+            self.api_key = HUGGINGFACE_API_KEY
         else:
             self.base_url = OPENAI_BASE_URL
             self.api_key = OPENAI_API_KEY

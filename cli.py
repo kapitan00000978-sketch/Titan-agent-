@@ -348,6 +348,32 @@ def _render_banned_ips(action_arg: str = "") -> Panel:
     )
 
 
+def _render_free_models(filter_arg: str = "") -> Panel:
+    """Render comprehensive Free API Key Providers & Models Catalog."""
+    from titan_agent.free_providers import get_free_providers
+    providers = get_free_providers()
+    filter_clean = filter_arg.strip().lower()
+
+    if filter_clean:
+        providers = [p for p in providers if filter_clean in p["id"].lower() or filter_clean in p["name"].lower()]
+
+    table = Table(show_header=True, header_style="bold cyan", box=None, padding=(0, 1), expand=True)
+    table.add_column("Platform & Portal Link", style="bold green", width=32)
+    table.add_column("Type / Free Quota", style="yellow", width=34)
+    table.add_column("Top Free Models", style="white", ratio=2)
+
+    for p in providers:
+        key_type = "✨ [bold green]100% Zero-Key[/bold green]" if p["no_key_required"] else f"🔑 [bold cyan]{p['env_var']}[/bold cyan]"
+        prov_info = f"[bold white]{p['name']}[/bold white]\n[dim cyan]{p['portal_url']}[/dim cyan]"
+        tier_info = f"{key_type}\n[dim]{p['free_tier_info']}[/dim]"
+        models_str = "\n".join(f"• [bold]{m['name']}[/bold]: [dim]{m['id']}[/dim]" for m in p["models"][:3])
+        table.add_row(prov_info, tier_info, models_str)
+
+    title_text = f"[bold green]🎁 FREE API KEY PLATFORMS & MODELS HUB ({len(providers)} Available)[/bold green]"
+    sub_text = "[dim]To use: get free key from link, set in .env or run `universal --provider <id> --model <model>`[/dim]"
+    return Panel(table, title=title_text, subtitle=sub_text, border_style="green", padding=(1, 2))
+
+
 def _bottom_toolbar(provider: str, model: str, mode: str, effort: str):
     """Bottom toolbar for prompt_toolkit showing current status."""
     return HTML(
@@ -541,6 +567,8 @@ async def main():
                         ))
                     elif name_l == "dashboard":
                         console.print(_build_dashboard(provider, model, mode, effort, mcp_count, tool_count))
+                    elif name_l == "free-models":
+                        console.print(_render_free_models(local.get("arg", "")))
                     elif name_l == "security-status":
                         console.print(_render_security_status())
                     elif name_l == "banned-ips":

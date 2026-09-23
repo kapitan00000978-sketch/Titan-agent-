@@ -306,6 +306,32 @@ function setupEventListeners() {
     });
   });
 
+  // Free Provider Hub buttons
+  const freePortalInfo = document.getElementById("free-portal-info");
+  const freePortalMsg = document.getElementById("free-portal-msg");
+  const freePortalLink = document.getElementById("free-portal-link");
+
+  document.querySelectorAll(".free-prov-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const prov = btn.dataset.prov;
+      const model = btn.dataset.model;
+      const url = btn.dataset.url;
+      const portal = btn.dataset.portal;
+
+      providerSelect.value = prov;
+      modelInput.value = model;
+      baseUrlInput.value = url || "";
+      apiKeyInput.focus();
+
+      if (freePortalInfo && freePortalMsg && freePortalLink) {
+        freePortalInfo.style.display = "block";
+        freePortalMsg.textContent = `${btn.textContent.trim()} tanlandi! Bepul kalit olish:`;
+        freePortalLink.href = portal;
+        freePortalLink.textContent = `🔑 Portalga o'tish (Bepul) ↗`;
+      }
+    });
+  });
+
   // When provider changes: open the model browser automatically for Puter
   providerSelect.addEventListener("change", () => {
     if (providerSelect.value === "puter") {

@@ -28,12 +28,26 @@ GLM_API_KEY = os.getenv("GLM_API_KEY", "")
 GLM_BASE_URL = os.getenv("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
 GLM_MODEL = os.getenv("GLM_MODEL", "glm-5.3-flash")
 # OmniRoute — self-hosted AI gateway (localhost:20128) with smart auto-routing
-# virtual models: auto, auto/coding, auto/fast, auto/smart, auto/offline, auto/cheap.
-# It routes each request to the best available provider/model automatically.
 OMNI_API_KEY = os.getenv("OMNI_API_KEY", "")
 OMNI_BASE_URL = os.getenv("OMNI_BASE_URL", "http://localhost:20128/v1")
 OMNI_MODEL = os.getenv("OMNI_MODEL", "auto")
 OMNI_AUTO_MODELS = ("auto", "auto/coding", "auto/fast", "auto/smart", "auto/offline", "auto/cheap")
+
+# Additional Free Tier API Key Providers:
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+
+SAMBANOVA_API_KEY = os.getenv("SAMBANOVA_API_KEY", "")
+SAMBANOVA_BASE_URL = os.getenv("SAMBANOVA_BASE_URL", "https://api.sambanova.ai/v1")
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_MODELS_BASE_URL = os.getenv("GITHUB_MODELS_BASE_URL", "https://models.inference.ai.azure.com")
+
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+MISTRAL_BASE_URL = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
+
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
+HUGGINGFACE_BASE_URL = os.getenv("HUGGINGFACE_BASE_URL", "https://api-inference.huggingface.co/v1")
 
 # Default provider resolution:
 env_provider = os.getenv("TITAN_PROVIDER")
@@ -109,6 +123,11 @@ def provider_default_model(provider: str) -> str | None:
         "lmstudio": "local-model",
         "g4f": "gpt-4o",
         "tgpt": "auto",
+        "gemini": "gemini-2.0-flash",
+        "sambanova": "Meta-Llama-3.3-70B-Instruct",
+        "github": "gpt-4o",
+        "mistral": "codestral-latest",
+        "huggingface": "meta-llama/Llama-3.2-3B-Instruct",
     }.get(provider)
 
 # ---- Phase 17: bounded parallel tool execution -------------------------

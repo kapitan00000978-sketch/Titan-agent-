@@ -158,13 +158,23 @@ Universal Agent HP requires **zero paid subscriptions or mandatory API keys**. I
 - **Grok Beta / Grok 2** (Real-time data-driven synthesis)
 *Accessed instantly via Puter.js, Completions.me gateway, GPT4Free (`g4f`), and Python-tGPT (`tgpt`).*
 
-### 💻 Local & Air-Gapped Models (100% Offline & Private)
-- **Laya MLX**: Hardware-accelerated local Apple Silicon & PC engine (Apple Unified Memory / Metal optimized).
-- **Ollama**: Native execution for `deepseek-r1:8b/14b/32b`, `llama3.2`, `qwen2.5-coder`, `mistral`, `phi-4`, and `codellama`.
-- **LM Studio**: Any open-weights GGUF quantized model running on `localhost:1234`.
-- **OmniRoute**: Smart auto-routing load balancer across local nodes.
+### 🎁 Free API Key Platforms & Keyless Models Hub
+Universal Agent HP allows you to plug in and use today's best free API platforms without paying a single cent. View them in CLI via `/free-models` or in the Web UI:
 
-> 💡 **Tip**: Leave all API keys blank in `.env` and run `python cli.py --provider puter --model deepseek/deepseek-v4-pro` or `--provider ollama --model deepseek-r1:8b` to run completely free!
+| Platform | Registration Link (Free Key) | Top Free Models | Free Quota / Limits |
+| :--- | :--- | :--- | :--- |
+| **Google AI Studio** | [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-1.5-pro` | 15 req/min, 1,500 req/day (Free Forever) |
+| **Groq Cloud** | [console.groq.com/keys](https://console.groq.com/keys) | `llama-3.3-70b-versatile`, `mixtral-8x7b` | 30 req/min, 500+ tokens/sec on LPU |
+| **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | `deepseek/deepseek-r1:free`, `llama-3.3-70b:free` | 20+ models completely free |
+| **SambaNova Cloud** | [cloud.sambanova.ai/apis](https://cloud.sambanova.ai/apis) | `Meta-Llama-3.3-70B-Instruct`, `Qwen2.5-Coder` | High-speed SN40L chip developer tier |
+| **GitHub Models** | [github.com/settings/tokens](https://github.com/settings/tokens) | `gpt-4o`, `Phi-4`, `llama-3.1-70b` | Free with standard GitHub Personal Access Token |
+| **Mistral AI** | [console.mistral.ai/api-keys/](https://console.mistral.ai/api-keys/) | `codestral-latest`, `mistral-small` | Free developer tier for coding |
+| **Hugging Face** | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) | `Llama-3.2-3B`, `Qwen2.5-Coder-32B` | Free serverless inference user token |
+| **Puter.js** | [developer.puter.com](https://developer.puter.com) | `deepseek-v4-pro`, `claude-3-5-sonnet`, `gpt-4o` | **100% Zero-Key in browser Web UI** |
+| **GPT4Free (`g4f`)** | Built-in | `gpt-4o`, `gpt-4` | **100% Zero-Key out-of-the-box** |
+| **Ollama** | [ollama.com](https://ollama.com) | `hermes3:8b`, `qwen2.5-coder`, `deepseek-r1` | **100% Offline & Private on your PC** |
+
+> 💡 **Tip**: In CLI run `/free-models` to list all free portals and models. In the Web UI Settings, click any free provider to auto-configure and open its key generation link.
 
 ---
 
