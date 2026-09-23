@@ -12,9 +12,14 @@ model adapts ("tool X failed 40% of the time — prefer the working pattern").
 """
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import Any
+
+from .core.tools.reliability import ToolReliabilityTracker
+
+log = logging.getLogger(__name__)
 
 
 class ToolStatsCollector:
@@ -48,6 +53,10 @@ class ToolStatsCollector:
             )
             if len(self._events) > self._history:
                 del self._events[: len(self._events) - self._history]
+        try:
+            TOOL_RELIABILITY.record_call(name, ok, latency_ms=latency_ms, error=error)
+        except (RuntimeError, TypeError, ValueError, KeyError) as exc:
+            log.debug("reliability record failed for %s: %s", name, exc)
 
     def clear(self) -> None:
         with self._lock:
@@ -134,3 +143,4 @@ class ToolStatsCollector:
 # Shared process-wide collector: the agent default AND the server endpoint read
 # the same instance, so failures persist across runs on one process.
 TOOL_STATS = ToolStatsCollector()
+TOOL_RELIABILITY = ToolReliabilityTracker()

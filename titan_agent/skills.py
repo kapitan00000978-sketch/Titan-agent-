@@ -146,5 +146,23 @@ class SkillRegistry:
             if len(block) > budget:
                 block = block[:budget] + "\n...(skill truncated)"
             parts.append(block)
-            budget -= len(block)
         return "\n".join(parts)
+
+    def save_skill(self, name: str, description: str, keywords: str, guidance: str) -> Path:
+        """Create or update a skill markdown file with front-matter."""
+        name_clean = re.sub(r"[^a-zA-Z0-9_\-]", "-", str(name).strip().lower()).strip("-")
+        if not name_clean:
+            raise ValueError("Skill name must contain alphanumeric characters.")
+        fpath = self.skills_dir / f"{name_clean}.md"
+        content = (
+            f"---\n"
+            f"name: {name_clean}\n"
+            f"description: {str(description or '').strip()}\n"
+            f"keywords: {str(keywords or '').strip()}\n"
+            f"---\n"
+            f"{str(guidance or '').strip()}\n"
+        )
+        self.skills_dir.mkdir(parents=True, exist_ok=True)
+        fpath.write_text(content, encoding="utf-8")
+        self.scan()
+        return fpath

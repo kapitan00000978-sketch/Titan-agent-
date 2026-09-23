@@ -102,6 +102,8 @@ def provider_default_model(provider: str) -> str | None:
         "ollama": "hermes3:8b",
         "completions": "claude-opus-4-1-20250817",
         "lmstudio": "local-model",
+        "g4f": "gpt-4o",
+        "tgpt": "auto",
     }.get(provider)
 
 # ---- Phase 17: bounded parallel tool execution -------------------------

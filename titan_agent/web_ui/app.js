@@ -171,6 +171,52 @@ async function decideHITL(requestId, decision) {
   fetchHITLPending(true);
 }
 
+// ---------- Subagent Staff Roster ----------
+async function fetchStaffRoles(force) {
+  const listEl = document.getElementById("subagents-list");
+  const countEl = document.getElementById("staff-count");
+  try {
+    const res = await apiFetch("/api/staff/roles");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const roles = (data && data.roles) || [];
+    if (countEl) countEl.textContent = String(roles.length);
+    if (!listEl) return;
+    if (!roles.length) {
+      listEl.innerHTML = '<div class="empty-hint">No subagent roles found</div>';
+      return;
+    }
+    listEl.innerHTML = roles.map((r) => {
+      const id = escapeHtml(r.id);
+      const title = escapeHtml(r.title);
+      const desc = escapeHtml(r.description);
+      return (
+        '<div class="subagent-card" onclick="selectStaffRole(' + "'" + id + "'" + ')" title="' + desc + '">' +
+          '<div class="subagent-card-info">' +
+            '<span class="subagent-card-title">' + title + '</span>' +
+            '<span class="subagent-card-desc">' + desc + '</span>' +
+          '</div>' +
+          '<span class="subagent-role-pill">' + id + '</span>' +
+        '</div>'
+      );
+    }).join("");
+  } catch (e) {
+    if (listEl) listEl.innerHTML =
+      '<div class="empty-hint">Roster unavailable</div>';
+  }
+}
+
+function selectStaffRole(roleId) {
+  const promptInput = document.getElementById("user-prompt");
+  if (!promptInput) return;
+  const current = promptInput.value;
+  const prefix = `[Delegate to ${roleId}]: `;
+  if (!current.startsWith("[Delegate to")) {
+    promptInput.value = prefix + current;
+  }
+  promptInput.focus();
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
   // Phase 12: if no API key is cached, prompt for it on first load so the very
@@ -182,6 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchConfig();
   fetchMcpTools();
   fetchWorkspaceFiles();
+  fetchStaffRoles();
   setupEventListeners();
   fetchHITLPending();                    // Phase 19: live approvals panel
   setInterval(fetchHITLPending, 5000);   // (poll pauses for 60s after failures)

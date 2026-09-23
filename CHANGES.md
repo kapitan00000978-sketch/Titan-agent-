@@ -2,6 +2,320 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 👑 Phase 30 — SELF-IMPROVEMENT LOOP & EVAL SUITE (Genesis Darajasi 10 — Cho'qqi)
+
+Completed the final pinnacle layer of the Genesis Master Architecture: autonomous self-improvement, continuous failure learning, prompt evolution diffing, and regression benchmark evaluation:
+
+### 1. Eval Suite & Regression Benchmark Framework (`titan_agent/core/self_improvement/eval_suite.py`)
+- **`EvalCase` & `EvalRunResult`**: Standardized evaluation units with keyword matching, forbidden term guards, timeout limits, and custom scoring validators.
+- **`EvalSuite`**:
+  - `CORE_BENCHMARK`: Curated multi-domain evaluation cases (`core_python_syntax`, `core_reasoning_deduction`, `core_tool_safety_refusal`, `core_git_status_inspection`).
+  - Supports category filtering (`category="coding"`, `"reasoning"`, etc.) and returns structured pass rates, duration, and quality scores.
+
+### 2. Failure Learning & Self-Improvement Engine (`titan_agent/core/self_improvement/learning_engine.py`)
+- **`ImprovementLesson`**: Structured distilled insight capturing `task_id`, `category`, `symptom`, `root_cause`, `guidance`, and `rule_text`.
+- **`SelfImprovementLoop`**:
+  - **Diagnostic Root-Cause Extraction (`analyze_failure`)**: Automatically classifies failures into AST syntax errors, execution timeouts, or tool failures, and formulates prescriptive operational rules.
+  - **Prompt Evolution (`propose_prompt_refinement`)**: Generates unified diffs proposing system prompt updates incorporating lessons learned.
+  - **Crystallization into Permanent Memory (`crystallize_lesson`)**:
+    - Converts lessons into reusable, auto-injected playbooks in `SkillRegistry`.
+    - Automatically links causal avoidance relations into the `KnowledgeGraph` (`(category) -[governed_by_rule]-> (rule)`).
+
+### 3. Agent Tools Integration (`tools.py`)
+- **New Tools in `ToolRegistry`**:
+  - `self_improve_analyze_failure(task_id, prompt, failure_log, failed_tools, category)`: Analyzes failure and extracts actionable rules.
+  - `self_improve_eval_run(category)`: Executes regression benchmark suite and reports pass rates.
+  - `self_improve_crystallize_lesson(lesson_title, guidance, category)`: Permanently saves lessons into the Skill Playbook library and Knowledge Graph.
+- Registered in `dynamic_registry.py` under `reasoning`.
+
+### 4. Verification
+- 12 unit and integration tests in `tests/test_phase30_self_improvement.py` covering core benchmark evaluation, failure analysis, prompt refinement diffing, skill and knowledge graph crystallization, and ToolRegistry invocation.
+- 100% test pass rate with clean ruff linting.
+
+## 📉 Phase 29 — DRIFT DETECTION & PERFORMANCE DEGRADATION MONITORING (Genesis Darajasi 9)
+
+Architected longitudinal agent health tracking, statistical regression alerting, and automated root-cause diagnostics:
+
+### 1. Longitudinal Telemetry & Drift Detection (`titan_agent/core/monitoring/drift_detector.py`)
+- **`TaskExecutionMetric`**:
+  - Structured record capturing `task_id`, `category`, `success: bool`, `steps: int`, `duration_sec: float`, `tokens_used: int`, `failed_tools: list[str]`, and error details.
+  - Serialization and deserialization (`to_dict` / `from_dict`).
+- **`QualityDriftDetector`**:
+  - Thread-safe sliding window comparative analysis: compares recent tasks (`window_size`) against historical baseline tasks (`baseline_size`).
+  - Automatic detection of:
+    - **Success Rate Drop**: Alerting when success falls below baseline by >= 20% (`WARNING`) or >= 35% (`CRITICAL`).
+    - **Step Inflation**: Identifies when tasks take >= 1.8x or >= 2.0x more steps than baseline (detecting exploratory thrashing).
+    - **Latency Degradation**: Computes inflation in elapsed execution time.
+  - **Root-Cause Analysis**: Identifies tool failure frequencies (`problematic_tools`), error patterns, and generates prescriptive mitigation advice (e.g. promoting LLM tier, activating DAG planner, or inspecting failing tools).
+  - **Thread-safe Persistence**: Saves and reloads telemetry from `.titan/drift_metrics.json`.
+
+### 2. Agent Tools Integration (`tools.py`)
+- **New Tools in `ToolRegistry`**:
+  - `drift_record_task(task_id, success, steps, duration_sec, tokens_used, failed_tools, category)`: Logs task performance telemetry.
+  - `drift_check(window_size, threshold_drop)`: Evaluates historical performance for degradation and returns diagnostic report.
+  - `drift_status()`: Summarizes cumulative success rate, average steps/task, and latency.
+- Integrated into `dynamic_registry.py` under `genesis_orchestrator`.
+
+### 3. Verification
+- 9 unit and integration tests in `tests/test_phase29_drift.py` covering serialization, baseline comparisons, critical drift alerts, step inflation detection, JSON persistence, and ToolRegistry invocation.
+- 100% test pass rate with clean ruff linting.
+
+## 🛡️ Phase 28 — EXECUTION SANDBOX & ISOLATED ENVIRONMENT (Genesis Darajasi 8)
+
+Engineered a zero-loss transactional filesystem snapshotting engine and isolated safe script execution runtime:
+
+### 1. Filesystem Snapshot & Rollback Engine (`titan_agent/core/sandbox/environment.py`)
+- **`FilesystemSnapshot`**:
+  - Captures point-in-time byte snapshots of all files in workspace up to 5 MB per file.
+  - Automatically filters transient and cache directories (`.git`, `.venv`, `__pycache__`, `node_modules`, etc.).
+  - Computes per-file SHA-256 integrity hashes and structured diffs (`added`, `removed`, `modified`).
+- **`SandboxEnvironment`**:
+  - Transactional rollback: completely restores modified files to snapshot state, recreates deleted files, and safely purges files created since the snapshot.
+  - Snapshot naming, cataloging, and ephemeral directory creation (`create_ephemeral_dir`).
+
+### 2. Safe Script Runner & Subprocess Isolation (`titan_agent/core/sandbox/safe_runner.py`)
+- **`SafeScriptRunner`**:
+  - Static AST and regex safety scanning (`validate_code_safety`) blocking fork bombs (`:(){ :|:& };:`), root directory wipes (`rm -rf /`), disk format attempts, and dangerous filesystem deletion calls before execution.
+  - Executes Python scripts inside isolated subprocesses with configurable timeout enforcement (default 30s, up to 300s).
+  - **Autonomous Rollback on Failure**: When `rollback_on_failure=True`, captures an automatic pre-execution snapshot and instantly reverts any file modifications if the script crashes or times out.
+- **`SandboxResult`**: Captures exit code, stdout, stderr, execution duration, and rollback status.
+
+### 3. Agent Tools Integration (`tools.py`)
+- **New Tools in `ToolRegistry`**:
+  - `sandbox_execute(code, language, timeout, rollback_on_failure)`: Safely executes code with validation, execution timing, and failure rollback.
+  - `sandbox_snapshot_create(name)`: Takes an immediate point-in-time filesystem snapshot of the workspace.
+  - `sandbox_snapshot_rollback(name)`: Restores workspace files to a previously saved snapshot.
+- Integrated into `dynamic_registry.py` under the `sandbox_verify` domain bundle.
+
+### 4. Verification
+- 11 unit and integration tests in `tests/test_phase28_sandbox.py` covering snapshots, diffs, mutations, rollbacks, timeout enforcement, security alert blocks, and ToolRegistry invocation.
+- 100% test pass rate with clean ruff linting.
+
+## 🎯 Phase 27 — CAPABILITY-BASED MODEL ROUTING & COGNITIVE BUDGET (Genesis Darajasi 7)
+
+Introduced intelligent cognitive tiering, dynamic model escalation on retries, and strict per-turn / per-session token budget accounting:
+
+### 1. Model Capability Profiler & Router (`titan_agent/core/routing/model_router.py`)
+- **`ModelTier`**:
+  - `FAST_CHEAP`: Lightweight summaries, lookups, formatting, quick file inspection (`gpt-4o-mini`, `gemini-1.5-flash`, `claude-3-5-haiku`).
+  - `STANDARD_CODING`: Complex software engineering, API implementation, refactoring, test suites (`claude-3-5-sonnet`, `gpt-4o`, `deepseek-coder`).
+  - `DEEP_REASONING`: Multi-step architectural trade-offs, formal logic, race conditions, multi-agent debates, reflexion loops (`o3-mini`, `deepseek-reasoner`, `o1`).
+- **`ModelCapabilityProfile`**: Profiles pricing ($/1M input & output tokens), context lengths, coding score, and reasoning score.
+- **Dynamic Failure Escalation**: If a task fails or triggers retries, the router automatically promotes the execution to higher tiers (`FAST_CHEAP` -> `STANDARD_CODING` -> `DEEP_REASONING`).
+
+### 2. Cognitive Budget & Token Cost Tracker (`titan_agent/core/routing/cost_tracker.py`)
+- **`CognitiveBudgetTracker`**:
+  - Thread-safe accounting of input and output tokens across every model and tier.
+  - Computes real-time USD expenditures with configurable budget thresholds (`budget_limit_usd`).
+  - Emits budget limit alerts if total cost crosses target ceilings.
+
+### 3. Agent Tools Integration (`tools.py`)
+- **New Tools in `ToolRegistry`**:
+  - `model_route(task, prior_failures)`: Evaluates task complexity, returns optimal model tier, pricing per 1k tokens, and escalation status.
+  - `model_budget_status()`: Renders human-readable report of tokens processed, USD consumed, remaining budget, and breakdown by model.
+
+### 4. Verification
+- 4 comprehensive unit tests in `tests/test_phase27_model_routing.py`.
+- 100% test pass rate across all 569 tests (568 passed, 1 skipped). Clean ruff checks.
+
+## 🛠️ Phase 26 — DYNAMIC TOOL DISCOVERY, SANDBOXING & RELIABILITY RATING (Genesis Darajasi 8)
+
+Solved the 60+ tool prompt-bloat problem and hardened tool stability with dynamic discovery, context-aware bundle pruning, EWMA reliability scoring, and tiered risk sandboxing:
+
+### 1. Tool Reliability Tracker (`titan_agent/core/tools/reliability.py`)
+- **`ToolReliabilityTracker`**: Thread-safe Bayesian/EWMA health scoring system (decay alpha=0.3) evaluating tool performance on a [0.0 - 1.0] continuous scale.
+- **Grade Tiers**:
+  - `Grade A` (>= 0.90): Highly reliable.
+  - `Grade B` (>= 0.75): Good health, minor transient issues.
+  - `Grade C` (>= 0.55): Intermittent failures, warning issued.
+  - `Grade F` (< 0.55): Degraded / brittle tool.
+- **Autonomous Mitigation Advice**: Automatically detects consecutive failure streaks and generates corrective recommendations (e.g. suggesting fallbacks or parameter verification).
+- Re-entrant `RLock` synchronization preventing self-deadlocks during report generation.
+- Full process-wide telemetry hookup with `TOOL_STATS` in `titan_agent/tool_stats.py`.
+
+### 2. Dynamic Context-Aware Tool Selection & Discovery (`titan_agent/core/tools/dynamic_registry.py`)
+- **`DynamicToolSelector`**:
+  - Always pins essential `CORE_TOOLS` (`execute_command`, `read_file`, `write_file`, `edit_file`, `list_directory`, `search_files`, `tool_discover`, `tool_reliability_report`).
+  - Categorizes 60+ tools into domain bundles: `git`, `web_browser`, `genesis_orchestrator`, `reasoning`, `knowledge_graph`, `vector_rag`, `desktop_os`, `sandbox_verify`.
+  - Intelligently scores and injects relevant domain bundles based on user task tokens and intent, reducing tool prompt bloat by ~75% while keeping all capabilities available.
+  - Deprioritizes Grade F (broken) tools during context packing.
+- **On-Demand Discovery**: `discover_tools(query, category)` performs keyword and semantic ranking across tool names, categories, and parameters.
+
+### 3. Tool Sandboxing & Risk Isolation Guard (`titan_agent/core/tools/sandboxing.py`)
+- **`ToolRiskLevel`**: `LOW` (read-only), `MEDIUM` (controlled workspace modification), `HIGH` (system execution, OS automation, network downloads).
+- **`ToolSandboxGuard`**:
+  - `SandboxMode.OFF`: Standard operational mode.
+  - `SandboxMode.STRICT`: Requires explicit `confirmed=True` flag for all `HIGH_RISK` actions.
+  - `SandboxMode.DOCKER`: Automatically blocks host execution of raw commands and enforces routing through ephemeral Docker containers.
+
+### 4. Integration & Agent Tools (`tools.py`, `tool_stats.py`)
+- **New Tools in `ToolRegistry`**:
+  - `tool_discover(query, category)`: Dynamic semantic tool discovery on demand.
+  - `tool_reliability_report()`: Structured inspection of tool grades, failure counts, and health statuses.
+
+### 5. Verification
+- 4 comprehensive unit tests in `tests/test_phase26_tools.py`.
+- 100% test pass rate across all 565 tests (564 passed, 1 skipped). Clean ruff checks.
+
+## 🌐 Phase 25 — CAUSAL KNOWLEDGE GRAPH MEMORY (Genesis Darajasi 3 & 6)
+
+Implemented deep graph-based structural, causal, and dependency memory for codebases and project context:
+
+### 1. Knowledge Graph Core (`titan_agent/core/memory/knowledge_graph.py`)
+- **`GraphEntity` & `GraphRelation`**: Structured representation of files, modules, classes, functions, architectural concepts, bugs, and causal relationships (`depends_on`, `imports`, `defines`, `inherits`, `calls`, `modifies`, `causes`).
+- **`KnowledgeGraph`**: In-memory and persistent graph layer with bi-directional adjacency indices (`out_edges`, `in_edges`).
+- **BFS Shortest Path & Node Traversal**: `find_path` and `find_node_path` provide shortest-path discovery between disparate entities up to N hops.
+- **Downstream Impact & Blast-Radius Analysis**: `impact_analysis` traverses outgoing dependencies to evaluate ripple effects and cascade depths before code or architecture changes occur.
+- **Mermaid Visualizer**: `to_mermaid` generates live topological diagrams with customizable orientations.
+
+### 2. AST Codebase Extractor (`titan_agent/core/memory/ast_graph_extractor.py`)
+- **`WorkspaceASTGraphExtractor`**: Automatically walks Python source files in the workspace, parsing ASTs without execution.
+- Captures module imports (`import x`, `from x import y`), class definitions and inheritance (`class Foo(Bar)`), function and async function declarations, and maps their relationships.
+
+### 3. Integration & Agent Tools (`memory.py`, `tools.py`)
+- **`MemoryManager`**: Integrated `KnowledgeGraph` alongside long-term memory vault and SQLite history, with `add_kg_fact`, `query_kg`, and `kg_impact`.
+- **Tools in `ToolRegistry`**:
+  - `kg_query`: Query entity connections and neighborhood up to N hops.
+  - `kg_impact_analysis`: Calculate affected blast radius and cascade depth.
+  - `kg_add_fact`: Add custom semantic or causal connections.
+  - `kg_index_workspace`: Scan workspace ASTs to build or refresh the graph.
+
+### 4. Verification
+- 5 comprehensive unit tests in `tests/test_phase25_knowledge_graph.py`.
+- 100% test pass rate across all 561 tests (560 passed, 1 skipped). Clean ruff checks.
+
+## 🧠 Phase 24 — REFLEXION LOOP & MULTI-AGENT DEBATE STRATEGY (Genesis Darajasi 4)
+
+Integrated advanced cognitive self-correction and multi-perspective adversarial reasoning into the Titan Agent Reasoning Engine:
+
+### 1. Reflexion Engine (`titan_agent/core/reasoning/reflexion.py`)
+- **`ReflexionEngine`**: Implements an autonomous self-critique loop where the agent independently assesses its own drafts for hallucinations, missing requirements, logical gaps, and syntax issues.
+- **Iterative Refinement**: If critique issues a `NEEDS_REVISION` verdict or scores below threshold, actionable remediation advice is fed back into iterative refinement cycles (up to 3 cycles), returning only when `PASS` or high score is achieved.
+- Early exit optimization: Flawless solutions pass on Cycle 1 with zero latency penalty.
+
+### 2. Multi-Agent Debate Engine (`titan_agent/core/reasoning/debate.py`)
+- **`DebateEngine`**: Pits opposing cognitive roles against each other across multi-round exchanges:
+  - **Advocate (Proposer)**: Mounts the strongest architectural proposal, highlights scalability and benefits.
+  - **Skeptic (Challenger)**: Uncovers hidden operational costs, edge-case vulnerabilities, and latency penalties.
+  - **Arbitrator (Chief Technology Judge)**: Delivers an authoritative, compromise-aware verdict balancing trade-offs and issuing a concrete engineering action plan.
+
+### 3. Strategy Routing & Live Loop Integration (`structured.py`, `tools.py`, `cli.py`)
+- **`VALID_STRATEGIES`**: Expanded to `("auto", "plan", "react", "tot", "reflexion", "debate")`.
+- **`StructuredEngine`**: Directly executes `reflexion` (with step-by-step reflection thoughts) and `debate` (with speaker turns) inside the live agent event stream.
+- **Tools**: Added `reflexion_solve(task)` and `debate_solve(question, rounds)` tools.
+- **CLI**: Added `--strategy {auto,plan,react,tot,reflexion,debate}` support.
+
+### 4. Verification
+- 4 comprehensive unit tests in `tests/test_phase24_reasoning.py`.
+- 100% test pass rate across all 556 tests (555 passed, 1 skipped). Clean ruff checks.
+
+## 📊 Phase 23 — TASK GRAPH (DAG) PLANNING & PARALLEL EXECUTION (Genesis Darajasi 5)
+
+Implemented full Directed Acyclic Graph (DAG) long-term planning and parallel execution engine:
+
+### 1. Task Graph Data Structure (`titan_agent/core/dag/task_graph.py`)
+- **`TaskNode`**: Encapsulates a discrete task unit with department, assigned worker role, dependencies, status, retries, output, and execution timings.
+- **`TaskGraph`**: Complete DAG implementation with cycle detection via Kahn's algorithm (`validate_acyclic`), topological sorting (`topological_sort`), wave readiness inspection (`get_ready_nodes`), and live Mermaid diagram export (`to_mermaid`).
+- **Selective Subtree Replanning**: `reset_node_and_dependents(node_id)` resets only the failed node and its downstream dependents while preserving all completed independent work.
+
+### 2. DAG Planner (`titan_agent/core/dag/dag_planner.py`)
+- **`DAGPlanner`**: Decomposes complex multi-disciplinary goals into dependency-aware DAGs.
+- Supports model-driven planning via `LLMClient` with structured JSON output and deterministic heuristic decomposition across Research, Implementation, QA, Security, and Operations.
+- `replan_subgraph`: Adapts failed nodes with diagnostic context and remediation tasks without restarting the entire pipeline.
+
+### 3. Wave-Based Parallel Executor (`titan_agent/core/dag/dag_executor.py`)
+- **`DAGExecutor`**: Evaluates ready nodes wave-by-wave and executes independent nodes concurrently via `asyncio.gather` bounded by `max_concurrency` (default 4).
+- Dispatches each node to its respective Phase 22 Department Lead (`EngineeringLead`, `ResearchLead`, `OperationsLead`, `QualitySecurityLead`) with full quality-gate verification.
+- Automatic retry handling with backoff and deadlock detection.
+
+### 4. System & API Integration (`orchestrator.py`, `tools.py`, `server.py`, `cli.py`)
+- **`MetaOrchestrator.orchestrate_dag`**: End-to-end execution of complex goals via DAG, updating `GlobalGoalMemory` milestones.
+- **Tools**: Added `dag_plan_and_run` and `dag_visualize` tools to `titan_agent/tools.py`.
+- **API**: Added `GET /api/dag/status` endpoint to `titan_agent/server.py`.
+- **CLI**: Added `--dag` flag to `cli.py` for direct interactive or single-shot DAG runs.
+
+### 5. Verification
+- 7 comprehensive unit tests in `tests/test_phase23_dag.py`.
+- 100% test pass rate across the entire repository (551 passed, 1 skipped). Clean ruff checks.
+
+## 🏛️ Phase 22 — GENESIS HIERARCHICAL ARCHITECTURE (Meta-Orchestrator + 4 Department Leads)
+
+Transformed Titan Agent from a flat single-agent model into an enterprise cognitive organization (CEO -> Department Leads -> Specialized Workers):
+
+### 1. Daraja 1 — Meta-Orchestrator (Chief Agent) (`titan_agent/orchestrator.py`)
+- **`MetaOrchestrator`**: The permanent executive brain coordinating departmental execution.
+- **`GlobalGoalMemory`**: Persistent cross-session project direction, active goal tracking, and milestone lifecycle management.
+- **`ResourceBudget`**: Token and step quota allocation and telemetry across departments with automatic exhaustion guards.
+- **`ConflictResolver`**: Multi-department arbitration engine reconciling conflicting proposals (e.g. Quality/Security blocker overriding Engineering optimism).
+- **Executive Synthesis**: Compiles departmental deliverables into structured C-level executive reports.
+
+### 2. Daraja 2 — Team Leads with First-Line Verification Filters (`titan_agent/team_leads.py`)
+4 dedicated Department Leads managing their specialist staff and applying departmental quality gates before escalating:
+- **`EngineeringLead`**: Manages 7 roles (`coder`, `reviewer`, `test_writer`, `deployer`, `dependency_updater`, `performance_optimizer`, `db_architect`). Enforces Python AST syntax validation and execution checks.
+- **`ResearchLead`**: Manages 4 roles (`researcher`, `data_validator`, `hallucination_checker`, `translator`). Enforces citation grounding and reference inspection.
+- **`OperationsLead`**: Manages 4 roles (`scheduler_agent`, `notification_agent`, `cost_watcher`, `rate_limiter_agent`). Enforces scheduling constraints, rate limits, and token budgets.
+- **`QualitySecurityLead`**: Manages 4 roles (`security`, `tester`, `critic_agent`, `fallback_agent`). Evaluates vulnerability severity and flags critical blockers (`SECURITY_BLOCKER`).
+
+### 3. Daraja 3 — Full 27-Specialist Worker Roster (`titan_agent/staff.py`)
+- Completed full 27-role roster with 10 new specialized roles:
+  `data_validator`, `hallucination_checker`, `translator`, `scheduler_agent`, `notification_agent`, `rate_limiter_agent`, `critic_agent`, `fallback_agent`, `performance_optimizer`, `db_architect`.
+- Added natural aliases for intuitive invocation.
+
+### 4. Tools & CLI Integration (`titan_agent/tools.py`, `cli.py`)
+- Added new tools:
+  - `orchestrator_run`: Dispatches top-level goals through the hierarchical organization.
+  - `team_delegate`: Directly delegates tasks to specific department leads.
+  - `team_status`: Inspects department rosters, budgets, and milestone progress.
+- Added `--meta` (`--orchestrator`) and `--department` CLI flags to `cli.py`.
+
+### 5. Verification
+- 9 new comprehensive tests in `tests/test_phase22_hierarchical.py`.
+- 100% test pass rate: 544 passed, 1 skipped across the entire repository. Ruff linting clean.
+
+## 🧭 Phase 42–44 — UNIFIED DIFF PATCHING + AUTONOMOUS SKILL SYNTHESIS + PROMETHEUS METRICS (trio #6)
+
+Three major enhancements:
+
+### 1. Tool level — Unified Diff Patch Applicator (`tools.py`, `agent.py`)
+- New `apply_patch` tool allows Titan Agent to parse and apply standard unified diffs (`--- a/... +++ b/...`) across multiple workspace files transactionally with fuzzy hunk matching.
+- Added to `WRITE_TOOL_NAMES` so edit runs automatically receive the bounded postcheck verification turn.
+- Verified in `tests/test_patch_and_skills.py` with 3 deterministic unit tests (successful multi-hunk patch, format validation, conflict error).
+
+### 2. Learning level — Autonomous Skill Playbook Synthesis (`skills.py`, `tools.py`)
+- New `skill_save` tool allows Titan Agent to distill workflows, guidelines, and lessons into reusable markdown skill playbooks in `skills/<name>.md` with automatic YAML front-matter formatting.
+- Auto-reloaded into `SkillRegistry` and immediately available for lexical auto-injection for future user requests.
+- Verified in `tests/test_patch_and_skills.py` with 1 deterministic unit test.
+
+### 3. Observability level — Prometheus & OpenTelemetry Metrics Exporter (`server.py`)
+- New `/metrics` and `/api/metrics` endpoints expose standard Prometheus plain-text telemetry:
+  - `titan_tool_calls_total{tool="...",status="ok|error"}` counters
+  - `titan_tool_latency_ms{tool="..."}` gauges
+  - `titan_skills_total` gauge
+  - `titan_hitl_pending` gauge
+  - `titan_system_info{status="ready"}` gauge
+- Included in `_PUBLIC_PATHS` for zero-friction Prometheus / Grafana / Datadog scraping.
+- Verified in `tests/test_metrics.py` with 1 deterministic test.
+
+## 🧭 Phase 39–41 — DOCKER SANDBOX + WEB UI SUBAGENT ROSTER + TELEGRAM BOT GATEWAY (trio #5)
+
+Three major capability upgrades:
+
+### 1. Tool level — Docker Sandbox Runner (`tools.py`, `agent.py`)
+- New `docker_sandbox_run` tool allows Titan Agent to execute untrusted code or shell commands safely inside an isolated, disposable Docker container.
+- Supports image selection (`python:3.12-slim`, `node:20-slim`, `alpine:latest`, `ubuntu:22.04`), configurable memory limits (e.g. `256m`, `512m`), CPU quotas, network isolation (`none` vs `bridge`), and optional host workspace mounting.
+- Verified in `tests/test_docker_sandbox.py` with 6 deterministic unit tests.
+
+### 2. UI / Server level — Subagent Staff Network & Visual Roster (`server.py`, `web_ui/index.html`, `style.css`, `app.js`)
+- Added `GET /api/staff/roles` endpoint returning all 17 dedicated specialist roles.
+- Modern glassmorphic Subagent Staff Roster panel in the Web UI side panel with live badge counts, role badges, descriptions, and one-click prompt delegation.
+- Verified in `tests/test_webui_staff.py` with 3 deterministic tests.
+
+### 3. Gateway level — Interactive Telegram Bot Runner (`telegram_bot.py`, `run.py`)
+- Standalone Telegram Bot daemon enabling remote control and bidirectional conversation with Titan Agent.
+- Supports `/start`, `/help`, `/status`, `/mode`, `/effort` commands, real-time typing indicators, and asynchronous task execution with Markdown formatting.
+- Launched via `python run.py --telegram` or `python -m titan_agent.telegram_bot`.
+- Verified in `tests/test_telegram_bot.py` with 4 deterministic tests.
+
 ## 🧭 Phase 36–38 — SUBAGENT-FAILURE FUNNEL + DEAD-END EARLY STOP + GUARD DECISION LOG (trio #4)
 
 Three more levers at three levels:

@@ -33,6 +33,7 @@ searches the web live, and connects to any application or database through **Mod
      no embeddings or API keys needed.
    - **Live Web Search**: DuckDuckGo — fresh data, no key.
    - **Python Sandbox**: complex calculations and scripts in an isolated process.
+   - **🐳 Docker Sandbox**: `docker_sandbox_run` — run untrusted code/commands in isolated disposable containers with memory/CPU/network limits.
    - **Deep Search**: multi-source research dossier.
    - **Deep Coder**: full software engineering cycle (write files, syntax check, run tests).
    - **Launch applications**: run Windows apps.

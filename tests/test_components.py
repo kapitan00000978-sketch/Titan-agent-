@@ -634,3 +634,49 @@ def test_mcp_auto_restart_after_disconnect(tmp_path):
         await mcp.stop_all()
 
     asyncio.run(_run())
+
+def test_swarm_manager_deploy():
+    """SwarmManager deploys agents and tracks their status."""
+    import asyncio
+    from titan_agent.swarm_manager import SwarmManager
+    swarm = SwarmManager()
+    res = asyncio.run(swarm.deploy_agent("coder", "fix the bugs"))
+    assert "Deployed coder agent" in res
+    status = asyncio.run(swarm.get_swarm_status())
+    assert "coder" in status
+    assert "running" in status
+
+
+def test_dynamic_mcp_generator(tmp_path):
+    """DynamicMCPGenerator synthesizes a valid MCP server file."""
+    import asyncio
+    from titan_agent.swarm_manager import DynamicMCPGenerator
+    gen = DynamicMCPGenerator(str(tmp_path))
+    res = asyncio.run(gen.synthesize_server("test_server", "Does some testing"))
+    assert "synthesized at" in res
+    script_path = tmp_path / "mcp_test_server_dynamic.js"
+    assert script_path.exists()
+    content = script_path.read_text(encoding="utf-8")
+    assert "test_server" in content
+    assert "@modelcontextprotocol" in content
+
+
+def test_vector_rag_fallback(tmp_path):
+    """VectorRAG handles missing dependencies gracefully or initializes ChromaDB."""
+    from titan_agent.vector_rag import VectorRAG
+    rag = VectorRAG(tmp_path)
+    if rag.client:
+        assert rag.collection is not None
+    else:
+        assert "Error:" in rag.index_workspace()
+        assert "Error:" in rag.search("test")
+
+def test_lsp_client_mock():
+    """LSPClient acts as a stub for now."""
+    import asyncio
+    from titan_agent.lsp_client import LSPClient
+    client = LSPClient("test")
+    assert not client.ready
+    res = asyncio.run(client.start_server("pyright"))
+    assert client.ready
+    assert "started" in res

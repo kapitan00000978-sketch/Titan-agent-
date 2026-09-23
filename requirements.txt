@@ -11,3 +11,10 @@ websockets>=12.0
 colorama>=0.4.6
 # Optional: Telegram account manager (consent-gated; pip install telethon to enable)
 telethon>=1.34.0
+textual>=0.50.0
+g4f
+# python-tgpt (g4f bilan ziddiyat bergani uchun vaqtincha o'chirildi)
+playwright>=1.41.0
+chromadb>=0.4.22
+sentence-transformers>=2.3.0
+prompt_toolkit>=3.0.0

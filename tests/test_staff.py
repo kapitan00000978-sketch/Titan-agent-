@@ -300,6 +300,10 @@ def test_staff_catalog_lists_non_generalist_roles():
         "security", "test_writer", "summarizer", "memory_keeper", "cost_watcher",
         "triager", "doc_writer", "changelogger", "deployer", "dependency_updater",
         "router",
+        # Phase 22 Genesis roster
+        "data_validator", "hallucination_checker", "translator", "scheduler_agent",
+        "notification_agent", "rate_limiter_agent", "critic_agent", "fallback_agent",
+        "performance_optimizer", "db_architect",
     }
     for e in catalog:
         assert e["title"] and e["description"]

@@ -45,8 +45,8 @@ _PROVIDER_API_KEY_ATTR = {
     "completions": "COMPLETIONS_API_KEY",
     "openai": "OPENAI_API_KEY",
 }
-# Local / browser providers never need a key.
-_LOCAL_PROVIDERS = frozenset({"ollama", "lmstudio", "puter"})
+# Local / browser / free providers never need a key.
+_LOCAL_PROVIDERS = frozenset({"ollama", "lmstudio", "puter", "g4f", "tgpt", "laya-mlx"})
 
 
 class LLMResponse:
@@ -101,6 +101,18 @@ class LLMClient:
             self.api_key = "lm-studio"
         elif self.provider == "puter":
             # Puter.js runs fully client-side in the browser (free DeepSeek etc.).
+            self.base_url = ""
+            self.api_key = ""
+        elif self.provider == "g4f":
+            # GPT4Free library (no key required)
+            self.base_url = ""
+            self.api_key = ""
+        elif self.provider == "tgpt":
+            # Python-tGPT library (no key required)
+            self.base_url = ""
+            self.api_key = ""
+        elif self.provider == "laya-mlx":
+            # Local Laya MLX model
             self.base_url = ""
             self.api_key = ""
         elif self.provider == "completions":
@@ -275,6 +287,55 @@ class LLMClient:
                 "Puter.js runs only inside the browser (Web UI). "
                 "For server-side usage, choose Completions (free), OpenRouter, DeepSeek, Groq, OpenAI or Ollama."
             )
+            
+        # --- GPT4Free Integration ---
+        if self.provider == "g4f":
+            import g4f.client
+            try:
+                g4f_client = g4f.client.AsyncClient()
+                response = await g4f_client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                )
+                content = response.choices[0].message.content or ""
+                cleaned_content, thoughts, parsed_tools = self._extract_thoughts_and_tools(content)
+                return LLMResponse(content=cleaned_content, tool_calls=parsed_tools, thoughts=thoughts)
+            except Exception as e:
+                raise RuntimeError(f"G4F API Error: {e}")
+
+        # --- Laya MLX Local Integration ---
+        if self.provider == "laya-mlx":
+            from titan_agent.laya_mlx_server import LayaMLXConnector
+            try:
+                connector = LayaMLXConnector()
+                response_text = await connector.generate_response(messages=messages)
+                cleaned_content, thoughts, parsed_tools = self._extract_thoughts_and_tools(response_text)
+                return LLMResponse(content=cleaned_content, tool_calls=parsed_tools, thoughts=thoughts)
+            except Exception as e:
+                raise RuntimeError(f"Laya MLX API Error: {e}")
+
+        # --- Python-tGPT Integration ---
+        if self.provider == "tgpt":
+            import pytgpt.auto
+            try:
+                # Initialize the AUTO provider (which picks the fastest/best free provider)
+                tgpt_bot = pytgpt.auto.AsyncAUTO(is_conversation=False)
+                
+                # Format messages into a single prompt string
+                prompt_text = ""
+                for m in messages:
+                    prompt_text += f"{m['role'].upper()}: {m['content']}\n\n"
+                
+                response_text = ""
+                async_ask = await tgpt_bot.chat(prompt_text, stream=True)
+                async for text_chunk in async_ask:
+                    response_text += text_chunk
+                
+                cleaned_content, thoughts, parsed_tools = self._extract_thoughts_and_tools(response_text)
+                return LLMResponse(content=cleaned_content, tool_calls=parsed_tools, thoughts=thoughts)
+            except Exception as e:
+                raise RuntimeError(f"TGPT API Error: {e}")
+
         if not self.base_url:
             raise RuntimeError(f"Provider '{self.provider}' is not configured (missing API key).")
 

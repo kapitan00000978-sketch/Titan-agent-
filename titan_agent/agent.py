@@ -106,6 +106,10 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - task_enqueue / task_list / task_stats / task_cancel — the AUTONOMOUS TASK QUEUE: enqueue work for the daemon or other agents (priority, scheduling, retries)
 - subagent_delegate / subagent_team / subagent_roles — DEDICATED SUBAGENT STAFF: delegate sub-tasks to named specialists (planner, researcher, coder, reviewer, tester, security, test_writer, summarizer, memory_keeper, cost_watcher, triager, doc_writer, changelogger, deployer, dependency_updater, router) — each with its own persona, tuned run options and enforced tool policy. List roles with subagent_roles; delegate with role= or fan out with subagent_team(tasks, roles).
 - subagent_route — INTENT ROUTER: deterministic keyword routing that decides which specialist role(s) should handle an incoming task (primary + supporting + why). Call before delegating a big request.
+- docker_sandbox_run — DOCKER SANDBOX: run untrusted or disposable code/commands safely inside an isolated Docker container with cpu, memory and network limits.
+- apply_patch — UNIFIED DIFF PATCH: apply unified diffs (--- a/... +++ b/...) across files with automatic hunk matching.
+- skill_save — AUTONOMOUS SKILLS: synthesize and save a reusable workflow playbook directly to the skills library.
+- browser_* — VISUAL BROWSER AUTOMATION: use browser_goto, browser_click, browser_type, browser_screenshot, and browser_extract_text to navigate and interact with real websites visually using Playwright.
 
 ### SKILLS:
 Relevant skill playbooks for the current task are auto-injected into your context
@@ -161,7 +165,8 @@ Do not repeat the history — output only the final answer (or the tool call nee
 
 # Tools that mutate the workspace; their use is the trigger for the bounded
 # post-check pass (Phase 26).
-WRITE_TOOL_NAMES = ("write_file", "edit_file", "deep_coder")
+WRITE_TOOL_NAMES = ("write_file", "edit_file", "deep_coder", "apply_patch")
+
 
 # Phase 26: one bounded verification turn before finalizing when files were
 # written/edited — the classic weak-model failure is claiming "done" without

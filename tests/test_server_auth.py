@@ -25,7 +25,7 @@ os.environ["TITAN_API_KEY"] = _TEST_KEY
 
 from titan_agent.server import app  # (must import after env setup)
 
-PUBLIC_PATHS = {"/", "/health"}
+PUBLIC_PATHS = {"/", "/health", "/metrics", "/api/metrics"}
 
 # A representative sample of protected routes, one per auth surface (GET, POST,
 # and the SSE/streaming endpoint both are APIRoutes and must be guarded).

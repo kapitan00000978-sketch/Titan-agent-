@@ -154,8 +154,29 @@
                 <span class="tool-desc" id="mcp-count">Active connections</span>
               </div>
             </div>
+            <div class="tool-item active">
+              <span class="tool-dot" style="background:#38bdf8;"></span>
+              <div class="tool-meta">
+                <span class="tool-name">docker_sandbox_run</span>
+                <span class="tool-desc">Isolated Docker Engine</span>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- Subagent Staff Network Panel -->
+        <div class="panel-section subagents-section">
+          <div class="section-title">
+            <span class="icon">👥</span>
+            <h3>Subagent Roster</h3>
+            <span class="badge-count" id="staff-count">17</span>
+            <button class="tiny-btn" onclick="fetchStaffRoles(true)">Refresh</button>
+          </div>
+          <div class="subagents-list" id="subagents-list">
+            <div class="empty-hint">Loading subagents...</div>
+          </div>
+        </div>
+
 
         <div class="panel-section files-section">
           <div class="section-title">

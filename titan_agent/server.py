@@ -8,7 +8,7 @@ from typing import Any
 import aiofiles
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -503,6 +503,30 @@ async def hitl_get(request_id: str):
     return {"request": req.to_dict()}
 
 
+@app.get("/api/staff/roles")
+async def staff_roles():
+    """List of all available dedicated subagent specialist roles."""
+    from .staff import staff_catalog
+    return {"status": "success", "roles": staff_catalog()}
+
+
+@app.get("/api/dag/status")
+async def dag_status():
+    """Returns current active Task Graph status and execution progress."""
+    from .tools import ToolRegistry
+
+    reg = ToolRegistry()
+    last_res = getattr(reg, "_last_dag_result", None)
+    if last_res:
+        return {"status": "success", "active": True, "dag": last_res.to_dict()}
+    return {
+        "status": "success",
+        "active": False,
+        "message": "No active DAG execution.",
+    }
+
+
+
 # ---- Phase 15: structured logging API ---------------------------------------
 # GET /api/logs/recent returns the newest JSON log records from the in-memory
 # ring (no filesystem reads, no log-tailing). Auth-protected like every /api.
@@ -610,10 +634,49 @@ async def guard_reset():
     agent._consecutive_failed_batches = 0
     return {"ok": True}
 
+
+# ---- Phase 42: Prometheus & OpenTelemetry Metrics Exporter ------------------
+
+@app.get("/api/metrics", response_class=PlainTextResponse)
+@app.get("/metrics", response_class=PlainTextResponse)
+async def prometheus_metrics():
+    """Prometheus-compatible plain text metrics exporter."""
+    from .skills import SkillRegistry
+
+    stats = TOOL_STATS.summary()
+    skills_count = len(SkillRegistry().list_skills())
+    pending_hitl = len(hitl_manager.pending())
+
+    lines = [
+        "# HELP titan_tool_calls_total Total tool executions by name",
+        "# TYPE titan_tool_calls_total counter",
+    ]
+    for tool_name, tstats in stats.get("tools", {}).items():
+        total = tstats.get("total", 0)
+        errors = tstats.get("errors", 0)
+        lines.append(f'titan_tool_calls_total{{tool="{tool_name}",status="ok"}} {total - errors}')
+        lines.append(f'titan_tool_calls_total{{tool="{tool_name}",status="error"}} {errors}')
+        avg_ms = tstats.get("avg_latency_ms", 0.0)
+        lines.append(f'titan_tool_latency_ms{{tool="{tool_name}"}} {avg_ms:.2f}')
+
+    lines.extend([
+        "# HELP titan_skills_total Total registered skill playbooks",
+        "# TYPE titan_skills_total gauge",
+        f"titan_skills_total {skills_count}",
+        "# HELP titan_hitl_pending Current pending human-in-the-loop approvals",
+        "# TYPE titan_hitl_pending gauge",
+        f"titan_hitl_pending {pending_hitl}",
+        "# HELP titan_system_info System status flag",
+        "# TYPE titan_system_info gauge",
+        'titan_system_info{status="ready"} 1',
+    ])
+    return "\n".join(lines) + "\n"
+
+
 # ---- Phase 12: attach Bearer-token auth to every API route -------------------
-# The liveness check (/health) and the web-UI shell (/) stay public; every
-# other route gets the `require_api_key` dependency appended in-place.
-_PUBLIC_PATHS = frozenset({"/", "/health"})
+# The liveness check (/health), web-UI shell (/), and metrics (/metrics, /api/metrics) stay public.
+_PUBLIC_PATHS = frozenset({"/", "/health", "/metrics", "/api/metrics"})
+
 
 
 def _apply_auth_dependency() -> None:

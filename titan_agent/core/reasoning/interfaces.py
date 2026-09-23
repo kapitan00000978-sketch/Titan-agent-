@@ -53,10 +53,14 @@ async def complete_text(
     )
     if isinstance(result, str):
         return result
-    parts: list[str] = []
-    async for chunk in result:
-        parts.append(chunk)
-    return "".join(parts)
+    if hasattr(result, "content"):
+        return str(result.content)
+    if hasattr(result, "__aiter__"):
+        parts: list[str] = []
+        async for chunk in result:
+            parts.append(chunk)
+        return "".join(parts)
+    return str(result)
 
 
 class IToolExecutor(ABC):

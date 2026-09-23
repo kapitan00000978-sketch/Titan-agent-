@@ -27,9 +27,11 @@ from . import config as _cfg
 from .agent import AgentEvent
 from .core.guardrails.hitl import ApprovalStatus, HumanInTheLoop
 from .core.guardrails.policy import DEFAULT_RULES, Decision, PolicyEngine
+from .core.reasoning.debate import DebateEngine
 from .core.reasoning.interfaces import ILLMProvider, IReflector, IToolExecutor
 from .core.reasoning.planner import PlanExecutor
 from .core.reasoning.react import ReActEngine
+from .core.reasoning.reflexion import ReflexionEngine
 from .core.reasoning.tot import LLMEvaluator, ToTEngine
 from .core.reasoning.types import (
     ActionType,
@@ -43,7 +45,7 @@ from .llm_client import LLMClient
 log = logging.getLogger(__name__)
 
 # Valid run_task strategies ("auto" keeps the classic loop untouched).
-VALID_STRATEGIES = ("auto", "plan", "react", "tot")
+VALID_STRATEGIES = ("auto", "plan", "react", "tot", "reflexion", "debate")
 
 
 # --------------------------------------------------------------------------
@@ -331,6 +333,24 @@ class StructuredEngine:
                 yield AgentEvent("status", "ToT strategy ready - executing with tools.")
             else:
                 yield AgentEvent("status", "ToT found no distinct path - proceeding ReAct.")
+        elif strategy == "reflexion":
+            yield AgentEvent("status", "Reflexion Loop: executing with self-critique & iterative refinement...")
+            reflex_engine = ReflexionEngine(self.llm_bridge)
+            res = await reflex_engine.run(task, max_cycles=3)
+            for c in res.cycles:
+                yield AgentEvent("thought", f"[Cycle {c.cycle}] Score: {c.score}/10 | Verdict: {c.verdict}\nCritique: {c.critique}")
+            yield AgentEvent("status", f"Reflexion completed in {res.total_cycles} cycles (Improved: {res.improved}).")
+            yield AgentEvent("final_answer", res.final_output)
+            return
+        elif strategy == "debate":
+            yield AgentEvent("status", "Multi-Agent Debate: Advocate vs Skeptic with Judicial Arbitration...")
+            debate_engine = DebateEngine(self.llm_bridge)
+            res_d = await debate_engine.run_debate(task, rounds=2)
+            for t in res_d.turns:
+                yield AgentEvent("thought", f"[{t.speaker.upper()} (R{t.round_num})]\n{t.argument[:300]}...")
+            yield AgentEvent("status", f"Debate concluded. Winner: {res_d.winner}")
+            yield AgentEvent("final_answer", res_d.summary())
+            return
         else:
             yield AgentEvent("status", "Structured ReAct engaged (think -> act -> observe).")
 

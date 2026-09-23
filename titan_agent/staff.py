@@ -358,6 +358,139 @@ SPECIALISTS: dict[str, Specialist] = {
             strategy="auto",
             blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
         ),
+        # ---- Phase 22: Genesis 27-Specialist Roster Additions -----------------
+        Specialist(
+            id="data_validator",
+            title="Data Validator",
+            description="Validates schemas, data formats, JSON, types and input sanitization. Pick for 'validate data', 'check schema', 'data integrity'.",
+            persona=(
+                "You are the DATA VALIDATOR. Inspect and validate structured data, schemas,\n"
+                "JSON, tabular inputs, and ensure data integrity, constraints, and cleanliness.\n"
+                "Report validation errors with exact field names and invalid values. Read-only."
+            ),
+            mode="fast",
+            effort="medium",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="hallucination_checker",
+            title="Hallucination Checker",
+            description="Cross-checks facts, claims, and citations against ground truth sources and workspace files to eliminate fabricated information.",
+            persona=(
+                "You are the HALLUCINATION CHECKER. Verify every statement, code snippet, and\n"
+                "assertion against reliable evidence or workspace reality. Flag ungrounded claims\n"
+                "with citations or missing proof. Read-only."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="translator",
+            title="Translator",
+            description="Translates text, documentation, and error messages accurately across multiple languages while preserving technical terminology.",
+            persona=(
+                "You are the TRANSLATOR. Translate content accurately, preserving technical terms,\n"
+                "formatting, code blocks, and tone across target languages."
+            ),
+            mode="fast",
+            effort="low",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="scheduler_agent",
+            title="Scheduler Agent",
+            description="Plans, manages, and tracks timed tasks, cron expressions, and delayed execution schedules.",
+            persona=(
+                "You are the SCHEDULER AGENT. Organize, schedule, and verify periodic tasks\n"
+                "and job timing. Ensure no timing conflicts or overlaps."
+            ),
+            mode="fast",
+            effort="medium",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="notification_agent",
+            title="Notification Agent",
+            description="Formats, routes, and dispatches high-priority alerts, summaries, and notifications to configured channels.",
+            persona=(
+                "You are the NOTIFICATION AGENT. Craft clear, concise alerts, status summaries,\n"
+                "and broadcast notifications for team leads and users."
+            ),
+            mode="fast",
+            effort="low",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="rate_limiter_agent",
+            title="Rate Limiter & Quota Agent",
+            description="Monitors API call frequencies, provider rate limits, and throttling policies to prevent exhaustion.",
+            persona=(
+                "You are the RATE LIMITER AGENT. Assess request rates, identify potential\n"
+                "quota throttling risks, and recommend pacing strategies. Read-only."
+            ),
+            mode="fast",
+            effort="low",
+            strategy="auto",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="critic_agent",
+            title="Adversarial Critic",
+            description="Provides rigorous adversarial critique, devil's advocate arguments, and identifies potential hidden pitfalls in proposals.",
+            persona=(
+                "You are the ADVERSARIAL CRITIC. Relentlessly challenge assumptions, find\n"
+                "failure modes, question edge-case assumptions, and propose counter-arguments."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="react",
+            blocked_tools=_WRITE_TOOLS | _TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="fallback_agent",
+            title="Fallback & Resilience Agent",
+            description="Handles failures, plans alternative degradation strategies, and configures backup models or fallback execution paths.",
+            persona=(
+                "You are the FALLBACK AGENT. Formulate recovery plans, fallback providers,\n"
+                "and graceful degradation strategies when primary systems or models fail."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=_TELEGRAM_WRITE | _AGENT_SPAWNERS,
+        ),
+        Specialist(
+            id="performance_optimizer",
+            title="Performance Optimizer",
+            description="Profiles, identifies bottlenecks, and suggests or implements algorithmic and resource efficiency improvements.",
+            persona=(
+                "You are the PERFORMANCE OPTIMIZER. Analyze latency, algorithmic complexity,\n"
+                "memory consumption, and I/O bottlenecks. Recommend or implement targeted optimizations."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=_TELEGRAM_WRITE,
+        ),
+        Specialist(
+            id="db_architect",
+            title="Database Architect",
+            description="Designs, reviews, and optimizes database schemas, migrations, indexes, and queries.",
+            persona=(
+                "You are the DATABASE ARCHITECT. Design robust relational or document schemas,\n"
+                "write safe migrations, and optimize queries and indexing strategies."
+            ),
+            mode="fast",
+            effort="high",
+            strategy="auto",
+            blocked_tools=_TELEGRAM_WRITE,
+        ),
     ]
 }
 
@@ -409,6 +542,24 @@ _ROLE_ALIASES: dict[str, str] = {
     "dependencies": "dependency_updater",
     "dependency": "dependency_updater",
     "dependabot": "dependency_updater",
+    # Phase 22 Genesis aliases
+    "validate": "data_validator",
+    "validation": "data_validator",
+    "hallucination": "hallucination_checker",
+    "fact_check": "hallucination_checker",
+    "translate": "translator",
+    "translation": "translator",
+    "scheduler": "scheduler_agent",
+    "schedule": "scheduler_agent",
+    "notify": "notification_agent",
+    "notification": "notification_agent",
+    "rate_limit": "rate_limiter_agent",
+    "adversarial": "critic_agent",
+    "fallback": "fallback_agent",
+    "perf": "performance_optimizer",
+    "performance": "performance_optimizer",
+    "database": "db_architect",
+    "db": "db_architect",
 }
 
 

@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--model", default=None, help="Override model name/id (e.g. hermes3:8b, deepseek/deepseek-v4-pro)")
     parser.add_argument("--mode", default=None, help="CLI mode: fast, deep or deep_search (default: fast)")
     parser.add_argument("--effort", default=None, help="Effort level: auto, low, medium, high or ultra (default: auto)")
+    parser.add_argument("--telegram", action="store_true", help="Launch Telegram Bot mode")
 
     args = parser.parse_args()
 
@@ -43,7 +44,10 @@ def main():
 
     port = args.port or SERVER_PORT
 
-    if args.cli:
+    if args.telegram:
+        from titan_agent.telegram_bot import run_bot_standalone
+        asyncio.run(run_bot_standalone())
+    elif args.cli:
         from cli import main as cli_main
         asyncio.run(cli_main())
     else:

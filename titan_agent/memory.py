@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import BASE_DIR
+from .core.memory.knowledge_graph import KnowledgeGraph
 
 DB_PATH = BASE_DIR / "titan_memory.db"
 
@@ -28,6 +29,7 @@ class MemoryManager:
     def __init__(self, db_path: Path = DB_PATH):
         self.db_path = db_path
         self._init_db()
+        self.knowledge_graph = KnowledgeGraph(storage_path=self.db_path.parent / "knowledge_graph.json")
 
     def _get_conn(self):
         return sqlite3.connect(str(self.db_path))
@@ -266,3 +268,35 @@ class MemoryManager:
                 (status, time.time(), handoff_id))
             conn.commit()
             return cursor.rowcount > 0
+
+    # ---- Phase 25: Causal Knowledge Graph Memory Layer ----
+
+    def add_kg_fact(
+        self,
+        source: str,
+        relation: str,
+        target: str,
+        properties: dict[str, Any] | None = None,
+    ) -> None:
+        self.knowledge_graph.add_relation(source, relation, target, properties=properties)
+        self.knowledge_graph.save()
+
+    def query_kg(self, entity_id: str, depth: int = 2) -> dict[str, Any]:
+        neighbors = self.knowledge_graph.query_neighbors(entity_id, direction="both")
+        return {
+            "entity": entity_id,
+            "connections": [
+                {
+                    "source": rel.source,
+                    "relation": rel.relation,
+                    "target": rel.target,
+                    "neighbor_name": ent.name,
+                    "neighbor_type": ent.type,
+                }
+                for rel, ent in neighbors
+            ],
+            "total_connections": len(neighbors),
+        }
+
+    def kg_impact(self, entity_id: str) -> dict[str, Any]:
+        return self.knowledge_graph.impact_analysis(entity_id)

@@ -39,6 +39,10 @@ class SubagentResult:
     events: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
 
+    @property
+    def ok(self) -> bool:
+        return self.exit_code == 0 and not self.error
+
     def to_text(self) -> str:
         if self.error:
             return f"### SUBAGENT [{self.label}] — ERROR\n{self.error}"

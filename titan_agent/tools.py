@@ -198,7 +198,7 @@ class ToolRegistry:
         return p
 
     def get_tool_definitions(self) -> list[dict[str, Any]]:
-        return [
+        base_defs = [
             {
                 "type": "function",
                 "function": {
@@ -887,8 +887,679 @@ class ToolRegistry:
                         "required": ["task"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "orchestrator_run",
+                    "description": "META-ORCHESTRATOR (Genesis Level 1): Executes a high-level goal through the hierarchical organization (Chief Agent -> Department Leads -> Worker Specialists). Arbitrates conflicts and provides executive synthesis.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "goal": {
+                                "type": "string",
+                                "description": "The high-level project goal or complex task to orchestrate."
+                            },
+                            "departments": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Optional list of departments to involve: engineering, research, operations, quality_security. Defaults to automatic routing."
+                            }
+                        },
+                        "required": ["goal"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "team_delegate",
+                    "description": "DEPARTMENT DELEGATE (Genesis Level 2): Directly delegates a task to one of the 4 Department Leads (engineering, research, operations, quality_security). The lead assigns workers and applies first-line quality verification.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "department": {
+                                "type": "string",
+                                "description": "The department to delegate to: engineering, research, operations, or quality_security."
+                            },
+                            "task": {
+                                "type": "string",
+                                "description": "The task for the department to execute."
+                            },
+                            "role": {
+                                "type": "string",
+                                "description": "Optional preferred specialist worker within the department."
+                            }
+                        },
+                        "required": ["department", "task"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "team_status",
+                    "description": "Reports status, budget usage, and managed specialists across all 4 Department Leads and the Meta-Orchestrator.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "dag_plan_and_run",
+                    "description": "TASK GRAPH (Genesis Level 5): Decomposes a complex goal into a Directed Acyclic Graph (DAG) and executes independent nodes in parallel waves. Supports selective replanning on failures.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "goal": {
+                                "type": "string",
+                                "description": "The complex multi-step goal to plan as a DAG and execute."
+                            }
+                        },
+                        "required": ["goal"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "dag_visualize",
+                    "description": "Generates a visual Mermaid diagram and node dependency summary for a planned task graph.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "goal": {
+                                "type": "string",
+                                "description": "The goal to generate a DAG diagram for."
+                            }
+                        },
+                        "required": ["goal"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "debate_solve",
+                    "description": "MULTI-AGENT DEBATE (Genesis Level 4): Pits an Advocate against a Skeptic across multiple rounds on complex architectural or technical questions, with an authoritative Judge rendering the balanced consensus verdict.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "The complex decision, architecture question, or trade-off to debate."
+                            },
+                            "rounds": {
+                                "type": "integer",
+                                "description": "Number of debate rounds (default 2)."
+                            }
+                        },
+                        "required": ["question"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "reflexion_solve",
+                    "description": "REFLEXION LOOP (Genesis Level 4): Solves a task with autonomous self-critique and iterative refinement up to 3 cycles, catching errors and improving before final response.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task": {
+                                "type": "string",
+                                "description": "The task or problem to solve using self-critique and iterative refinement."
+                            }
+                        },
+                        "required": ["task"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "kg_query",
+                    "description": "KNOWLEDGE GRAPH (Genesis Level 3): Queries the causal and dependency knowledge graph around an entity up to N hops, returning related classes, functions, files, modules, and dependencies.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "entity_id": {
+                                "type": "string",
+                                "description": "The entity identifier (e.g. file path, class name, or function name)."
+                            },
+                            "depth": {
+                                "type": "integer",
+                                "description": "Graph traversal depth in hops (default 2)."
+                            }
+                        },
+                        "required": ["entity_id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "kg_impact_analysis",
+                    "description": "KNOWLEDGE GRAPH IMPACT (Genesis Level 3): Computes the blast radius and downstream dependencies that will be impacted if a given function, class, or file is modified.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "entity_id": {
+                                "type": "string",
+                                "description": "The entity identifier to compute impact/blast radius for."
+                            }
+                        },
+                        "required": ["entity_id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "kg_add_fact",
+                    "description": "KNOWLEDGE GRAPH (Genesis Level 3): Adds a custom semantic fact or causal dependency between two entities in the knowledge graph.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "source": {
+                                "type": "string",
+                                "description": "The source entity identifier."
+                            },
+                            "relation": {
+                                "type": "string",
+                                "description": "The relationship type (e.g., 'calls', 'depends_on', 'modifies', 'inherits')."
+                            },
+                            "target": {
+                                "type": "string",
+                                "description": "The target entity identifier."
+                            }
+                        },
+                        "required": ["source", "relation", "target"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "kg_index_workspace",
+                    "description": "KNOWLEDGE GRAPH (Genesis Level 3): Scans Python ASTs in the workspace to construct an automated dependency and inheritance knowledge graph.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "max_files": {
+                                "type": "integer",
+                                "description": "Maximum number of Python files to scan (default 50)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "tool_discover",
+                    "description": "DYNAMIC TOOLS (Genesis Level 8): Searches and activates domain-specific tools on demand by keyword or category, keeping system prompt context lean.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search term, action, or tool name to look for (e.g. 'docker', 'browser', 'git', 'knowledge graph')."
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Optional category filter: git, web_browser, genesis_orchestrator, reasoning, knowledge_graph, vector_rag, desktop_os, sandbox_verify."
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of tools to return (default 8)."
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "tool_reliability_report",
+                    "description": "TOOL RELIABILITY (Genesis Level 8): Reports Bayesian/EWMA health scores, failure rates, and auto-mitigation recommendations for tools.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "model_route",
+                    "description": "MODEL ROUTER (Genesis Level 7): Analyzes task complexity and determines the optimal LLM tier (FAST_CHEAP, STANDARD_CODING, DEEP_REASONING) with pricing estimates and failure escalation.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task": {
+                                "type": "string",
+                                "description": "The task or prompt to analyze and route."
+                            },
+                            "prior_failures": {
+                                "type": "integer",
+                                "description": "Number of previous failures on this task (triggers escalation to higher reasoning tiers)."
+                            }
+                        },
+                        "required": ["task"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "model_budget_status",
+                    "description": "COGNITIVE BUDGET (Genesis Level 7): Inspects cumulative token spend, model-by-model usage breakdown, and remaining USD budget.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "sandbox_execute",
+                    "description": "EXECUTION SANDBOX (Genesis Level 6): Executes Python or shell code inside an isolated environment with filesystem snapshotting, static security AST scanning, timeout limits, and optional automatic rollback on failure.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "description": "The Python or shell code to safely execute."
+                            },
+                            "language": {
+                                "type": "string",
+                                "description": "Language of the code: 'python' or 'shell' (default 'python')."
+                            },
+                            "timeout": {
+                                "type": "number",
+                                "description": "Maximum execution time in seconds (default 30.0, max 120.0)."
+                            },
+                            "rollback_on_failure": {
+                                "type": "boolean",
+                                "description": "Whether to automatically rollback filesystem state to pre-execution snapshot if execution fails (default true)."
+                            }
+                        },
+                        "required": ["code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "sandbox_snapshot_create",
+                    "description": "EXECUTION SANDBOX (Genesis Level 6): Takes an immediate point-in-time filesystem snapshot of the workspace with SHA-256 integrity hashes for safe rollback.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Name / label for the snapshot (e.g. 'pre_refactor_migration')."
+                            }
+                        },
+                        "required": ["name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "sandbox_snapshot_rollback",
+                    "description": "EXECUTION SANDBOX (Genesis Level 6): Restores workspace files to a previously saved snapshot, reverting modifications, additions, and deletions.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Name of the snapshot to restore."
+                            }
+                        },
+                        "required": ["name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "drift_record_task",
+                    "description": "DRIFT MONITORING (Genesis Level 9): Logs task execution telemetry (success, steps, latency, tokens, failed tools) for continuous quality regression tracking.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_id": {
+                                "type": "string",
+                                "description": "Unique identifier for the task or session."
+                            },
+                            "success": {
+                                "type": "boolean",
+                                "description": "Whether the task succeeded or failed."
+                            },
+                            "steps": {
+                                "type": "integer",
+                                "description": "Total steps / tool actions executed (default 1)."
+                            },
+                            "duration_sec": {
+                                "type": "number",
+                                "description": "Elapsed duration in seconds."
+                            },
+                            "tokens_used": {
+                                "type": "integer",
+                                "description": "Approximate token spend for this task."
+                            },
+                            "failed_tools": {
+                                "type": "string",
+                                "description": "Comma-separated list of tool names that failed during execution."
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Task domain / category (e.g. coding, git, web, reasoning)."
+                            }
+                        },
+                        "required": ["task_id", "success"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "drift_check",
+                    "description": "DRIFT MONITORING (Genesis Level 9): Analyzes historical task telemetry for quality regression, success-rate drop, step inflation, and tool failure clusters.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "window_size": {
+                                "type": "integer",
+                                "description": "Number of recent tasks to evaluate against baseline (default 10)."
+                            },
+                            "threshold_drop": {
+                                "type": "number",
+                                "description": "Success rate drop threshold for warning alert (default 0.20 for 20% drop)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "drift_status",
+                    "description": "DRIFT MONITORING (Genesis Level 9): Displays longitudinal telemetry summary, total recorded tasks, and health status.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "self_improve_analyze_failure",
+                    "description": "SELF-IMPROVEMENT (Genesis Level 10): Analyzes a failed task log, diagnoses root cause, and extracts a prescriptive operational rule/lesson.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_id": {
+                                "type": "string",
+                                "description": "Identifier of the failed task."
+                            },
+                            "prompt": {
+                                "type": "string",
+                                "description": "The original task prompt."
+                            },
+                            "failure_log": {
+                                "type": "string",
+                                "description": "Execution traceback, error messages, or failure explanation."
+                            },
+                            "failed_tools": {
+                                "type": "string",
+                                "description": "Comma-separated names of tools that failed."
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Task domain (e.g. coding, git, reasoning, general)."
+                            }
+                        },
+                        "required": ["task_id", "prompt", "failure_log"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "self_improve_eval_run",
+                    "description": "SELF-IMPROVEMENT (Genesis Level 10): Runs the automated regression eval benchmark suite, reporting pass rates, scores, and regressions.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "Optional category filter: coding, reasoning, security, git (or leave empty for all)."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "self_improve_crystallize_lesson",
+                    "description": "SELF-IMPROVEMENT (Genesis Level 10): Permanently records an extracted lesson into the Skill playbook library and Knowledge Graph.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "lesson_title": {
+                                "type": "string",
+                                "description": "Summary title of the learned rule / playbook."
+                            },
+                            "guidance": {
+                                "type": "string",
+                                "description": "Prescriptive workflow instructions and best practices to prevent future failure."
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Domain category (e.g. coding, git, docker, general)."
+                            }
+                        },
+                        "required": ["lesson_title", "guidance"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "docker_sandbox_run",
+                    "description": "Runs code or shell commands inside an isolated, disposable Docker container with resource limits and optional workspace mounting.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "command": {
+                                "type": "string",
+                                "description": "The command to run inside the container (e.g. 'python -c \"print(1+1)\"' or 'sh -c \"ls -la\"')."
+                            },
+                            "image": {
+                                "type": "string",
+                                "description": "Docker image to use (default: 'python:3.12-slim'). Options: python:3.12-slim, node:20-slim, alpine:latest, ubuntu:22.04."
+                            },
+                            "memory_limit": {
+                                "type": "string",
+                                "description": "Memory limit for the container (e.g. '256m', '512m', '1g'). Default: '512m'."
+                            },
+                            "cpu_quota": {
+                                "type": "string",
+                                "description": "CPU quota / max CPUs (e.g. '0.5', '1.0'). Default: '1.0'."
+                            },
+                            "mount_workspace": {
+                                "type": "boolean",
+                                "description": "Whether to mount the host workspace directory to /workspace inside the container. Default: false."
+                            },
+                            "network": {
+                                "type": "string",
+                                "description": "Container network mode ('none' for airgapped sandbox, 'bridge' for internet). Default: 'bridge'."
+                            },
+                            "timeout": {
+                                "type": "number",
+                                "description": "Execution timeout in seconds. Default: 60.0."
+                            }
+                        },
+                        "required": ["command"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "apply_patch",
+                    "description": "Applies a unified diff patch to one or more files in the workspace with automatic hunk matching and safe rollback on error.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "patch": {
+                                "type": "string",
+                                "description": "The unified diff patch string (containing '---', '+++', and '@@' hunk headers)."
+                            }
+                        },
+                        "required": ["patch"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "skill_save",
+                    "description": "Creates or updates a persistent skill playbook in the skills library. Auto-loaded in future sessions matching the keywords.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Skill name / slug (e.g. 'docker-deploy', 'api-refactor')."
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "One-line description of the skill."
+                            },
+                            "keywords": {
+                                "type": "string",
+                                "description": "Comma-separated keywords for automatic injection matching."
+                            },
+                            "guidance": {
+                                "type": "string",
+                                "description": "Full markdown guidance body containing workflow steps and best practices."
+                            }
+                        },
+                        "required": ["name", "guidance"]
+                    }
+                }
+            }
+            ,
+            {
+                "type": "function",
+                "function": {
+                    "name": "ast_patch_file",
+                    "description": "Applies a targeted text replacement to a file and validates the resulting Python AST to ensure no syntax errors were introduced. Safer than normal editing for Python files.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string", "description": "Path to the file to modify."},
+                            "search_block": {"type": "string", "description": "The exact block of code to search for."},
+                            "replace_block": {"type": "string", "description": "The new block of code to replace it with."}
+                        },
+                        "required": ["path", "search_block", "replace_block"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "deep_verify_code",
+                    "description": "Runs a Deep Verification Loop on target code: generates tests, runs them in the sandbox, and heals the code if they fail.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "code": {"type": "string", "description": "The raw code to verify."},
+                            "intent": {"type": "string", "description": "What the code is supposed to do."}
+                        },
+                        "required": ["code", "intent"]
+                    }
+                }
             }
         ]
+        base_defs.extend([
+            {
+                "type": "function",
+                "function": {
+                    "name": "vector_rag_index",
+                    "description": "Indexes the entire workspace into the Semantic Vector Database (ChromaDB) for advanced RAG.",
+                    "parameters": {"type": "object", "properties": {}, "required": []}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "vector_rag_search",
+                    "description": "Searches the Semantic Vector Database for deeply relevant code snippets and context.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "The search query (natural language)."},
+                            "top_k": {"type": "integer", "description": "Number of results to return (default 5)."}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            }
+        ])
+        from .browser_automation import BrowserAutomation
+        browser_defs = BrowserAutomation(self.workspace).get_tool_definitions()
+        return base_defs + browser_defs
+
+    @property
+    def vector_rag(self):
+        if getattr(self, "_vector_rag", None) is None:
+            from .vector_rag import VectorRAG
+            self._vector_rag = VectorRAG(self.workspace)
+        return self._vector_rag
+
+    def tool_vector_rag_index(self) -> str:
+        return self.vector_rag.index_workspace()
+
+    def tool_vector_rag_search(self, query: str, top_k: int = 5) -> str:
+        return self.vector_rag.search(query, top_k)
+
+    @property
+    def browser_automation(self):
+        if getattr(self, "_browser_automation", None) is None:
+            from .browser_automation import BrowserAutomation
+            self._browser_automation = BrowserAutomation(self.workspace)
+        return self._browser_automation
+
+    async def tool_browser_goto(self, url: str) -> str:
+        return await self.browser_automation.tool_browser_goto(url)
+
+    async def tool_browser_click(self, selector: str) -> str:
+        return await self.browser_automation.tool_browser_click(selector)
+
+    async def tool_browser_type(self, selector: str, text: str) -> str:
+        return await self.browser_automation.tool_browser_type(selector, text)
+
+    async def tool_browser_screenshot(self, filename: str = "screenshot.png") -> str:
+        return await self.browser_automation.tool_browser_screenshot(filename)
+
+    async def tool_browser_extract_text(self) -> str:
+        return await self.browser_automation.tool_browser_extract_text()
+
+    async def tool_browser_close(self) -> str:
+        return await self.browser_automation.tool_browser_close()
 
     async def execute_tool(self, name: str, args: dict[str, Any]) -> str:
         try:
@@ -901,6 +1572,35 @@ class ToolRegistry:
                 return handler(**args)
         except (RuntimeError, OSError, ValueError) as e:
             return f"Tool execution failed for '{name}': {e!s}"
+
+    async def tool_ast_patch_file(self, path: str, search_block: str, replace_block: str) -> str:
+        from titan_agent.core.code_intel.ast_patcher import ASTPatcher, ASTPatchError
+        target = self._resolve_path(path)
+        if not target.exists():
+            return f"Error: File {target} not found."
+        original = target.read_text(encoding="utf-8")
+        try:
+            new_code = ASTPatcher.apply_replacement(original, search_block, replace_block)
+            target.write_text(new_code, encoding="utf-8")
+            return f"AST Patch applied successfully to {target}."
+        except ASTPatchError as e:
+            return f"Error applying AST patch: {e}"
+
+    async def tool_deep_verify_code(self, code: str, intent: str) -> str:
+        from titan_agent.core.verification.deep_verifier import DeepVerifier
+        from titan_agent.llm_client import LLMClient
+        llm = LLMClient()
+        
+        async def runner(script: str) -> str:
+            return await self.tool_docker_sandbox_run(script=script, image="python:3.11-slim", timeout_seconds=60)
+            
+        verifier = DeepVerifier(llm, sandbox_runner=runner)
+        result = await verifier.self_heal_loop(code, intent, max_iterations=3)
+        if result["verified"]:
+            return f"Deep Verify SUCCEEDED! Verified Code:\n{result['code']}\n\nFinal Output:\n{result['final_output']}"
+        else:
+            return f"Deep Verify FAILED after {result['iterations']} iterations.\nLast Output:\n{result['final_output']}\nLast Code:\n{result['code']}"
+
 
     async def tool_execute_command(self, command: str, cwd: str = "") -> str:
         working_dir = self._resolve_path(cwd) if cwd else self.workspace
@@ -1977,3 +2677,643 @@ class ToolRegistry:
             return "Error: task is required."
         route = route_intent(str(task))
         return "### INTENT ROUTE\n" + route.plan_text()
+
+    # ---- Phase 22 Genesis: Hierarchical Organization Tools ----
+
+    async def tool_orchestrator_run(
+        self,
+        goal: str,
+        departments: list[str] | None = None,
+    ) -> str:
+        from .orchestrator import MetaOrchestrator
+
+        if not goal or not str(goal).strip():
+            return "Error: goal is required."
+        orch = getattr(self, "_meta_orchestrator", None)
+        if orch is None:
+            orch = MetaOrchestrator()
+            self._meta_orchestrator = orch
+        res = await orch.orchestrate(str(goal).strip(), departments=departments)
+        return res.synthesis
+
+    async def tool_team_delegate(
+        self,
+        department: str,
+        task: str,
+        role: str = "",
+    ) -> str:
+        from .team_leads import build_team_leads
+
+        if not task or not str(task).strip():
+            return "Error: task is required."
+        dep = str(department or "engineering").strip().lower()
+        leads = getattr(self, "_team_leads", None)
+        if leads is None:
+            leads = build_team_leads()
+            self._team_leads = leads
+
+        lead = leads.get(dep)
+        if not lead:
+            return f"Error: unknown department '{department}'. Choose from: engineering, research, operations, quality_security."
+
+        res = await lead.execute_task(task=str(task).strip(), role=str(role).strip() if role else None)
+        notes = f" (Notes: {', '.join(res.verification_notes)})" if res.verification_notes else ""
+        return f"### TEAM DELIVERABLE: {lead.name} [{res.verification_verdict}]{notes}\nAssigned worker: {res.assigned_role}\n\n{res.output}"
+
+    def tool_team_status(self) -> str:
+        from .orchestrator import MetaOrchestrator
+
+        orch = getattr(self, "_meta_orchestrator", None)
+        if orch is None:
+            orch = MetaOrchestrator()
+            self._meta_orchestrator = orch
+
+        b = orch.budget.summary()
+        lines = [
+            "### TITAN HIERARCHICAL ORGANIZATION STATUS",
+            f"- **Meta-Orchestrator**: Active (Tokens spent: {b['total_tokens_spent']}, Steps spent: {b['total_steps_spent']})",
+            f"- **Active Goal**: {orch.goal_memory.project_goal or '(None)'}",
+            f"- **Milestones**: {len(orch.goal_memory.milestones)} recorded",
+            "",
+            "### DEPARTMENT LEADS (Level 2):",
+        ]
+        for dep, lead in orch.leads.items():
+            lines.append(f"- **{lead.name}** (`{dep}`): Managing {len(lead.managed_roles)} roles ({', '.join(lead.managed_roles)})")
+
+        return "\n".join(lines)
+
+    async def tool_dag_plan_and_run(self, goal: str) -> str:
+        from .orchestrator import MetaOrchestrator
+
+        if not goal or not str(goal).strip():
+            return "Error: goal is required."
+        orch = getattr(self, "_meta_orchestrator", None)
+        if orch is None:
+            orch = MetaOrchestrator()
+            self._meta_orchestrator = orch
+
+        res = await orch.orchestrate_dag(str(goal).strip())
+        self._last_dag_result = res
+        return res.summary
+
+    async def tool_dag_visualize(self, goal: str) -> str:
+        from .core.dag import DAGPlanner
+
+        if not goal or not str(goal).strip():
+            return "Error: goal is required."
+        planner = DAGPlanner()
+        graph = await planner.create_dag_plan(str(goal).strip())
+        mermaid = graph.to_mermaid()
+        return f"### TASK GRAPH (DAG) VISUALIZATION\n```mermaid\n{mermaid}\n```\n\n**Topological Order**: {' -> '.join(graph.topological_sort())}"
+
+    async def tool_debate_solve(self, question: str, rounds: int = 2) -> str:
+        from .core.reasoning.debate import DebateEngine
+        from .llm_client import LLMClient
+        from .structured import LLMBridge
+
+        if not question or not str(question).strip():
+            return "Error: question is required."
+        client = getattr(self, "_llm_client", None) or LLMClient()
+        engine = DebateEngine(LLMBridge(client))
+        res = await engine.run_debate(str(question).strip(), rounds=int(rounds or 2))
+        return res.summary()
+
+    async def tool_reflexion_solve(self, task: str) -> str:
+        from .core.reasoning.reflexion import ReflexionEngine
+        from .llm_client import LLMClient
+        from .structured import LLMBridge
+
+        if not task or not str(task).strip():
+            return "Error: task is required."
+        client = getattr(self, "_llm_client", None) or LLMClient()
+        engine = ReflexionEngine(LLMBridge(client))
+        res = await engine.run(str(task).strip(), max_cycles=3)
+        status_line = f"Reflexion completed in {res.total_cycles} cycles (Verdict: {'PASS' if res.success else 'FAILED'}, Improved: {res.improved})"
+        return f"### REFLEXION OUTCOME [{status_line}]\n\n{res.final_output}"
+
+    @property
+    def memory(self):
+        if getattr(self, "_memory_mgr", None) is None:
+            from .memory import MemoryManager
+            self._memory_mgr = MemoryManager()
+        return self._memory_mgr
+
+    def tool_kg_query(self, entity_id: str, depth: int = 2) -> str:
+        """KNOWLEDGE GRAPH: Queries the causal/dependency knowledge graph around an entity."""
+        if not entity_id or not str(entity_id).strip():
+            return "Error: entity_id is required."
+        if not self.memory.knowledge_graph.entities:
+            from .core.memory import WorkspaceASTGraphExtractor
+            extractor = WorkspaceASTGraphExtractor(self.workspace)
+            extractor.extract(kg=self.memory.knowledge_graph, max_files=50)
+
+        res = self.memory.query_kg(str(entity_id).strip(), depth=int(depth or 2))
+        lines = [f"### KNOWLEDGE GRAPH QUERY: {entity_id} ({res['total_connections']} connection(s))"]
+        for c in res["connections"]:
+            lines.append(f"- ({c['source']}) --[{c['relation']}]--> ({c['target']}) [neighbor: {c['neighbor_name']} ({c['neighbor_type']})]")
+        if not res["connections"]:
+            lines.append("No connections found for entity in knowledge graph.")
+        return "\n".join(lines)
+
+    def tool_kg_impact_analysis(self, entity_id: str) -> str:
+        """KNOWLEDGE GRAPH: Computes downstream impact and blast radius if an entity is modified."""
+        if not entity_id or not str(entity_id).strip():
+            return "Error: entity_id is required."
+        if not self.memory.knowledge_graph.entities:
+            from .core.memory import WorkspaceASTGraphExtractor
+            extractor = WorkspaceASTGraphExtractor(self.workspace)
+            extractor.extract(kg=self.memory.knowledge_graph, max_files=50)
+
+        res = self.memory.kg_impact(str(entity_id).strip())
+        lines = [
+            f"### KNOWLEDGE GRAPH IMPACT ANALYSIS: {entity_id}",
+            f"- Direct Dependents: {len(res['direct_dependents'])} ({', '.join(res['direct_dependents']) if res['direct_dependents'] else 'none'})",
+            f"- Total Blast Radius: {len(res['total_impacted_entities'])} entities",
+            f"- Max Cascade Depth: {res['depth_reached']}",
+        ]
+        if res["total_impacted_entities"]:
+            lines.append("\n**All Impacted Entities**:")
+            for ent in res["total_impacted_entities"]:
+                lines.append(f"- {ent}")
+        return "\n".join(lines)
+
+    def tool_kg_add_fact(self, source: str, relation: str, target: str) -> str:
+        """KNOWLEDGE GRAPH: Adds a semantic fact or causal dependency between two entities."""
+        if not source or not str(source).strip():
+            return "Error: source is required."
+        if not relation or not str(relation).strip():
+            return "Error: relation is required."
+        if not target or not str(target).strip():
+            return "Error: target is required."
+        s, r, t = str(source).strip(), str(relation).strip(), str(target).strip()
+        self.memory.add_kg_fact(s, r, t)
+        return f"Successfully added knowledge graph fact: ({s}) --[{r}]--> ({t})"
+
+    def tool_kg_index_workspace(self, max_files: int = 50) -> str:
+        """KNOWLEDGE GRAPH: Scans workspace ASTs to build knowledge graph."""
+        from .core.memory import WorkspaceASTGraphExtractor
+        extractor = WorkspaceASTGraphExtractor(self.workspace)
+        kg = extractor.extract(kg=self.memory.knowledge_graph, max_files=int(max_files or 50))
+        self.memory.knowledge_graph.save()
+        return f"Indexed workspace AST into Knowledge Graph: {len(kg.entities)} entities, {len(kg.relations)} relations."
+
+    @property
+    def reliability_tracker(self):
+        from .tool_stats import TOOL_RELIABILITY
+        return TOOL_RELIABILITY
+
+    def tool_discover(self, query: str, category: str = "", limit: int = 8) -> str:
+        """DYNAMIC TOOLS: Searches and discovers available tools by keyword/category."""
+        if not query or not str(query).strip():
+            return "Error: query is required."
+        from .core.tools.dynamic_registry import DynamicToolSelector
+        defs = self.get_tool_definitions()
+        matches = DynamicToolSelector.discover_tools(
+            str(query).strip(),
+            defs,
+            category=str(category).strip(),
+            limit=int(limit or 8),
+        )
+        if not matches:
+            return f"No tools found matching query '{query}'."
+
+        lines = [f"### DISCOVERED TOOLS ({len(matches)} matches for '{query}'):"]
+        for td in matches:
+            fn = td.get("function", td)
+            name = fn.get("name", "unknown")
+            desc = fn.get("description", "").split("\n")[0][:120]
+            grade = self.reliability_tracker.get_grade(name)
+            score = self.reliability_tracker.get_score(name)
+            lines.append(f"- **{name}** [Grade {grade} ({score:.2f})]: {desc}")
+        return "\n".join(lines)
+
+    def tool_reliability_report(self) -> str:
+        """TOOL RELIABILITY: Reports EWMA scores, grades, and mitigation advice."""
+        return self.reliability_tracker.format_report_text()
+
+    @property
+    def model_router(self):
+        if getattr(self, "_model_router", None) is None:
+            from .core.routing import ModelRouter
+            self._model_router = ModelRouter()
+        return self._model_router
+
+    @property
+    def budget_tracker(self):
+        if getattr(self, "_budget_tracker", None) is None:
+            from .core.routing import CognitiveBudgetTracker
+            self._budget_tracker = CognitiveBudgetTracker()
+        return self._budget_tracker
+
+    def tool_model_route(self, task: str, prior_failures: int = 0) -> str:
+        """MODEL ROUTER: Analyzes task and returns recommended model tier and pricing."""
+        if not task or not str(task).strip():
+            return "Error: task is required."
+        decision = self.model_router.route(str(task).strip(), prior_failures=int(prior_failures or 0))
+        lines = [
+            f"### MODEL ROUTE DECISION: `{decision.model_name}` [{decision.tier.value.upper()}]",
+            f"- **Rationale**: {decision.rationale}",
+            f"- **Input Pricing**: ${decision.estimated_input_cost_per_1k:.5f} / 1k tokens",
+            f"- **Output Pricing**: ${decision.estimated_output_cost_per_1k:.5f} / 1k tokens",
+            f"- **Escalated**: {decision.is_escalated}",
+        ]
+        return "\n".join(lines)
+
+    def tool_model_budget_status(self) -> str:
+        """COGNITIVE BUDGET: Reports cumulative token usage and USD expenditure."""
+        return self.budget_tracker.format_status_text()
+
+    @property
+    def sandbox_env(self):
+        if getattr(self, "_sandbox_env", None) is None:
+            from .core.sandbox import SandboxEnvironment
+            self._sandbox_env = SandboxEnvironment(self.workspace)
+        return self._sandbox_env
+
+    @property
+    def safe_runner(self):
+        if getattr(self, "_safe_runner", None) is None:
+            from .core.sandbox import SafeScriptRunner
+            self._safe_runner = SafeScriptRunner(self.workspace, sandbox_env=self.sandbox_env)
+        return self._safe_runner
+
+    def tool_sandbox_snapshot_create(self, name: str) -> str:
+        """Creates an immediate point-in-time filesystem snapshot of the workspace."""
+        if not name or not str(name).strip():
+            return "Error: snapshot name is required."
+        snap = self.sandbox_env.create_snapshot(str(name).strip())
+        return (
+            f"### WORKSPACE SNAPSHOT CREATED: `{snap.name}`\n"
+            f"- Total files indexed: {len(snap.file_hashes)}\n"
+            f"- Timestamp: {snap.timestamp}\n"
+            f"- Root path: `{snap.root_path}`"
+        )
+
+    def tool_sandbox_snapshot_rollback(self, name: str) -> str:
+        """Reverts workspace files to a previously captured snapshot."""
+        if not name or not str(name).strip():
+            return "Error: snapshot name is required."
+        report = self.sandbox_env.rollback(str(name).strip())
+        return (
+            f"### WORKSPACE ROLLBACK EXECUTED [{name}]:\n"
+            f"- Restored files: {len(report['restored'])}\n"
+            f"- Deleted newly-created files: {len(report['deleted_new'])}\n"
+            f"- Status: {'SUCCESS' if report['success'] else 'FAILED'}"
+        )
+
+    def tool_sandbox_execute(
+        self,
+        code: str,
+        language: str = "python",
+        timeout: float = 30.0,
+        rollback_on_failure: bool = True,
+    ) -> str:
+        """Safely executes code in the sandbox with timeout and optional auto-rollback."""
+        if not code or not str(code).strip():
+            return "Error: code is required."
+        res = self.safe_runner.run(
+            code=code,
+            language=str(language or "python"),
+            timeout=float(timeout or 30.0),
+            auto_rollback=bool(rollback_on_failure),
+        )
+        lines = [
+            f"### SANDBOX EXECUTION RESULT ({res.language.upper()} | Exit {res.exit_code}):",
+            f"- **Success**: {res.success}",
+            f"- **Execution Time**: {res.duration_sec:.2f}s",
+            f"- **Auto-Rolled Back**: {res.rolled_back}",
+        ]
+        if res.error:
+            lines.append(f"- **Error / Alert**: {res.error}")
+        if res.stdout:
+            lines.append(f"\nSTDOUT:\n{res.stdout}")
+        if res.stderr:
+            lines.append(f"\nSTDERR:\n{res.stderr}")
+        return "\n".join(lines)
+
+    @property
+    def drift_detector(self):
+        if getattr(self, "_drift_detector", None) is None:
+            from .core.monitoring import QualityDriftDetector
+            storage = self.workspace / ".titan" / "drift_metrics.json"
+            self._drift_detector = QualityDriftDetector(storage_path=storage)
+        return self._drift_detector
+
+    def tool_drift_record_task(
+        self,
+        task_id: str,
+        success: bool,
+        steps: int = 1,
+        duration_sec: float = 1.0,
+        tokens_used: int = 0,
+        failed_tools: str = "",
+        category: str = "general",
+    ) -> str:
+        """Logs task execution telemetry for continuous quality regression tracking."""
+        if not task_id or not str(task_id).strip():
+            return "Error: task_id is required."
+        ft_list = [t.strip() for t in str(failed_tools or "").split(",") if t.strip()]
+        metric = self.drift_detector.record_task(
+            task_id=str(task_id).strip(),
+            success=bool(success),
+            steps=int(steps or 1),
+            duration_sec=float(duration_sec or 1.0),
+            tokens_used=int(tokens_used or 0),
+            failed_tools=ft_list,
+            category=str(category or "general"),
+        )
+        status_str = "SUCCESS" if metric.success else "FAILED"
+        return (
+            f"### DRIFT TELEMETRY RECORDED: `{metric.task_id}` [{status_str}]\n"
+            f"- Category: {metric.category} | Steps: {metric.steps} | Duration: {metric.duration_sec:.2f}s\n"
+            f"- Tokens: {metric.tokens_used} | Failed Tools: {', '.join(metric.failed_tools) or 'None'}\n"
+            f"- Total historical records: {len(self.drift_detector.get_metrics())}"
+        )
+
+    def tool_drift_check(
+        self,
+        window_size: int = 10,
+        threshold_drop: float = 0.20,
+    ) -> str:
+        """Analyzes historical task telemetry for quality regression and drift."""
+        report = self.drift_detector.check_drift(
+            window_size=int(window_size or 10),
+            threshold_drop=float(threshold_drop or 0.20),
+        )
+        return report.format_report_text()
+
+    def tool_drift_status(self) -> str:
+        """Displays longitudinal telemetry summary and drift health status."""
+        metrics = self.drift_detector.get_metrics()
+        if not metrics:
+            return "### DRIFT TELEMETRY: No task metrics recorded yet."
+        successes = sum(1 for m in metrics if m.success)
+        total = len(metrics)
+        rate = (successes / total) * 100.0 if total > 0 else 0.0
+        avg_steps = sum(m.steps for m in metrics) / total if total > 0 else 0.0
+        avg_dur = sum(m.duration_sec for m in metrics) / total if total > 0 else 0.0
+        last = metrics[-1]
+        return (
+            f"### DRIFT TELEMETRY STATUS (Total Tasks: {total})\n"
+            f"- Cumulative Success Rate: {rate:.1f}% ({successes}/{total})\n"
+            f"- Average Steps: {avg_steps:.1f} steps/task\n"
+            f"- Average Latency: {avg_dur:.2f}s\n"
+            f"- Most Recent Task: `{last.task_id}` ({'SUCCESS' if last.success else 'FAILED'}, {last.steps} steps)"
+        )
+
+    @property
+    def self_improvement_loop(self):
+        if getattr(self, "_self_improvement_loop", None) is None:
+            from .core.self_improvement import SelfImprovementLoop
+            self._self_improvement_loop = SelfImprovementLoop(workspace_root=self.workspace)
+        return self._self_improvement_loop
+
+    @property
+    def eval_suite(self):
+        if getattr(self, "_eval_suite", None) is None:
+            from .core.self_improvement import EvalSuite
+            self._eval_suite = EvalSuite()
+        return self._eval_suite
+
+    def tool_self_improve_analyze_failure(
+        self,
+        task_id: str,
+        prompt: str,
+        failure_log: str,
+        failed_tools: str = "",
+        category: str = "general",
+    ) -> str:
+        """Analyzes a failed task, diagnoses root cause, and synthesizes a prescriptive rule."""
+        if not task_id or not str(task_id).strip():
+            return "Error: task_id is required."
+        if not prompt or not str(prompt).strip():
+            return "Error: prompt is required."
+        if not failure_log or not str(failure_log).strip():
+            return "Error: failure_log is required."
+
+        ft_list = [t.strip() for t in str(failed_tools or "").split(",") if t.strip()]
+        lesson = self.self_improvement_loop.analyze_failure(
+            task_id=str(task_id).strip(),
+            prompt=str(prompt).strip(),
+            failure_log=str(failure_log).strip(),
+            failed_tools=ft_list,
+            category=str(category or "general"),
+        )
+        return (
+            f"### FAILURE ANALYSIS & LESSON LEARNED [{lesson.category.upper()}]\n"
+            f"- **Task ID**: `{lesson.task_id}`\n"
+            f"- **Root Cause**: {lesson.root_cause}\n"
+            f"- **Guidance**: {lesson.guidance}\n"
+            f"- **Extracted Rule**: > {lesson.rule_text}"
+        )
+
+    def tool_self_improve_eval_run(self, category: str = "") -> str:
+        """Executes automated benchmark evaluation suite to verify capability and catch regressions."""
+        cat = str(category or "").strip()
+        report = self.eval_suite.run_suite(category=cat)
+        lines = [
+            f"### EVAL BENCHMARK RESULTS (Category: '{cat or 'all'}')",
+            f"- **Pass Rate**: {report['pass_rate']}% ({report['passed']}/{report['total_cases']} cases passed)",
+            f"- **Average Quality Score**: {report['average_score']:.2f} / 1.0",
+            f"- **Average Duration**: {report['average_duration_sec']:.3f}s",
+            "\nCases Summary:",
+        ]
+        for r in report["results"]:
+            status_symbol = "✓ PASS" if r["passed"] else "✗ FAIL"
+            lines.append(f"  • `{r['case_id']}`: {status_symbol} (Score: {r['score']})")
+            if r.get("error"):
+                lines.append(f"    - Error: {r['error']}")
+        return "\n".join(lines)
+
+    def tool_self_improve_crystallize_lesson(
+        self,
+        lesson_title: str,
+        guidance: str,
+        category: str = "general",
+    ) -> str:
+        """Permanently records an extracted lesson into the Skill playbook library and Knowledge Graph."""
+        if not lesson_title or not str(lesson_title).strip():
+            return "Error: lesson_title is required."
+        if not guidance or not str(guidance).strip():
+            return "Error: guidance is required."
+
+        from .core.self_improvement import ImprovementLesson
+        lesson = ImprovementLesson(
+            task_id=f"manual_{int(time.time())}",
+            category=str(category or "general").strip(),
+            symptom=f"Learned rule: {lesson_title}",
+            root_cause=str(lesson_title).strip(),
+            guidance=str(guidance).strip(),
+            rule_text=f"RULE [{category.upper()}]: {guidance}",
+        )
+        kg = getattr(self, "_kg", None)
+        status = self.self_improvement_loop.crystallize_lesson(
+            lesson,
+            knowledge_graph=kg,
+        )
+        skill_name = status.get("skill_name", "unknown")
+        return (
+            f"### LESSON CRYSTALLIZED SUCCESSFULLY\n"
+            f"- Saved as Skill Playbook: `{skill_name}` (Auto-injectable)\n"
+            f"- Knowledge Graph Fact Added: {status.get('knowledge_fact_added', False)}\n"
+            f"- Rule: {lesson.rule_text}"
+        )
+
+    async def tool_docker_sandbox_run(
+        self,
+        command: str,
+        image: str = "python:3.12-slim",
+        memory_limit: str = "512m",
+        cpu_quota: str = "1.0",
+        mount_workspace: bool = False,
+        network: str = "bridge",
+        timeout: float = 60.0,
+    ) -> str:
+        """Execute a shell command inside an isolated ephemeral Docker container."""
+        if not command or not str(command).strip():
+            return "Error: command is required."
+        img = str(image or "python:3.12-slim").strip()
+        mem = str(memory_limit or "512m").strip()
+        cpus = str(cpu_quota or "1.0").strip()
+        net = str(network or "bridge").strip()
+        t = max(1.0, min(float(timeout or 60.0), 300.0))
+
+        docker_bin = shutil.which("docker")
+        if not docker_bin:
+            return "Error: docker executable not found on host. Ensure Docker Desktop or docker engine is installed and in PATH."
+
+        cmd = [
+            docker_bin,
+            "run",
+            "--rm",
+            f"--memory={mem}",
+            f"--cpus={cpus}",
+            f"--network={net}",
+        ]
+        if mount_workspace:
+            cmd.extend(["-v", f"{self.workspace.resolve()}:/workspace", "-w", "/workspace"])
+
+        cmd.extend([img, "sh", "-c", command])
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=t)
+            out_str = stdout.decode("utf-8", errors="ignore").strip()
+            err_str = stderr.decode("utf-8", errors="ignore").strip()
+            res = [f"### DOCKER SANDBOX [{img}] (Exit {proc.returncode})"]
+            if out_str:
+                res.append(f"STDOUT:\n{out_str}")
+            if err_str:
+                res.append(f"STDERR:\n{err_str}")
+            if not out_str and not err_str:
+                res.append("(No output produced)")
+            return "\n".join(res)
+        except asyncio.TimeoutError:
+            return f"Error: Docker container execution timed out after {t:.0f}s."
+        except Exception as e:  # noqa: BLE001
+            return f"Docker execution error: {e!s}"
+
+    def tool_apply_patch(self, patch: str) -> str:
+        """Applies a unified diff patch to files in the workspace."""
+        if not patch or not str(patch).strip():
+            return "Error: patch is required."
+
+        lines = patch.strip().splitlines()
+        file_diffs: list[tuple[str, list[list[str]]]] = []
+        cur_file = None
+        cur_hunks: list[list[str]] = []
+        cur_hunk: list[str] | None = None
+
+        for line in lines:
+            if line.startswith("--- "):
+                pass
+            elif line.startswith("+++ "):
+                raw_path = line[4:].strip().removeprefix("b/")
+                if cur_file and cur_hunks:
+                    file_diffs.append((cur_file, cur_hunks))
+                cur_file = raw_path
+                cur_hunks = []
+                cur_hunk = None
+            elif line.startswith("@@"):
+                if cur_hunk is not None:
+                    cur_hunks.append(cur_hunk)
+                cur_hunk = []
+            elif cur_hunk is not None:
+                cur_hunk.append(line)
+        if cur_file and cur_hunk is not None:
+            cur_hunks.append(cur_hunk)
+            file_diffs.append((cur_file, cur_hunks))
+
+        if not file_diffs:
+            return "Error: No valid unified diff hunks found in patch."
+
+        applied_files = []
+        for rel_path, hunks in file_diffs:
+            fpath = self._resolve_path(rel_path)
+            orig_text = ""
+            if fpath.exists():
+                orig_text = fpath.read_text(encoding="utf-8", errors="ignore")
+
+            orig_lines = orig_text.splitlines()
+            new_lines = list(orig_lines)
+
+            for hunk in hunks:
+                old_hunk_lines = [l[1:] for l in hunk if l.startswith(("-", " "))]
+                new_hunk_lines = [l[1:] for l in hunk if l.startswith(("+", " "))]
+
+                match_idx = -1
+                hunk_len = len(old_hunk_lines)
+                if hunk_len == 0:
+                    new_lines.extend(new_hunk_lines)
+                    continue
+
+                for i in range(len(new_lines) - hunk_len + 1):
+                    if new_lines[i : i + hunk_len] == old_hunk_lines:
+                        match_idx = i
+                        break
+
+                if match_idx == -1:
+                    stripped_old = [l.strip() for l in old_hunk_lines]
+                    for i in range(len(new_lines) - hunk_len + 1):
+                        if [l.strip() for l in new_lines[i : i + hunk_len]] == stripped_old:
+                            match_idx = i
+                            break
+
+                if match_idx != -1:
+                    new_lines[match_idx : match_idx + hunk_len] = new_hunk_lines
+                else:
+                    return f"Error: Patch conflict in '{rel_path}' - hunk could not be matched."
+
+            fpath.parent.mkdir(parents=True, exist_ok=True)
+            ends_newline = orig_text.endswith("\n") or not orig_text
+            fpath.write_text("\n".join(new_lines) + ("\n" if ends_newline else ""), encoding="utf-8")
+            applied_files.append(rel_path)
+
+        return f"### PATCH APPLIED SUCCESSFULLY\nModified files: {', '.join(applied_files)} ({len(file_diffs)} file(s))"
+
+    def tool_skill_save(
+        self,
+        name: str,
+        guidance: str,
+        description: str = "",
+        keywords: str = "",
+    ) -> str:
+        """Creates or updates a persistent skill playbook in the skills library."""
+        from .skills import SkillRegistry
+
+        if not name or not str(name).strip():
+            return "Error: skill name is required."
+        if not guidance or not str(guidance).strip():
+            return "Error: skill guidance is required."
+        registry = SkillRegistry()
+        try:
+            path = registry.save_skill(name, description, keywords, guidance)
+            return f"Skill '{name}' saved successfully to {path.name} ({len(guidance)} chars guidance). It will be auto-injected for matching tasks."
+        except Exception as e:  # noqa: BLE001
+            return f"Error saving skill: {e!s}"
+
+

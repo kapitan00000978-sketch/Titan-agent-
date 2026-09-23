@@ -11,10 +11,13 @@ if sys.platform == "win32":
                 reconfigure(encoding='utf-8', errors='replace')
             except (OSError, ValueError):
                 pass  # best-effort: keep default streams if reconfigure is unsupported
+import argparse
+
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import InMemoryHistory
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.prompt import Prompt
 
 from titan_agent.agent import TitanAgent
 from titan_agent.commands import ALL_COMMANDS, expand_slash, parse_local
@@ -26,6 +29,7 @@ console = Console()
 
 VALID_MODES = ("fast", "deep", "deep_search")
 VALID_EFFORTS = ("auto", "low", "medium", "high", "ultra")
+VALID_STRATEGIES = ("auto", "plan", "react", "tot", "reflexion", "debate")
 
 async def resolve_cli_provider() -> tuple[str, str]:
     """Puter.js is browser-only, so the CLI auto-falls back to local Ollama."""
@@ -50,13 +54,26 @@ async def resolve_cli_provider() -> tuple[str, str]:
     return provider, model
 
 async def main():
-    provider, model = await resolve_cli_provider()
-    mode = os.getenv("TITAN_MODE", "fast").lower()
-    if mode not in VALID_MODES:
-        mode = "fast"
-    effort = os.getenv("TITAN_EFFORT", "auto").lower()
-    if effort not in VALID_EFFORTS:
-        effort = "auto"
+    parser = argparse.ArgumentParser(description="Titan Agent CLI")
+    parser.add_argument("--provider", type=str, help="LLM Provider to use (e.g., openai, ollama, laya-mlx)")
+    parser.add_argument("--model", type=str, help="Model name to use")
+    parser.add_argument("--mode", type=str, choices=VALID_MODES, default=os.getenv("TITAN_MODE", "fast").lower(), help="Reasoning mode")
+    parser.add_argument("--effort", type=str, choices=VALID_EFFORTS, default=os.getenv("TITAN_EFFORT", "auto").lower(), help="Effort level")
+    parser.add_argument("--strategy", type=str, choices=VALID_STRATEGIES, default="auto", help="Reasoning strategy (auto, plan, react, tot, reflexion, debate)")
+    parser.add_argument("--meta", "--orchestrator", action="store_true", help="Run with Genesis Level 1 Meta-Orchestrator")
+    parser.add_argument("--department", "--dep", action="append", help="Target department(s) for Meta-Orchestrator")
+    parser.add_argument("--dag", action="store_true", help="Run with Genesis Level 5 Task Graph (DAG) Parallel Planner")
+    parser.add_argument("prompt", nargs="*", help="Single-shot prompt to run directly")
+    args = parser.parse_args()
+
+    provider, model = args.provider, args.model
+    if not provider or not model:
+        def_prov, def_mod = await resolve_cli_provider()
+        provider = provider or def_prov
+        model = model or def_mod
+        
+    mode = args.mode
+    effort = args.effort
 
     console.print(Panel.fit(
         "[bold cyan]⚡ TITAN AGENT[/bold cyan] - [italic]Autonomous AI System, far beyond classic agents[/italic]\n"
@@ -78,10 +95,84 @@ async def main():
     agent = TitanAgent(mcp=mcp, llm=llm)
 
     session_id = "cli_session"
+    prompt_session = PromptSession(history=InMemoryHistory())
+
+    single_shot_prompt = " ".join(args.prompt).strip() if args.prompt else None
+
+    if args.dag:
+        from titan_agent.orchestrator import MetaOrchestrator
+        orch = MetaOrchestrator()
+        target_prompt = single_shot_prompt
+        if not target_prompt:
+            console.print("[bold cyan]📊 TASK GRAPH (DAG) Interactive Mode[/bold cyan] (Enter multi-step goal, or 'exit')")
+            try:
+                user_input = await prompt_session.prompt_async("DAG-Goal> ")
+                if user_input.strip().lower() in ("exit", "quit"):
+                    await mcp.stop_all()
+                    return
+                target_prompt = user_input.strip()
+            except (KeyboardInterrupt, EOFError):
+                await mcp.stop_all()
+                return
+
+        if target_prompt:
+            with console.status("[bold magenta]📊 Planning & Executing Task Graph in parallel waves...", spinner="dots"):
+                dag_res = await orch.orchestrate_dag(target_prompt, session_id=session_id)
+            verdict = "SUCCESS" if dag_res.success else "FAILED"
+            console.print(Panel(Markdown(dag_res.summary), title=f"[bold green]Task Graph Execution: {verdict}[/bold green]", border_style="green" if dag_res.success else "red"))
+            await mcp.stop_all()
+            return
+
+    if args.meta:
+        from titan_agent.orchestrator import MetaOrchestrator
+        orch = MetaOrchestrator()
+        target_prompt = single_shot_prompt
+        if not target_prompt:
+            console.print("[bold cyan]🏛️ META-ORCHESTRATOR Interactive Mode[/bold cyan] (Enter project goal, or 'exit')")
+            try:
+                user_input = await prompt_session.prompt_async("Goal> ")
+                if user_input.strip().lower() in ("exit", "quit"):
+                    await mcp.stop_all()
+                    return
+                target_prompt = user_input.strip()
+            except (KeyboardInterrupt, EOFError):
+                await mcp.stop_all()
+                return
+
+        if target_prompt:
+            with console.status("[bold magenta]🏛️ Meta-Orchestrator dispatching to Department Leads...", spinner="dots"):
+                res = await orch.orchestrate(target_prompt, departments=args.department, session_id=session_id)
+            console.print(Panel(Markdown(res.synthesis), title=f"[bold green]Meta-Orchestrator Verdict: {res.final_verdict}[/bold green]", border_style="green"))
+            await mcp.stop_all()
+            return
+
+    if single_shot_prompt:
+        console.print(f"\n[bold magenta]⚡ Titan is working (mode: {mode}, effort: {effort}, strategy: {args.strategy})...[/bold magenta]")
+        try:
+            async for event in agent.run_task(single_shot_prompt, session_id=session_id, mode=mode, effort=effort, strategy=args.strategy):
+                if event.type == "thought":
+                    console.print(Panel(f"[italic dim]{event.data}[/italic dim]", title="[magenta]🧠 Reasoning (Chain-of-Thought)[/magenta]", border_style="magenta"))
+                elif event.type == "tool_call":
+                    console.print(f"🔧 [bold yellow]Tool called:[/bold yellow] [cyan]{event.data.get('name')}[/cyan] -> [dim]{event.data.get('arguments')}[/dim]")
+                elif event.type == "tool_result":
+                    res = event.data.get("result", "")
+                    preview = str(res)[:300] + ("..." if len(str(res)) > 300 else "")
+                    console.print(f"📋 [dim green]Result:[/dim green] [dim]{preview}[/dim]")
+                elif event.type == "final_answer":
+                    console.print(Panel(Markdown(event.data), title="[bold green]Titan Agent Answer[/bold green]", border_style="green"))
+                elif event.type == "error":
+                    console.print(f"[bold red]❌ Error:[/bold red] {event.data}")
+                elif event.type == "status":
+                    console.print(f"[dim blue]ℹ️ {event.data}[/dim blue]")
+        except Exception as e:  # noqa: BLE001
+            console.print(f"[bold red]Unexpected error:[/bold red] {e}")
+        finally:
+            await mcp.stop_all()
+        return
 
     while True:
         try:
-            user_input = Prompt.ask("\n[bold green]You[/bold green]")
+            user_input = await prompt_session.prompt_async("You> ")
             if not user_input.strip():
                 continue
 
@@ -225,6 +316,9 @@ async def main():
                                     err = str(exc)
 
                             try:
+                                # We are already in an asyncio loop here, we can't do _aio.run()
+                                # But _runner is called by TaskDaemon in a thread via asyncio.to_thread
+                                # So _aio.run is valid INSIDE the thread!
                                 _aio.run(_run())
                             except Exception as exc:  # noqa: BLE001
                                 err = str(exc)
@@ -233,9 +327,8 @@ async def main():
                         # Route each queue task through the live agent (fully autonomous).
                         daemon = TaskDaemon(q, runner=_runner, poll_interval=DAEMON_POLL_INTERVAL)
 
-                        import asyncio as _aio
                         try:
-                            _aio.run(daemon.run_forever())
+                            await daemon.run_forever()
                         except KeyboardInterrupt:
                             console.print("\n[yellow]Daemon stopped by user.[/yellow]")
                     elif name_l == "exit":
