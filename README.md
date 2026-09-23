@@ -244,45 +244,105 @@ TITAN_AUTONOMOUS=true
 
 ## 🎮 Execution Modes
 
-Universal Agent HP can be operated through three interfaces:
+### ⚡ Global `universal` CLI Command (Recommended)
+
+Install Universal Agent HP as a global terminal command available from **any directory**:
+
+```bash
+# Install globally (run once from the project root):
+pip install -e .
+```
+
+Now you can use `universal` (or `universal-agent`) from **anywhere** in your terminal:
+
+```bash
+# Launch interactive CLI (default mode):
+universal
+
+# Launch Web Control Panel in browser:
+universal --web
+
+# Launch full-screen Terminal TUI (OpenCode-style):
+universal --tui
+
+# Launch Telegram Bot:
+universal --telegram
+
+# Override LLM provider and model:
+universal --provider ollama --model deepseek-r1:8b
+universal --provider openai --model gpt-4o
+
+# Set reasoning mode and effort level:
+universal --mode deep --effort high
+
+# One-shot task execution (non-interactive):
+universal "Explain this codebase architecture"
+
+# CEO Meta-Orchestrator delegation:
+universal --meta "Build an authenticated JWT REST API in FastAPI with SQLite"
+
+# DAG Wave-Based Parallel Planner:
+universal --dag "Refactor backend database schema and implement complete pytest suite"
+
+# Multi-Agent Debate Strategy:
+universal --strategy debate "Should we migrate the monolith to microservices?"
+
+# Reflexion Self-Critique Engine:
+universal --strategy reflexion "Write an optimal concurrent LRU Cache in Python"
+```
+
+#### 📋 Interactive Slash Commands (inside CLI session):
+| Command | Description |
+|---|---|
+| `/plan <task>` | Deep planning mode with full analysis |
+| `/review <code>` | Code review with security & quality audit |
+| `/fix <issue>` | Auto-diagnose and fix bugs |
+| `/test <target>` | Generate and run test suites |
+| `/research <topic>` | Multi-hop internet research |
+| `/security-scan` | Full codebase security audit |
+| `/explain <code>` | Detailed code explanation |
+| `/remember <fact>` | Store knowledge in long-term memory |
+| `/handoff <msg>` | Create handoff for team collaboration |
+| `/queue add <task>` | Add task to background queue |
+| `/queue list` | View queued tasks |
+| `/daemon` | Start autonomous background task worker |
+| `/skills` | List all learned skill playbooks |
+| `/memory <query>` | Search knowledge graph |
+| `/status` | Show current provider, model, mode |
+| `/help` | Show all available commands |
+| `mode deep` | Switch to deep reasoning mode |
+| `effort ultra` | Switch to ultra effort level |
+
+---
 
 ### 1. 🌐 Web Control Panel (Modern Cyberpunk Dashboard)
 Launches the FastAPI server and opens the browser interface:
 ```bash
-python run.py
+universal --web
+# Or: python run.py
 ```
 *Access via: `http://localhost:8000` (Features live streaming, DAG visualizer, model routing inspect, and tool reliability logs).*
 
 ### 2. 💻 Interactive Terminal CLI
 Full-featured terminal console with syntax highlighting, streaming output, and REPL slash commands:
 ```bash
-python run.py --cli
-# Or directly:
-python cli.py
+universal
+# Or: python run.py --cli
+# Or: python cli.py
 ```
 
-#### Autonomous One-Shot CLI Commands:
+### 3. 🖥️ Full-Screen Terminal TUI (OpenCode-Style)
+Immersive full-screen terminal interface with panels, tabs, and visual status:
 ```bash
-# Run task using CEO Meta-Orchestrator & Team Leads:
-python cli.py --meta "Build an authenticated JWT REST API in FastAPI with SQLite"
-
-# Run task using DAG Wave-Based Parallel Planner:
-python cli.py --dag "Refactor backend database schema and implement complete pytest suite"
-
-# Execute task with Multi-Agent Debate Strategy:
-python cli.py --strategy debate "Should we migrate the monolith to microservices or modular monolith?"
-
-# Run task using Reflexion Self-Critique Engine:
-python cli.py --strategy reflexion "Write an optimal concurrent LRU Cache in Python with thread locks"
-
-# Delegate directly to a specialized staff member:
-python cli.py --staff SecurityAuditor "Scan codebase for injection vectors and hardcoded secrets"
+universal --tui
+# Or: python run.py --tui
 ```
 
-### 3. 🤖 Remote Telegram Bot
+### 4. 🤖 Remote Telegram Bot
 Control and interact with Universal Agent HP securely from your phone:
 ```bash
-python run.py --telegram
+universal --telegram
+# Or: python run.py --telegram
 ```
 
 ---
