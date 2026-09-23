@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-agent-hp"
+version = "1.0.0"
+description = "Universal Agent HP — Autonomous Cognitive AI Operating System"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Universal Agent HP Team" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+
+[project.scripts]
+universal = "titan_agent.entrypoint:universal_cli"
+universal-agent = "titan_agent.entrypoint:universal_cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["titan_agent*"]

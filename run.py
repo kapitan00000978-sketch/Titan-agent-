@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--effort", default=None, help="Effort level: auto, low, medium, high or ultra (default: auto)")
     parser.add_argument("--telegram", action="store_true", help="Launch Telegram Bot mode")
     parser.add_argument("--tui", action="store_true", help="Launch full-screen Terminal TUI mode (OpenCode/Textual style)")
+    parser.add_argument("--web", action="store_true", help="Launch Web Control Panel UI in browser")
 
     args = parser.parse_args()
 
@@ -70,6 +71,23 @@ def main():
                 print(f"⚠️  Could not open browser automatically: {e}")
 
         uvicorn.run("titan_agent.server:app", host=SERVER_HOST, port=port, reload=False)
+
+
+def universal_cli():
+    """Default entrypoint when invoked via `universal` command in terminal."""
+    if "--web" in sys.argv:
+        main()
+    elif "--tui" in sys.argv:
+        from titan_agent.tui import TitanOS
+        app = TitanOS()
+        app.run()
+    elif "--telegram" in sys.argv:
+        from titan_agent.telegram_bot import run_bot_standalone
+        asyncio.run(run_bot_standalone())
+    else:
+        # Default behavior of `universal` is interactive CLI terminal
+        from cli import main as cli_main
+        asyncio.run(cli_main())
 
 
 if __name__ == "__main__":

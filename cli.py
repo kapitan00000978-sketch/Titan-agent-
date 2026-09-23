@@ -54,7 +54,7 @@ async def resolve_cli_provider() -> tuple[str, str]:
     return provider, model
 
 async def main():
-    parser = argparse.ArgumentParser(description="Titan Agent CLI")
+    parser = argparse.ArgumentParser(description="Universal Agent HP CLI")
     parser.add_argument("--provider", type=str, help="LLM Provider to use (e.g., openai, ollama, laya-mlx)")
     parser.add_argument("--model", type=str, help="Model name to use")
     parser.add_argument("--mode", type=str, choices=VALID_MODES, default=os.getenv("TITAN_MODE", "fast").lower(), help="Reasoning mode")
@@ -76,7 +76,7 @@ async def main():
     effort = args.effort
 
     console.print(Panel.fit(
-        "[bold cyan]⚡ TITAN AGENT[/bold cyan] - [italic]Autonomous AI System, far beyond classic agents[/italic]\n"
+        "[bold cyan]⚡ UNIVERSAL AGENT HP[/bold cyan] - [italic]Autonomous AI System, far beyond classic agents[/italic]\n"
         "[dim]Model: " + model + f" ({provider}) | MCP System: Active | Mode: {mode} | Effort: {effort}[/dim]\n"
         "[yellow]Type a command in Uzbek, Russian or English. Modes: fast | deep | deep_search (e.g. `mode deep`). "
         "Effort levels: low | medium | high | ultra (e.g. `effort high`). "
