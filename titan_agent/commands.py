@@ -118,6 +118,34 @@ COMMANDS = {
             "and generate immediate containment countermeasures.\n\nATTACK/AUDIT TARGET: {arg}"
         ),
     },
+    "sast": {
+        "description": "Run Static Application Security Testing & OWASP Top 10 code audit.",
+        "mode": "deep",
+        "effort": "high",
+        "template": (
+            "Perform a deep SAST & OWASP Top 10 static security audit on the following file or code. "
+            "Use the sast_scan tool. Check for SQLi, command injection, path traversal, unsafe deserialization, "
+            "and SSRF. Report each vulnerability with line numbers and remediations.\n\nSAST TARGET: {arg}"
+        ),
+    },
+    "deps-audit": {
+        "description": "Audit project dependencies and manifests for known CVEs.",
+        "mode": "fast",
+        "effort": "medium",
+        "template": (
+            "Audit project dependencies for known security vulnerabilities and CVEs using the dependency_audit tool. "
+            "Report vulnerable packages and recommended upgrade versions.\n\nMANIFEST: {arg}"
+        ),
+    },
+    "secret-scan": {
+        "description": "Scan files or text for leaked API keys, tokens, and high-entropy credentials.",
+        "mode": "fast",
+        "effort": "medium",
+        "template": (
+            "Scan the following target for leaked credentials, API keys, tokens, and high-entropy secrets "
+            "using the secret_scan tool. Provide a sanitized redaction report.\n\nTARGET: {arg}"
+        ),
+    },
 }
 
 # Commands handled locally (no LLM call needed).

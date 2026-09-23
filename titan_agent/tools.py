@@ -1518,6 +1518,49 @@ class ToolRegistry:
                         "required": ["query"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "sast_scan",
+                    "description": "Performs Static Application Security Testing (SAST) & OWASP Top 10 code audit on source code.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "code": {"type": "string", "description": "The source code string to audit."},
+                            "filename": {"type": "string", "description": "Optional filename (e.g. app.py, handler.js)."}
+                        },
+                        "required": ["code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "dependency_audit",
+                    "description": "Audits dependencies and package manifests (requirements.txt, package.json) for known vulnerabilities (CVEs).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "manifest_file": {"type": "string", "description": "Path to dependency manifest (default: requirements.txt)."}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "secret_scan",
+                    "description": "Scans text, code, or logs for hardcoded API keys, tokens, and high-entropy credentials.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {"type": "string", "description": "Text or code to scan for secrets."}
+                        },
+                        "required": ["text"]
+                    }
+                }
             }
         ])
         from .browser_automation import BrowserAutomation
@@ -1561,6 +1604,53 @@ class ToolRegistry:
 
     async def tool_browser_close(self) -> str:
         return await self.browser_automation.tool_browser_close()
+
+    def tool_sast_scan(self, code: str, filename: str = "code.py") -> str:
+        """Run SAST & OWASP Top 10 code audit."""
+        from titan_agent.core.security.sast import SASTScanner
+        report = SASTScanner().scan_code(code, filename=filename)
+        if not report.findings:
+            return "✅ SAST Scan Clean: No OWASP security issues detected."
+        
+        lines = [f"🛡️ **SAST & OWASP Security Report ({report.total_findings} findings)**:"]
+        for f in report.findings:
+            lines.append(f"- **[{f.severity}]** `{f.rule_id}` (line {f.line}): {f.title}")
+            lines.append(f"  *Snippet:* `{f.snippet}`")
+            lines.append(f"  *Fix:* {f.remediation}")
+        return "\n".join(lines)
+
+    def tool_dependency_audit(self, manifest_file: str = "requirements.txt") -> str:
+        """Audit package manifests for vulnerabilities."""
+        from titan_agent.core.security.dependency_auditor import DependencyAuditor
+        target = self._resolve_path(manifest_file)
+        if not target.is_file():
+            # Check default workspace root
+            target = self.workspace / manifest_file
+        report = DependencyAuditor().audit_manifest_file(target)
+        if not report.alerts:
+            return f"✅ Dependency Audit Clean: {report.total_dependencies} dependencies analyzed, 0 known CVEs found."
+
+        lines = [f"🛡️ **Supply-Chain Dependency Audit ({report.vulnerable_count} alerts)**:"]
+        for a in report.alerts:
+            lines.append(f"- **[{a.severity}]** `{a.package}` ({a.installed_spec})")
+            lines.append(f"  *Advisory:* {a.advisory}")
+            lines.append(f"  *Fix:* {a.recommendation}")
+        return "\n".join(lines)
+
+    def tool_secret_scan(self, text: str) -> str:
+        """Scan text or code for high-entropy secrets and sensitive tokens."""
+        from titan_agent.core.security.secret_scanner import SecretScanner
+        scanner = SecretScanner()
+        findings = scanner.scan(text)
+        if not findings:
+            return "✅ Secret Scan Clean: No exposed credentials or private keys detected."
+
+        lines = [f"🚨 **Secret Scanner Alert ({len(findings)} secrets detected)**:"]
+        for f in findings:
+            masked = f.match[:4] + "..." if len(f.match) > 8 else "***"
+            lines.append(f"- **[{f.severity}]** {f.secret_type}: `{masked}` (Entropy: {f.entropy})")
+        lines.append(f"\n🔒 **Sanitized Redaction Preview:**\n```\n{scanner.redact(text)}\n```")
+        return "\n".join(lines)
 
     async def execute_tool(self, name: str, args: dict[str, Any]) -> str:
         try:
