@@ -27,43 +27,47 @@
 
 ## 🏛️ Genesis Cognitive Architecture (Levels 1 – 10)
 
-```
-========================================================================================
-LEVEL 1 — META-ORCHESTRATOR (Chief Executive Agent)
-  ├── Global Goal Memory (Maintains multi-session project roadmap & long-term objectives)
-  ├── Resource & Token Budget Controller (Manages token consumption & USD spend)
-  └── Multi-Agent Conflict Resolver (Resolves departmental priorities and constraints)
-========================================================================================
-                                     │
-         ┌───────────────────────────┼───────────────────────────┐
-         ▼                           ▼                           ▼
-LEVEL 2 — 4 DEPARTMENT TEAM LEADS
-  ├── EngineeringLead (CTO)           : System architecture, code synthesis, API schemas
-  ├── ResearchLead (Chief Scientist) : Multi-hop internet research, doc audits, vector RAG
-  ├── OperationsLead (DevOps / SRE)  : Terminal actions, Docker sandboxes, Git migrations
-  └── QualitySecurityLead (Audit/QA) : AST security scanning, test suites, zero-loss rollback
-========================================================================================
-                                     │
-         ┌───────────────────────────┴───────────────────────────┐
-         ▼                                                       ▼
-========================================================================================
-LEVEL 3 — 29 SPECIALIST WORKER ROLES
-  ├── Backend Specialist              ├── Database Specialist         ├── Security Auditor
-  ├── Frontend Specialist             ├── Refactoring Specialist      ├── Performance Engineer
-  ├── Vector RAG Specialist           ├── Test Engineer               ├── Browser Automation Lead
-  ├── Blue Team Defense Sentinel      ├── Emergency Red Team Operator ├── API Architect
-  └── (17 Additional Specialized Roles dispatched dynamically per task context)
-========================================================================================
-                                     │
-LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS & REASONING RUNTIMES
-  ├── Level 4: Directed Acyclic Graph (DAG) Task Planner & Wave-Based Parallel Executor
-  ├── Level 5: Dual Reasoning Loops: Reflexion Engine & Multi-Agent Debate Arena
-  ├── Level 6: Causal Knowledge Graph Memory & AST Blast-Radius Impact Analyzer
-  ├── Level 7: Dynamic Tool Discovery, Sandboxing & Bayesian EWMA Reliability Rating
-  ├── Level 8: Capability-Based Model Routing & Cognitive USD Budget Tracker
-  ├── Level 9: Execution Sandbox with Filesystem Snapshot & Zero-Loss Rollback
-  └── Level 10: Drift Detection & Autonomous Self-Improvement Benchmark Suite
-========================================================================================
+```mermaid
+flowchart TD
+    CEO["👑 Level 1: CEO Meta-Orchestrator\n• Global Goal Memory\n• Token & USD Spend Budget\n• Department Conflict Arbiter"]
+    
+    L_Eng["🛠️ Level 2: Engineering Lead (CTO)\n• System Architecture\n• Code Synthesis & API Schemas"]
+    L_Res["🔬 Level 2: Research Lead (Chief Scientist)\n• Multi-Hop Web Research\n• Doc Audits & Vector RAG"]
+    L_Ops["⚙️ Level 2: Operations Lead (DevOps/SRE)\n• Terminal & Docker Sandboxes\n• DB & Git Migrations"]
+    L_Sec["🛡️ Level 2: Quality & Security Lead (QA/Sec)\n• AST Security Scanning\n• Test Suites & Rollback"]
+    
+    CEO --> L_Eng
+    CEO --> L_Res
+    CEO --> L_Ops
+    CEO --> L_Sec
+    
+    subgraph Specialists["👥 Level 3: 29 Specialist Worker Roles (staff.py)"]
+        W_Code["💻 Backend / Frontend / DB Coder"]
+        W_Sec["🛡️ Blue Team Defense Sentinel"]
+        W_Red["⚔️ Emergency Red Team Operator"]
+        W_RAG["📚 Vector RAG & Researcher"]
+        W_Test["🧪 Test Writer & QA Verifier"]
+        W_DevOps["🚀 Deployer & Dependency Updater"]
+    end
+    
+    L_Eng --> W_Code
+    L_Sec --> W_Sec
+    L_Sec --> W_Red
+    L_Sec --> W_Test
+    L_Res --> W_RAG
+    L_Ops --> W_DevOps
+    
+    subgraph Engines["⚡ Levels 4 – 10: Cognitive Engines & Self-Improvement"]
+        E_DAG["Level 4: Kahn's DAG Parallel Wave Planner"]
+        E_Debate["Level 5: Reflexion & Multi-Agent Debate Arena"]
+        E_KG["Level 6: Causal Knowledge Graph & Blast-Radius"]
+        E_Tools["Level 7: Dynamic Tool Discovery & Reliability EWMA"]
+        E_Route["Level 8: 500+ Model Capability Routing & Budget"]
+        E_Box["Level 9: SHA-256 Zero-Loss Filesystem Rollback"]
+        E_Self["Level 10: Drift Detection & Self-Improvement Suite"]
+    end
+    
+    Specialists --> Engines
 ```
 
 ---
@@ -72,33 +76,22 @@ LEVEL 4 TO 10 — COGNITIVE SUBSYSTEMS & REASONING RUNTIMES
 
 Universal Agent HP features a military-grade, dual-shield cybersecurity architecture combining continuous 24/7 in-line threat monitoring with autonomous emergency counter-strike and containment:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                              INCOMING USER PROMPT / TOOL CALL                          │
-└───────────────────────────────────────────┬────────────────────────────────────────────┘
-                                            │
-                                            ▼
-                  ┌───────────────────────────────────────────────────┐
-                  │   🛡️ ALWAYS-ON BLUE TEAM SENTINEL (24/7 Active)   │
-                  │   - Prompt Injection & Jailbreak (DAN) Detection  │
-                  │   - Lethal Command Interception (rm -rf, reverse) │
-                  │   - Shannon Entropy & Hardcoded Secret Scanning   │
-                  │   - SAST AST Analysis & OWASP Top 10 Verification │
-                  └─────────────────────────┬─────────────────────────┘
-                                            │
-                     ┌──────────────────────┴──────────────────────┐
-                     │                                             │
-      [ThreatScore < 0.85: BENIGN]                 [ThreatScore >= 0.85: CRITICAL BREACH]
-                     │                                             │
-                     ▼                                             ▼
-        ┌─────────────────────────┐               ┌─────────────────────────────────┐
-        │  ✅ Safe Execution Path  │               │  🚨 EMERGENCY RED TEAM ACTIVATED│
-        │  - Guardrailed Sandbox  │               │  - Threat Deconstruction        │
-        │  - Transaction Snapshot │               │  - Runtime Session Quarantine   │
-        │  - Normal Workflows     │               │  - Defensive IP Banning & Geo   │
-        └─────────────────────────┘               │  - Zero-Day Patch Synthesis     │
-                                                  │  - MITRE ATT&CK Forensic Report │
-                                                  └─────────────────────────────────┘
+```mermaid
+flowchart TD
+    In["📥 User Input / Command / Tool Invocation"] --> Blue["🛡️ Blue Team Sentinel (24/7 Continuous Monitor)\n• Prompt Injection & Jailbreak (DAN) Detection\n• Lethal OS Command Interception (rm -rf, reverse shells)\n• Shannon Entropy & Secret Leak Scanning\n• SAST AST Analysis & OWASP Top 10 Rules"]
+    
+    Blue -->|"Threat Level: NORMAL / LOW / MEDIUM\n(ThreatScore < 0.85)"| Safe["✅ Safe Execution Path\n• Guardrailed Execution Sandbox\n• SHA-256 Transaction Snapshot\n• Normal Agent Task Workflow"]
+    
+    Blue -->|"Threat Level: CRITICAL / BREACH DETECTED\n(ThreatScore >= 0.85)"| RedTrigger["🚨 Emergency Trigger: Red Team Activated"]
+    
+    subgraph RedTeamOps["⚔️ Emergency Red Team: Autonomous Counter-Strike & Containment"]
+        RedTrigger --> Deconstruct["1. Attack Deconstruction & Exploit Profiling\n• Reverse-engineers payload & vector"]
+        Deconstruct --> Quarantine["2. Runtime Quarantine & Snapshot Isolation\n• Freezes session & enforces IP Ban"]
+        Quarantine --> PatchGen["3. Synthesize Hardened Policy & Zero-Day Patch\n• Auto-generates blocklist counter-rules"]
+        PatchGen --> ForensicReport["4. Forensic Incident Report & Telemetry\n• MITRE ATT&CK taxonomy mapping"]
+    end
+    
+    ForensicReport --> BlueUpdate["🛡️ Blue Team Sentinel Updated\n• Hardened against future attack variations"]
 ```
 
 ### The 5 Cyber Defense Pillars:
@@ -129,6 +122,25 @@ Universal Agent HP features a military-grade, dual-shield cybersecurity architec
 - **Forensic Audit Dossier**: Automatically generates timestamped, audit-ready incident reports detailing payload telemetry, containment actions, and synthesized counter-rules.
 
 ---
+
+## ⚡ Kahn's DAG Wave Execution & Self-Healing Architecture
+
+```mermaid
+flowchart LR
+    Goal["🎯 Complex Project Goal"] --> DAG["📊 DAG Parallel Wave Planner"]
+    
+    subgraph Waves["⚡ Parallel Wave Execution Engine"]
+        W1["Wave 1: Schemas & DB Setup"] --> W2["Wave 2: API Endpoints & Auth"]
+        W1 --> W3["Wave 2: Frontend Layout"]
+        W2 --> W4["Wave 3: Integration Tests"]
+        W3 --> W4
+    end
+    
+    DAG --> Waves
+    Waves -->|"Branch Failure Detected"| Healer["🔄 AST Causal Self-Healer & Blast-Radius"]
+    Healer -->|"Dynamic Re-plan"| Waves
+    Waves -->|"All Waves Green"| Verified["🏆 Verified & Tested Production Build"]
+```
 
 ## 🤖 Supported Models (Zero-Key & Out-of-the-Box)
 
