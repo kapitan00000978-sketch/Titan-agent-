@@ -25,6 +25,7 @@ from .config import (
     OPENROUTER_API_KEY,
     EXTRA_LLM_X_API_KEY,
     EXTRA_LLM_X_BASE_URL,
+    EXTRA_LLM_X_MODEL,
     GEMINI_API_KEY,
     GEMINI_BASE_URL,
     SAMBANOVA_API_KEY,
@@ -143,6 +144,8 @@ class LLMClient:
             # Extra LLM X — Autonomous 100% Free AI Gateway
             self.base_url = EXTRA_LLM_X_BASE_URL
             self.api_key = EXTRA_LLM_X_API_KEY
+            if self.model == DEFAULT_MODEL:
+                self.model = EXTRA_LLM_X_MODEL
         elif self.provider == "gemini":
             # Google AI Studio (Gemini 2.0 Flash / Pro)
             self.base_url = GEMINI_BASE_URL
