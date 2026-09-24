@@ -1,496 +1,86 @@
-# ⚡ UNIVERSAL AGENT HP — Autonomous Cognitive AI Operating System
-### *The First 10-Layer Autonomous AI Software Company in Your Terminal — 100% Free, Zero-Key, and Air-Gapped Private.*
+# Titan Agent (Universal Agent HP)
 
-[![CI - Test Suite](https://img.shields.io/badge/Test%20Suite-623%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP)
-[![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-[![Cyber Defense](https://img.shields.io/badge/Security-Dual--Shield%20Blue%2FRed%20Team-red.svg)](#-dual-shield-enterprise-cyber-defense-architecture)
-[![Architecture](https://img.shields.io/badge/Architecture-Genesis%20Levels%201--10-purple.svg)](docs/titan-agent-master-architecture.md)
-[![Models](https://img.shields.io/badge/Models-500+%20Keyless%20%26%20Local-orange.svg)](#-supported-models-zero-key--out-of-the-box)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build Status](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml/badge.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> 💡 **Stop paying $500/month for cloud coding agents that hallucinate, leak private corporate code, and get trapped in infinite loops.**  
-> **Universal Agent HP** replaces brittle single-prompt bots with an enterprise-grade autonomous software organization: a **CEO Meta-Orchestrator**, **4 Department Leads**, and **29 Worker Specialists** executing concurrent **DAG dependency waves** with **SHA-256 zero-loss rollback**, **Dual-Shield Blue/Red Team Cyber Defense**, and **continuous self-improvement**. Run frontier intelligence (**DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-4o**) completely free with **zero API keys**, or 100% offline via **local Apple MLX & Ollama**.
+Titan Agent is an autonomous AI agent framework designed for executing coding tasks, running tests, and managing workflows in an isolated environment.
 
----
+![MVP Demo](https://via.placeholder.com/800x400.png?text=Working+MVP+Demo+GIF)
 
-### 🔥 Why Developers & Teams Choose Universal Agent HP:
-- 🚀 **100% Free Forever, Zero API Keys Required**: Instant out-of-the-box access to 500+ frontier models (DeepSeek-R1, Claude 3.5, GPT-4o) via Puter.js, or run completely offline with Laya MLX / Ollama.
-- 🏢 **An Entire Tech Company in One CLI**: Not a toy prompt-wrapper. Universal Agent HP routes tasks through a CEO, 4 Team Leads (CTO, Chief Scientist, DevOps, QA/Security), and 29 isolated specialists.
-- 🛡️ **Dual-Shield Enterprise Cyber Defense**: Continuous 24/7 **Blue Team Sentinel** monitor + emergency **Red Team Counter-Strike** unit with SAST OWASP scanner, Shannon entropy secret redaction, and defensive IP banning.
-- ⚡ **Kahn's DAG Wave Execution**: No more slow sequential loops. Independent tasks run concurrently in parallel waves; failing branches replan dynamically without losing completed work.
-- 📁 **Seamless `@file` Autocompletion & Context Attachment**: Mention files with `@` to automatically inspect, attach, and reason over files directly from the terminal.
-- 🛡️ **Zero-Loss Filesystem Rollback**: Real byte-level SHA-256 snapshots before destructive actions. One command restores your codebase to its exact original state if an agent makes a mistake.
-- 🧠 **AST Causal Intelligence & Blast-Radius**: Calculates caller/callee ripples before editing code so unexpected regression bugs are eliminated before they happen.
-- 📈 **Continuous Self-Improvement (Level 10)**: Diagnoses drift, turns failed test runs into permanent playbooks, and self-tunes its reasoning prompts autonomously.
+## ⚠️ Important Notice Regarding Free Model Access
+This project includes experimental integrations that allow "free" access to models via unofficial proxies (e.g., Puter.js, g4f, tgpt). 
+**Disclaimer:** These methods rely on unverified third-party reverse-proxies. They are unofficial, guarantee no uptime or privacy, and may violate the original provider's Terms of Service. They can break or be blocked at any time. We strongly recommend setting `TITAN_PROVIDER` to official APIs (like `groq`, `gemini`, `openrouter`) or using local models (`ollama`) for stability and security.
 
----
+## Installation
 
-## 🏛️ Genesis Cognitive Architecture (Levels 1 – 10)
+### Prerequisites
+- Python 3.10+
+- Git
 
-```mermaid
-flowchart TD
-    CEO["👑 Level 1: CEO Meta-Orchestrator\n• Global Goal Memory\n• Token & USD Spend Budget\n• Department Conflict Arbiter"]
-    
-    L_Eng["🛠️ Level 2: Engineering Lead (CTO)\n• System Architecture\n• Code Synthesis & API Schemas"]
-    L_Res["🔬 Level 2: Research Lead (Chief Scientist)\n• Multi-Hop Web Research\n• Doc Audits & Vector RAG"]
-    L_Ops["⚙️ Level 2: Operations Lead (DevOps/SRE)\n• Terminal & Docker Sandboxes\n• DB & Git Migrations"]
-    L_Sec["🛡️ Level 2: Quality & Security Lead (QA/Sec)\n• AST Security Scanning\n• Test Suites & Rollback"]
-    
-    CEO --> L_Eng
-    CEO --> L_Res
-    CEO --> L_Ops
-    CEO --> L_Sec
-    
-    subgraph Specialists["👥 Level 3: 29 Specialist Worker Roles (staff.py)"]
-        W_Code["💻 Backend / Frontend / DB Coder"]
-        W_Sec["🛡️ Blue Team Defense Sentinel"]
-        W_Red["⚔️ Emergency Red Team Operator"]
-        W_RAG["📚 Vector RAG & Researcher"]
-        W_Test["🧪 Test Writer & QA Verifier"]
-        W_DevOps["🚀 Deployer & Dependency Updater"]
-    end
-    
-    L_Eng --> W_Code
-    L_Sec --> W_Sec
-    L_Sec --> W_Red
-    L_Sec --> W_Test
-    L_Res --> W_RAG
-    L_Ops --> W_DevOps
-    
-    subgraph Engines["⚡ Levels 4 – 10: Cognitive Engines & Self-Improvement"]
-        E_DAG["Level 4: Kahn's DAG Parallel Wave Planner"]
-        E_Debate["Level 5: Reflexion & Multi-Agent Debate Arena"]
-        E_KG["Level 6: Causal Knowledge Graph & Blast-Radius"]
-        E_Tools["Level 7: Dynamic Tool Discovery & Reliability EWMA"]
-        E_Route["Level 8: 500+ Model Capability Routing & Budget"]
-        E_Box["Level 9: SHA-256 Zero-Loss Filesystem Rollback"]
-        E_Self["Level 10: Drift Detection & Self-Improvement Suite"]
-    end
-    
-    Specialists --> Engines
-```
+### Setup
+`ash
+# Clone the repository
+git clone https://github.com/example/titan_agent.git
+cd titan_agent
 
----
-
-## 🛡️ Dual-Shield Enterprise Cyber Defense Architecture
-
-Universal Agent HP features a military-grade, dual-shield cybersecurity architecture combining continuous 24/7 in-line threat monitoring with autonomous emergency counter-strike and containment:
-
-```mermaid
-flowchart TD
-    In["📥 User Input / Command / Tool Invocation"] --> Blue["🛡️ Blue Team Sentinel (24/7 Continuous Monitor)\n• Prompt Injection & Jailbreak (DAN) Detection\n• Lethal OS Command Interception (rm -rf, reverse shells)\n• Shannon Entropy & Secret Leak Scanning\n• SAST AST Analysis & OWASP Top 10 Rules"]
-    
-    Blue -->|"Threat Level: NORMAL / LOW / MEDIUM\n(ThreatScore < 0.85)"| Safe["✅ Safe Execution Path\n• Guardrailed Execution Sandbox\n• SHA-256 Transaction Snapshot\n• Normal Agent Task Workflow"]
-    
-    Blue -->|"Threat Level: CRITICAL / BREACH DETECTED\n(ThreatScore >= 0.85)"| RedTrigger["🚨 Emergency Trigger: Red Team Activated"]
-    
-    subgraph RedTeamOps["⚔️ Emergency Red Team: Autonomous Counter-Strike & Containment"]
-        RedTrigger --> Deconstruct["1. Attack Deconstruction & Exploit Profiling\n• Reverse-engineers payload & vector"]
-        Deconstruct --> Quarantine["2. Runtime Quarantine & Snapshot Isolation\n• Freezes session & enforces IP Ban"]
-        Quarantine --> PatchGen["3. Synthesize Hardened Policy & Zero-Day Patch\n• Auto-generates blocklist counter-rules"]
-        PatchGen --> ForensicReport["4. Forensic Incident Report & Telemetry\n• MITRE ATT&CK taxonomy mapping"]
-    end
-    
-    ForensicReport --> BlueUpdate["🛡️ Blue Team Sentinel Updated\n• Hardened against future attack variations"]
-```
-
-### The 5 Cyber Defense Pillars:
-
-#### 1. 🔍 SAST (Static Application Security Testing) & OWASP Top 10
-- **Live In-Line Code Audit**: Audits Python, JavaScript, and shell scripts on the fly.
-- **Vulnerability Signatures**: Detects SQL Injection (`SEC-INJ-001`), Subprocess `shell=True` command injections (`SEC-INJ-002`), Insecure `pickle.loads` deserialization (`SEC-DESER-001`), dynamic `eval`/`exec` execution (`SEC-DYN-001`), disabled SSL verification (`SEC-CONF-001`), and SSRF to cloud metadata `169.254.169.254` (`SEC-SSRF-001`).
-- **Slash Command**: `/sast @file.py` | **Tool**: `sast_scan`
-
-#### 2. 📦 Supply-Chain & Dependency CVE Auditor
-- **Manifest Scanning**: Audits `requirements.txt`, `pyproject.toml`, and `package.json` against known CVE vulnerability databases.
-- **Protocol & MitM Guards**: Rejects unencrypted `http://` package repositories and suggests exact safe upgrade versions.
-- **Slash Command**: `/deps-audit requirements.txt` | **Tool**: `dependency_audit`
-
-#### 3. 🔑 Shannon Entropy Secret Scanner & Auto-Redaction
-- **High-Entropy Blob Detection**: Mathematical Shannon entropy calculation ($H = -\sum p \log_2 p$) identifies obfuscated tokens, private keys, and high-entropy hashes.
-- **Credential Pattern Interceptor**: Catches AWS keys (`AKIA...`), OpenAI/Anthropic tokens (`sk-...`), GitHub PATs (`ghp_...`), Slack tokens, and PEM private keys.
-- **Zero-Leak Redaction**: Automatically sanitizes terminal output and log files (`[REDACTED_SECRET]`).
-- **Slash Command**: `/secret-scan @.env` | **Tool**: `secret_scan`
-
-#### 4. 🌐 Defensive IP Banning & Geo-Logging Threat Intelligence
-- **Connection Telemetry**: Resolves caller IP address, ASN/ISP, country, and city coordinates.
-- **Automated Defensive Banning**: High-severity intrusion attempts trigger immediate server-level IP bans (`auto-ban`) with whitelist protection for local interfaces.
-- **Slash Command**: `/banned-ips` | **Tool**: `IPDefenseManager`
-
-#### 5. 📊 MITRE ATT&CK Threat Modeling & Automated Forensic Reporting
-- **Taxonomy Mapping**: Classifies incidents under MITRE ATT&CK techniques (`TA0002` Execution, `T1059.004` Shell, `T1055.012` LLM Prompt Injection, `T1552` Credential Access).
-- **Forensic Audit Dossier**: Automatically generates timestamped, audit-ready incident reports detailing payload telemetry, containment actions, and synthesized counter-rules.
-
----
-
-## ⚡ Kahn's DAG Wave Execution & Self-Healing Architecture
-
-```mermaid
-flowchart LR
-    Goal["🎯 Complex Project Goal"] --> DAG["📊 DAG Parallel Wave Planner"]
-    
-    subgraph Waves["⚡ Parallel Wave Execution Engine"]
-        W1["Wave 1: Schemas & DB Setup"] --> W2["Wave 2: API Endpoints & Auth"]
-        W1 --> W3["Wave 2: Frontend Layout"]
-        W2 --> W4["Wave 3: Integration Tests"]
-        W3 --> W4
-    end
-    
-    DAG --> Waves
-    Waves -->|"Branch Failure Detected"| Healer["🔄 AST Causal Self-Healer & Blast-Radius"]
-    Healer -->|"Dynamic Re-plan"| Waves
-    Waves -->|"All Waves Green"| Verified["🏆 Verified & Tested Production Build"]
-```
-
-## 🤖 Supported Models (Zero-Key & Out-of-the-Box)
-
-Universal Agent HP requires **zero paid subscriptions or mandatory API keys**. It natively interfaces with both cutting-edge frontier cloud models and air-gapped local runtimes:
-
-### 🌐 Frontier Cloud Models (Keyless & Instant)
-- **DeepSeek V4 Pro & DeepSeek-R1** (Full 671B MoE deep reasoning)
-- **Claude 3.5 Sonnet & Claude 3.5 Haiku** (Anthropic frontier coding)
-- **Claude Opus 3 / 4.5** (Complex system architecture synthesis)
-- **GPT-4o & GPT-4o Mini** (Multimodal analysis & fast execution)
-- **GPT-5 Class Models** (Next-generation autonomous reasoning)
-- **Llama 3.3 (70B) & Llama 3.1 (405B)** (Open-weights scale intelligence)
-- **Qwen 2.5 (72B) & Qwen 2.5 Coder** (State-of-the-art polyglot code generation)
-- **Mistral Large 2 & Codestral** (High-precision technical execution)
-- **Grok Beta / Grok 2** (Real-time data-driven synthesis)
-*Accessed instantly via Puter.js, Completions.me gateway, GPT4Free (`g4f`), and Python-tGPT (`tgpt`).*
-
-### 🎁 Free API Key Platforms & Keyless Models Hub
-Universal Agent HP allows you to plug in and use today's best free API platforms without paying a single cent. View them in CLI via `/free-models` or in the Web UI:
-
-| Platform | Registration Link (Free Key) | Top Free Models | Free Quota / Limits |
-| :--- | :--- | :--- | :--- |
-| **Google AI Studio** | [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-1.5-pro` | 15 req/min, 1,500 req/day (Free Forever) |
-| **Groq Cloud** | [console.groq.com/keys](https://console.groq.com/keys) | `llama-3.3-70b-versatile`, `mixtral-8x7b` | 30 req/min, 500+ tokens/sec on LPU |
-| **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | `deepseek/deepseek-r1:free`, `llama-3.3-70b:free` | 20+ models completely free |
-| **SambaNova Cloud** | [cloud.sambanova.ai/apis](https://cloud.sambanova.ai/apis) | `Meta-Llama-3.3-70B-Instruct`, `Qwen2.5-Coder` | High-speed SN40L chip developer tier |
-| **GitHub Models** | [github.com/settings/tokens](https://github.com/settings/tokens) | `gpt-4o`, `Phi-4`, `llama-3.1-70b` | Free with standard GitHub Personal Access Token |
-| **Mistral AI** | [console.mistral.ai/api-keys/](https://console.mistral.ai/api-keys/) | `codestral-latest`, `mistral-small` | Free developer tier for coding |
-| **Hugging Face** | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) | `Llama-3.2-3B`, `Qwen2.5-Coder-32B` | Free serverless inference user token |
-| **Puter.js** | [developer.puter.com](https://developer.puter.com) | `deepseek-v4-pro`, `claude-3-5-sonnet`, `gpt-4o` | **100% Zero-Key in browser Web UI** |
-| **GPT4Free (`g4f`)** | Built-in | `gpt-4o`, `gpt-4` | **100% Zero-Key out-of-the-box** |
-| **Ollama** | [ollama.com](https://ollama.com) | `hermes3:8b`, `qwen2.5-coder`, `deepseek-r1` | **100% Offline & Private on your PC** |
-
-> 💡 **Tip**: In CLI run `/free-models` to list all free portals and models. In the Web UI Settings, click any free provider to auto-configure and open its key generation link.
-
----
-
-## 🏆 Architectural Superiority: Why Universal Agent HP Outperforms Other AI Agents
-
-Unlike standard wrapper bots, single-prompt LLMs, or brittle ReAct loops, Universal Agent HP is engineered as an enterprise-grade autonomous software company. Here is how it compares directly against industry alternatives:
-
-### 1. Universal Agent HP vs. Hermes 3 & Single-Model Agents
-- **Context Degradation & Hallucination**: Hermes 3 and typical fine-tuned models operate within a single context window. As task steps multiply, prompt contamination causes them to forget instructions, hallucinate tool signatures, or lose track of files.
-- **Universal Agent HP's Advantage**: Universal Agent HP uses a **10-Layer Cognitive Hierarchy**. The **CEO Meta-Orchestrator** divides high-level intent across **4 Departmental Team Leads**, which dispatch work to **27 isolated Specialist Workers** (`staff.py`). Each worker runs with dedicated, scoped tool bundles—eliminating context bloat and hallucination.
-
-### 2. Universal Agent HP vs. Devin & Proprietary Cloud Agents
-- **Privacy & Vendor Lock-in**: Devin is a closed-source, cloud-only SaaS that requires streaming all proprietary corporate code to external third-party servers at high subscription costs.
-- **Universal Agent HP's Advantage**: Universal Agent HP is **100% open-source, local-first, and air-gapped**. It runs entirely on your own machine using **Laya MLX or Ollama** with zero data leaving your perimeter.
-- **Safety & Reversibility**: If a cloud agent breaks your repository, manual Git recovery is tedious. Universal Agent HP incorporates a **Level 9 Execution Sandbox with Filesystem Snapshots** (`core/sandbox/environment.py`). It computes SHA-256 pre-execution hashes and provides **one-click zero-loss transactional rollback**, automatically reverting altered code and removing rogue files.
-
-### 3. Universal Agent HP vs. AutoGPT, CrewAI & LangChain ReAct Frameworks
-- **Infinite Loops & Tool Thrashing**: Traditional ReAct frameworks run naive sequential loops (`thought -> action -> observation`). When a tool fails or throws an unhandled exception, they repeatedly hammer the same broken command until tokens or limits are exhausted.
-- **Universal Agent HP's Advantage**:
-  - **DAG Wave Planner** (`core/dag/`): Replaces linear step-by-step loops with Kahn’s Directed Acyclic Graph topology. Independent subtasks execute concurrently in parallel waves, and failures trigger selective branch replanning rather than full workflow restarts.
-  - **Bayesian EWMA Tool Reliability Rating** (`core/tools/reliability.py`): Tracks real-time tool performance dynamically from Grade A to F. If a tool degrades, the agent automatically applies mitigation advice or reroutes to alternative tool paths.
-  - **Dual Reasoning Engines** (`core/reasoning/`): Combines a **Reflexion Engine** (self-evaluating against strict test suites before committing) and a **Multi-Agent Debate Arena** (pitching an Advocate against a Skeptic judged by an Arbitrator) to eliminate premature conclusions.
-
-### 4. Continuous Self-Improvement & Causal AST Code Intelligence
-- **Static vs. Evolving Intelligence**: Standard agents are static; they make the exact same mistakes in subsequent runs.
-- **Universal Agent HP's Advantage**:
-  - **Causal Knowledge Graph & AST Blast Radius** (`core/memory/`): Statically analyzes your workspace AST to map class/function callers and computes the ripple blast-radius before making edits, preventing hidden regressions.
-  - **Level 10 Drift Detection & Self-Improvement** (`core/monitoring/`, `core/self_improvement/`): Continuously computes longitudinal drift across runs. When regression patterns emerge, Universal Agent HP crystallizes lessons learned into permanent reusable playbooks and auto-tunes agent strategies.
-
----
-
-## 🌟 Key Technical Innovations & Specifications
-
-### 1. 🏛️ Hierarchical Delegation & Role Specialization (Level 1 & 2)
-- **CEO Meta-Orchestrator** (`orchestrator.py`): Persists multi-turn session state, allocates computing budgets, and arbitrates competing agent directives.
-- **4 Department Team Leads** (`team_leads.py`): Each departmental lead performs pre-flight goal decomposition, dispatches worker sub-tasks, and validates output quality before reporting up the hierarchy.
-- **27 Specialist Workers** (`staff.py`): Dedicated operational personas with granular tool permissions, eliminating context contamination.
-
-### 2. 📊 Directed Acyclic Graph (DAG) Task Planner & Wave Executor (Level 4)
-- **Topological Wave Execution** (`core/dag/`): Deconstructs composite goals into dependency graphs using Kahn's algorithm. Independent nodes run concurrently in parallel execution waves (`max_concurrency=4`).
-- **Selective Replanning**: When a node fails, the planner isolates the failed branch and only replans affected downstream nodes, preserving the work of successful independent tasks.
-
-### 3. 🧠 Dual Cognitive Reasoning Engines (Level 5)
-- **Reflexion Loop** (`core/reasoning/reflexion.py`): A continuous self-critique loop. The agent evaluates its candidate solutions against strict success criteria, iteratively revising code and hypotheses up to 3 cycles.
-- **Multi-Agent Debate Arena** (`core/reasoning/debate.py`): Pitches an **Advocate** (proposing architecture and solutions) against a **Skeptic** (uncovering edge-cases, race conditions, and attack vectors). An **Arbitrator Judge** synthesizes the winning consensus.
-
-### 4. 🌐 Causal Knowledge Graph & AST Code Intel (Level 6)
-- **Workspace AST Extractor** (`core/memory/ast_graph_extractor.py`): Statically parses the entire Python workspace, constructing an automated graph of classes, functions, imports, and call dependencies.
-- **Blast Radius & Impact Analysis**: Before modifying any function or file, Titan computes affected downstream callers and modules (`kg_impact_analysis`), preventing unintended regression bugs.
-
-### 5. 🛠️ Dynamic Tool Discovery & Reliability Telemetry (Level 7)
-- **Context-Aware Dynamic Registry** (`core/tools/dynamic_registry.py`): Solves the 60+ tool prompt-bloat problem. Groups tools into domain bundles (`git`, `web`, `genesis_orchestrator`, `reasoning`, `knowledge_graph`, `desktop_os`, `sandbox_verify`) and dynamically injects only relevant schemas, reducing tool tokens by ~75%.
-- **Bayesian EWMA Reliability Tracker** (`core/tools/reliability.py`): Grades every tool from **Grade A to F** based on real-time execution success rates and generates automated mitigation advice for brittle tools.
-
-### 6. 🎯 Capability-Based Model Routing & Cognitive Budget (Level 8)
-- **Smart Model Tiering** (`core/routing/model_router.py`):
-  - `FAST_CHEAP`: Lightweight summaries, lookups, formatting (`gpt-4o-mini`, `gemini-1.5-flash`, `claude-3-5-haiku`).
-  - `STANDARD_CODING`: Complex engineering, API implementation, refactoring (`claude-3-5-sonnet`, `gpt-4o`, `deepseek-coder`).
-  - `DEEP_REASONING`: Formal logic, architectural trade-offs, debate synthesis (`o3-mini`, `deepseek-reasoner`, `o1`).
-- **Dynamic Failure Escalation**: Automatically elevates task execution to higher reasoning tiers upon detecting retries or syntax failures.
-- **Cognitive Budget Tracker** (`core/routing/cost_tracker.py`): Real-time per-turn token and USD spend tracking with hard safety budget limits.
-
-### 7. 🛡️ Execution Sandbox & Zero-Loss Rollback (Level 9)
-- **Filesystem Snapshot Engine** (`core/sandbox/environment.py`): Captures byte-level workspace snapshots with SHA-256 integrity hashes prior to destructive actions.
-- **Transactional Rollback**: Reverts modified files to their original byte state, restores deleted files, and permanently deletes rogue files generated by failed runs.
-- **Static Security Guard** (`core/sandbox/safe_runner.py`): Blocks fork-bombs (`:(){ :|:& };:`), root wipes (`rm -rf /`), and drive format operations before execution.
-
-### 8. 📉 Longitudinal Drift Detection & Performance Monitoring (Level 10)
-- **Statistical Quality Tracking** (`core/monitoring/drift_detector.py`): Compares recent execution metrics against historical baselines.
-- **Automated Regression Alerts**: Flags **Success Rate Drops** (>= 20% `WARNING`, >= 35% `CRITICAL`), **Step Inflation** (>= 1.8x baseline steps), and isolates recurrent tool failure clusters.
-
-### 9. 👑 Autonomous Self-Improvement Loop & Eval Benchmark Suite (Level 10)
-- **Failure Root-Cause Learning** (`core/self_improvement/learning_engine.py`): Extracts actionable lessons from failed tasks and formulates prescriptive operational rules.
-- **Permanent Knowledge Crystallization**: Persists distilled insights into `SkillRegistry` playbooks and links causal avoidance facts into the `KnowledgeGraph`.
-- **Regression Eval Suite** (`core/self_improvement/eval_suite.py`): Automated test suite benchmark validating coding, reasoning, security, and Git operations.
-
----
-
-## 📋 System Requirements & Prerequisites
-
-### Required:
-- **Operating System**: Windows 10/11, macOS (Apple Silicon M-Series or Intel), or Linux (Ubuntu 20.04+, Debian, Fedora).
-- **Python**: **Python 3.11** or **Python 3.12+**.
-- **Git**: Installed and available in system `PATH`.
-- **Memory (RAM)**: Minimum 4 GB RAM (8 GB – 16 GB recommended).
-
-### Supported LLM Providers:
-- **Commercial APIs**: OpenAI (`gpt-4o`, `o3-mini`), Anthropic Claude (`claude-3-5-sonnet`), Google Gemini, DeepSeek (`deepseek-reasoner`, `deepseek-coder`).
-- **Local & Offline Runners (100% Free & Private)**:
-  - **Laya MLX** (Apple Silicon / PC local model server).
-  - **Ollama** (`http://localhost:11434` — Llama 3, DeepSeek-R1, Qwen, Mistral).
-- **Zero-Key In-Browser Provider**:
-  - **Puter.js / OmniRoute**: Instant access to 500+ frontier models directly without requiring API keys.
-
----
-
-## 🚀 Installation & Setup Guide
-
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/kapitan00000978-sketch/Universal-Agent-HP.git
-cd Universal-Agent-HP
-```
-
-### Step 2: Create and Activate Virtual Environment
-**Windows (PowerShell):**
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-**macOS / Linux:**
-```bash
+# Create and activate virtual environment
 python3 -m venv .venv
-source .venv/bin/activate
-```
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 
-### Step 3: Install Dependencies
-```bash
-pip install --upgrade pip
+# Install dependencies
 pip install -r requirements.txt
-```
-
-### Step 4: Configure Environment Variables
-Copy `.env.example` to create your local `.env`:
-```bash
-# Windows
-copy .env.example .env
-
-# macOS / Linux
-cp .env.example .env
-```
-
-Open `.env` and specify your preferred keys or local endpoints:
-```ini
-# Primary LLM Provider (omni, openai, anthropic, deepseek, ollama, puter)
-TITAN_PROVIDER=omni
-TITAN_MODEL=auto
-
-# Optional API Keys (Leave blank if using local Ollama or Puter.js)
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-DEEPSEEK_API_KEY=
-GEMINI_API_KEY=
-
-# Local Model Endpoints
-OLLAMA_BASE_URL=http://localhost:11434
-LAYA_MLX_URL=http://127.0.0.1:8080
-
-# Safety & Cognitive Budget
-COGNITIVE_BUDGET=5.00
-TITAN_AUTONOMOUS=true
-```
-
----
-
-## 🎮 Execution Modes
-
-### ⚡ Global `universal` CLI Command (Recommended)
-
-Install Universal Agent HP as a global terminal command available from **any directory**:
-
-```bash
-# Install globally (run once from the project root):
 pip install -e .
-```
+`
 
-Now you can use `universal` (or `universal-agent`) from **anywhere** in your terminal:
+### Configuration
+Copy the environment template and set your API keys:
+`ash
+cp .env.example .env
+`
 
-```bash
-# Launch interactive CLI (default mode):
+## Quick Start
+Run a simple one-shot task:
+`ash
+universal "Write a python script that prints Hello World"
+`
+
+Start the interactive terminal CLI:
+`ash
 universal
+`
 
-# Launch Web Control Panel in browser:
+Launch the web dashboard:
+`ash
 universal --web
+`
 
-# Launch full-screen Terminal TUI (OpenCode-style):
-universal --tui
+## Architecture Overview
 
-# Launch Telegram Bot:
-universal --telegram
+The system uses a straightforward orchestrator-worker model to manage tasks:
 
-# Override LLM provider and model:
-universal --provider ollama --model deepseek-r1:8b
-universal --provider openai --model gpt-4o
+`mermaid
+graph TD
+    A[User Request] --> B(Universal CLI)
+    B --> C{Orchestrator}
+    C --> D[Task Planner]
+    C --> E[Security Auditor]
+    D --> F[Worker Agent]
+    F --> G[(Memory/State)]
+    F --> H[Execution Sandbox]
+    H --> F
+    F --> C
+    C --> I[Output to User]
+`
 
-# Set reasoning mode and effort level:
-universal --mode deep --effort high
+## Testing & Security
+- **Tests:** Run the test suite with pytest tests/.
+- **Security:** Static analysis and secret scanning tools are integrated into the pipeline. (See CI reports for details).
 
-# One-shot task execution (non-interactive):
-universal "Explain this codebase architecture"
+## Contributing
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-# CEO Meta-Orchestrator delegation:
-universal --meta "Build an authenticated JWT REST API in FastAPI with SQLite"
+## Releases
+For a history of stable releases and versioning, check the [Releases page](https://github.com/example/titan_agent/releases).
 
-# DAG Wave-Based Parallel Planner:
-universal --dag "Refactor backend database schema and implement complete pytest suite"
-
-# Multi-Agent Debate Strategy:
-universal --strategy debate "Should we migrate the monolith to microservices?"
-
-# Reflexion Self-Critique Engine:
-universal --strategy reflexion "Write an optimal concurrent LRU Cache in Python"
-```
-
-#### 📋 Interactive Slash Commands (inside CLI session):
-| Command | Description |
-|---|---|
-| `@filename` | Mention and auto-attach workspace file contents to agent context |
-| `/dashboard` | Display rich real-time AI & system status dashboard |
-| `/files [filter]` | Browse and explore workspace files, sizes, and formats |
-| `/security-status` | Display Dual-Shield Blue & Red Team real-time defense status |
-| `/sast <file>` | Run SAST & OWASP Top 10 code security audit |
-| `/deps-audit [manifest]`| Audit project dependencies & manifests for known CVEs |
-| `/secret-scan <file>` | Scan text/code for high-entropy secrets and sensitive tokens |
-| `/banned-ips [unban]` | View defensively banned IP addresses & Geo-location logs |
-| `/blue-team <target>` | Trigger continuous Blue Team defensive security verification |
-| `/red-team <target>` | Conduct emergency Red Team adversarial penetration simulation |
-| `/plan <task>` | Deep planning mode with full analysis |
-| `/review <code>` | Code review with security & quality audit |
-| `/fix <issue>` | Auto-diagnose and fix bugs |
-| `/test <target>` | Generate and run test suites |
-| `/research <topic>` | Multi-hop internet research |
-| `/security-scan` | Full codebase security audit |
-| `/explain <code>` | Detailed code explanation |
-| `/remember <fact>` | Store knowledge in long-term memory |
-| `/handoff <msg>` | Create handoff for team collaboration |
-| `/queue add <task>` | Add task to background queue |
-| `/queue list` | View queued tasks |
-| `/daemon` | Start autonomous background task worker |
-| `/skills` | List all learned skill playbooks |
-| `/memory <query>` | Search knowledge graph |
-| `/status` | Show current provider, model, mode |
-| `/help` | Show all available commands |
-| `mode deep` | Switch to deep reasoning mode |
-| `effort ultra` | Switch to ultra effort level |
-
----
-
-### 1. 🌐 Web Control Panel (Modern Cyberpunk Dashboard)
-Launches the FastAPI server and opens the browser interface:
-```bash
-universal --web
-# Or: python run.py
-```
-*Access via: `http://localhost:8000` (Features live streaming, DAG visualizer, model routing inspect, and tool reliability logs).*
-
-### 2. 💻 Interactive Terminal CLI
-Full-featured terminal console with syntax highlighting, streaming output, `@file` autocompletion, and REPL slash commands:
-```bash
-universal
-# Or: python run.py --cli
-# Or: python cli.py
-```
-
-### 3. 🖥️ Full-Screen Terminal TUI (OpenCode-Style)
-Immersive full-screen terminal interface with panels, tabs, and visual status:
-```bash
-universal --tui
-# Or: python run.py --tui
-```
-
-### 4. 🤖 Remote Telegram Bot
-Control and interact with Universal Agent HP securely from your phone:
-```bash
-universal --telegram
-# Or: python run.py --telegram
-```
-
----
-
-## 🛠️ Built-in Tool Ecosystem
-
-| Category | Key Tools | Description |
-|---|---|---|
-| **Cyber Defense & Security** | `sast_scan`, `dependency_audit`, `secret_scan`, `docker_sandbox_run` | SAST OWASP scanner, supply-chain CVE auditor, entropy secret redaction, and isolated Docker container sandboxing. |
-| **Genesis Meta** | `orchestrator_run`, `team_delegate`, `team_status` | CEO Meta-Orchestrator delegation across 4 department leads. |
-| **Task Graph (DAG)** | `dag_plan_and_run`, `dag_visualize` | Topological wave execution and selective failure replanning. |
-| **Cognitive Reasoning** | `debate_solve`, `reflexion_solve` | Adversarial debates and iterative self-critique loops. |
-| **Knowledge Graph** | `kg_query`, `kg_impact_analysis`, `kg_index_workspace` | AST codebase scanning, dependency tracing, blast-radius analysis. |
-| **Dynamic Tools** | `tool_discover`, `tool_reliability_report` | Dynamic tool discovery and Bayesian EWMA health ratings. |
-| **Model Routing** | `model_route`, `model_budget_status` | Complexity-based tier routing and USD expenditure auditing. |
-| **Execution Sandbox** | `sandbox_execute`, `sandbox_snapshot_create`, `sandbox_snapshot_rollback` | Ephemeral code execution with transactional filesystem rollback. |
-| **Drift Monitoring** | `drift_record_task`, `drift_check`, `drift_status` | Longitudinal performance tracking and quality degradation detection. |
-| **Self-Improvement** | `self_improve_analyze_failure`, `self_improve_eval_run`, `self_improve_crystallize_lesson` | Autonomous failure learning, prompt evolution, and skill crystallization. |
-| **Core Workspace** | `read_file`, `write_file`, `edit_file`, `execute_command`, `workspace_rag` | Robust filesystem manipulation, AST patching, and terminal execution. |
-| **Web & Research** | `web_search`, `scrape_webpage`, `download_file` | Live DuckDuckGo search, HTML extraction, and research dossier builder. |
-| **OS & Automation** | `browser_goto`, `browser_click`, `browser_screenshot`, `manage_processes` | Full Playwright web automation and Windows/macOS process management. |
-
----
-
-## 🧪 Comprehensive Verification & Test Suite
-
-Universal Agent HP maintains a 100% green test pass rate across all 30 phases:
-
-```bash
-python -m pytest tests -v
-```
-
-```text
-============================= test session starts =============================
-platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
-rootdir: C:\Users\user\Videos\demo1
-configfile: pytest.ini
-
-...
-================== 623 passed, 1 skipped in 65.73s (0:01:05) ==================
-All checks passed! (Ruff linting clean)
-```
-
----
-
-## 📖 Operational Rules & Manual
-For the exhaustive 380-line English operational rulebook, laws of engagement, and troubleshooting instructions, refer to **[UNIVERSAL_AGENT_HP_MANUAL.txt](UNIVERSAL_AGENT_HP_MANUAL.txt)** (or [TITAN_AGENT_MANUAL.txt](TITAN_AGENT_MANUAL.txt)).
-
----
-
-## 📄 License
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+## License
+MIT License

@@ -91,9 +91,10 @@ elif OMNI_API_KEY:
     DEFAULT_PROVIDER = "omni"
     DEFAULT_MODEL = OMNI_MODEL
 else:
-    # 100% Free zero-key out-of-the-box provider: g4f (GPT4Free)
-    DEFAULT_PROVIDER = "g4f"
-    DEFAULT_MODEL = "gpt-4o"
+    # Default to Local Ollama (100% private, reliable, and official).
+    # To use experimental reverse-proxies (g4f/tgpt), set TITAN_PROVIDER=g4f or tgpt explicitly.
+    DEFAULT_PROVIDER = "ollama"
+    DEFAULT_MODEL = "hermes3:8b"
 
 # ---- Phase 13: provider fallback chain -------------------------------
 # When the primary LLM provider fails with a network / rate-limit / server
