@@ -1593,11 +1593,44 @@ class ToolRegistry:
                         "required": ["text"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "synthesize_tool",
+                    "description": "AUTONOMOUS TOOL SYNTHESIS: Dynamically creates, verifies in an isolated sandbox, compiles, and registers a brand-new Python tool on-the-fly during the live session.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Identifier name for the new tool (e.g. 'parse_pcap_header', 'calc_keccak256')."},
+                            "description": {"type": "string", "description": "Clear description of what the tool does and how to use it."},
+                            "python_code": {"type": "string", "description": "Self-contained Python code implementing the tool function. Can be async or sync."},
+                            "test_code": {"type": "string", "description": "Python test script verifying that the tool behaves correctly in the sandbox."},
+                            "parameters": {"type": "object", "description": "JSON Schema properties dict describing the tool's input arguments."}
+                        },
+                        "required": ["name", "description", "python_code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "symbolic_check_code",
+                    "description": "SYMBOLIC AST INVARIANT CHECKER: Deep static analysis verifying code safety, infinite loops, command injections, and resource leaks before runtime.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "code": {"type": "string", "description": "Python source code string to statically verify."}
+                        },
+                        "required": ["code"]
+                    }
+                }
             }
         ])
         from .browser_automation import BrowserAutomation
         browser_defs = BrowserAutomation(self.workspace).get_tool_definitions()
-        return base_defs + browser_defs
+        synthesized_defs = list(getattr(self, "_synthesized_definitions", {}).values())
+        return base_defs + browser_defs + synthesized_defs
 
     @property
     def vector_rag(self):
@@ -1759,6 +1792,37 @@ class ToolRegistry:
         else:
             return f"Deep Verify FAILED after {result['iterations']} iterations.\nLast Output:\n{result['final_output']}\nLast Code:\n{result['code']}"
 
+    async def tool_synthesize_tool(
+        self,
+        name: str,
+        description: str,
+        python_code: str,
+        test_code: str = "",
+        parameters: dict[str, Any] | None = None,
+    ) -> str:
+        """Autonomously synthesizes, sandbox-tests, and registers a brand new tool into the live session."""
+        from titan_agent.core.synthesis.dynamic_tool_synthesizer import DynamicToolSynthesizer
+        synthesizer = getattr(self, "_tool_synthesizer", None)
+        if synthesizer is None:
+            synthesizer = DynamicToolSynthesizer(self.workspace)
+            self._tool_synthesizer = synthesizer
+
+        params = parameters or {"type": "object", "properties": {}}
+        success, message = await synthesizer.synthesize_and_register(
+            name=name,
+            description=description,
+            parameters=params,
+            python_code=python_code,
+            test_code=test_code,
+            registry=self,
+        )
+        return message
+
+    def tool_symbolic_check_code(self, code: str) -> str:
+        """Performs static AST symbolic invariant analysis on Python code before runtime."""
+        from titan_agent.core.code_intel.symbolic_checker import SymbolicInvariantChecker
+        report = SymbolicInvariantChecker.check_code(code)
+        return report.summary()
 
     async def tool_execute_command(self, command: str, cwd: str = "") -> str:
         working_dir = self._resolve_path(cwd) if cwd else self.workspace

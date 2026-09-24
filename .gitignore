@@ -54,5 +54,4 @@ Thumbs.db
 
 # ===== Task ledger / agent scratch (never committed) =====
 .adhd/
-titan_agent/core/code_intel/
 .commit_msg.txt

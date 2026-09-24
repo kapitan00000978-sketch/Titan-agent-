@@ -116,6 +116,8 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - debate_solve — MULTI-AGENT DEBATE (Genesis Level 4): Advocate vs Skeptic vs Judge consensus arbitration.
 - reflexion_solve — ITERATIVE REFLEXION (Genesis Level 4): 3-cycle autonomous self-critique and refinement.
 - kg_query / kg_impact_analysis / kg_index_workspace — KNOWLEDGE GRAPH (Genesis Level 3): semantic dependency tracking and code modification blast-radius analysis.
+- synthesize_tool — ON-THE-FLY TOOL SYNTHESIS: dynamically creates, tests in an isolated sandbox, compiles, and registers a brand new Python tool when existing tools cannot solve the problem.
+- symbolic_check_code — SYMBOLIC AST INVARIANT CHECKER: verifies code safety, infinite loops, shell injections, and resource leaks before runtime execution.
 - skill_save — AUTONOMOUS SKILLS: synthesize and save a reusable workflow playbook directly to the skills library.
 - browser_* — VISUAL BROWSER AUTOMATION: use browser_goto, browser_click, browser_type, browser_screenshot, and browser_extract_text to navigate and interact with real websites visually using Playwright.
 
@@ -2162,6 +2164,13 @@ class TitanAgent:
         self._read_cache.clear()
         grounded = False  # Phase 20: zero-tool answers get exactly ONE verification pass
 
+        # Phase 41: System 3 Metacognitive Overseer & Bayesian Hypothesis Engine
+        from titan_agent.core.reasoning.metacognitive_overseer import (
+            InterventionType,
+            MetacognitiveOverseer,
+        )
+        self._overseer = MetacognitiveOverseer(user_input)
+
         while iteration < max_steps:
             iteration += 1
             yield AgentEvent("step_start", {"step": iteration, "max_steps": max_steps})
@@ -2255,6 +2264,40 @@ class TitanAgent:
                 # Phase 37: feed the dead-end detector this batch's outcome
                 # (all-failed batches build the streak, any success resets it).
                 self._record_batch_outcome(messages, _before_batch)
+
+                # Phase 41: System 3 Metacognitive Evaluation after tool execution
+                latest_tool_content = messages[-1].get("content", "") if messages and messages[-1].get("role") == "tool" else ""
+                first_tool_args = {}
+                if response.tool_calls and isinstance(response.tool_calls[0], dict):
+                    try:
+                        first_tool_args = json.loads(str(response.tool_calls[0].get("function", {}).get("arguments") or "{}"))
+                    except Exception:
+                        pass
+
+                meta_report = self._overseer.evaluate_step(
+                    step_idx=iteration,
+                    thoughts=response.thoughts or "",
+                    tool_name=used_names[0] if used_names else "none",
+                    tool_args=first_tool_args,
+                    tool_result=latest_tool_content,
+                )
+
+                if meta_report.intervention != InterventionType.CONTINUE:
+                    yield AgentEvent(
+                        "metacognition",
+                        {
+                            "step": iteration,
+                            "intervention": meta_report.intervention.value,
+                            "recommendation": meta_report.recommendation,
+                            "entropy": meta_report.cognitive_entropy,
+                            "repetition": meta_report.repetition_score,
+                        },
+                    )
+                    # Inject prescriptive metacognitive directive to guide next reasoning turn
+                    messages.append({
+                        "role": "system",
+                        "content": f"### METACOGNITIVE DIRECTIVE (System 3 Intervention):\n{meta_report.recommendation}",
+                    })
 
                 # Persist live state after each step (resume-safe)
                 self._checkpoint_save(

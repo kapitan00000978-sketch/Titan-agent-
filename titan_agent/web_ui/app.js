@@ -1078,6 +1078,20 @@ function handleAgentEvent(event, card, statusLine, state) {
     `;
     card.insertBefore(toolCard, statusLine);
   }
+  else if (event.type === "metacognition") {
+    const metaCard = document.createElement("div");
+    metaCard.className = "tool-step-card";
+    metaCard.style.borderLeft = "3px solid var(--accent-purple, #a855f7)";
+    metaCard.style.background = "rgba(168, 85, 247, 0.08)";
+    metaCard.innerHTML = `
+      <div class="tool-header-line">
+        <span class="tool-badge-name" style="color:var(--accent-purple, #a855f7)">🧠 Metacognitive Overseer [${escapeHtml(event.data.intervention)}]</span>
+        <span class="tool-status-tag" style="color:var(--text-muted)">Entropy: ${event.data.entropy ?? 0} | Repetition: ${event.data.repetition ?? 0}</span>
+      </div>
+      <div class="tool-args-preview" style="color:var(--text-primary);font-style:italic;">${escapeHtml(event.data.recommendation)}</div>
+    `;
+    card.insertBefore(metaCard, statusLine);
+  }
   else if (event.type === "tool_result") {
     const resCard = document.createElement("div");
     resCard.className = "tool-step-card";
