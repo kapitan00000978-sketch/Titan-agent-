@@ -7,6 +7,22 @@ from typing import Any, Dict, List
 
 FREE_PROVIDERS: List[Dict[str, Any]] = [
     {
+        "id": "extra-llm-x",
+        "name": "Extra LLM X (640+ Free Models Unified Gateway)",
+        "portal_url": "http://localhost:3000",
+        "base_url": "http://localhost:3000/v1",
+        "env_var": "EXTRA_LLM_X_API_KEY",
+        "no_key_required": True,
+        "free_tier_info": "Self-hosted gateway aggregating 26 free providers, smart combos, and local key generation.",
+        "models": [
+            {"id": "extra/auto-free", "name": "Extra Auto-Free (Smart Router)", "desc": "Fastest available healthy free model across 26 providers"},
+            {"id": "extra/free-coding", "name": "Extra Free Coding", "desc": "Qwen 2.5 Coder 32B / Codestral / DeepSeek Coder"},
+            {"id": "extra/free-fast", "name": "Extra Free Fast (LPU/Wafer)", "desc": "Cerebras 2,000 tok/s & Groq 500 tok/s sub-second inference"},
+            {"id": "extra/free-reasoning", "name": "Extra Free Reasoning", "desc": "DeepSeek R1 / Gemini 2.0 Flash Thinking"},
+            {"id": "extra/free-vision", "name": "Extra Free Vision", "desc": "Multimodal vision & image comprehension"},
+        ],
+    },
+    {
         "id": "openrouter",
         "name": "OpenRouter (20+ Free Models)",
         "portal_url": "https://openrouter.ai/keys",

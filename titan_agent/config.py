@@ -33,6 +33,19 @@ OMNI_BASE_URL = os.getenv("OMNI_BASE_URL", "http://localhost:20128/v1")
 OMNI_MODEL = os.getenv("OMNI_MODEL", "auto")
 OMNI_AUTO_MODELS = ("auto", "auto/coding", "auto/fast", "auto/smart", "auto/offline", "auto/cheap")
 
+# Extra LLM X — Autonomous 100% Free AI Gateway (localhost:3000)
+# Auto-discovery, 640+ free models, smart multi-provider failover, self-generated API keys
+EXTRA_LLM_X_API_KEY = os.getenv("EXTRA_LLM_X_API_KEY", os.getenv("ELX_API_KEY", "elx-live-universal-agent-free-hub"))
+EXTRA_LLM_X_BASE_URL = os.getenv("EXTRA_LLM_X_BASE_URL", os.getenv("ELX_BASE_URL", "http://localhost:3000/v1"))
+EXTRA_LLM_X_MODEL = os.getenv("EXTRA_LLM_X_MODEL", "extra/auto-free")
+EXTRA_LLM_X_MODELS = (
+    "extra/auto-free",
+    "extra/free-coding",
+    "extra/free-fast",
+    "extra/free-reasoning",
+    "extra/free-vision",
+)
+
 # Additional Free Tier API Key Providers:
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
@@ -121,8 +134,9 @@ def provider_default_model(provider: str) -> str | None:
         "ollama": "hermes3:8b",
         "completions": "claude-opus-4-1-20250817",
         "lmstudio": "local-model",
-        "g4f": "gpt-4o",
-        "tgpt": "auto",
+        "extra-llm-x": EXTRA_LLM_X_MODEL,
+        "extra_llm_x": EXTRA_LLM_X_MODEL,
+        "elx": EXTRA_LLM_X_MODEL,
         "gemini": "gemini-2.0-flash",
         "sambanova": "Meta-Llama-3.3-70B-Instruct",
         "github": "gpt-4o",
