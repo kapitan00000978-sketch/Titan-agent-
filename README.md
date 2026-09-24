@@ -20,8 +20,8 @@ This project includes experimental integrations that allow "free" access to mode
 ### Setup
 `ash
 # Clone the repository
-git clone https://github.com/example/titan_agent.git
-cd titan_agent
+git clone https://github.com/kapitan00000978-sketch/Universal-Agent-HP.git
+cd Universal-Agent-HP
 
 # Create and activate virtual environment
 python3 -m venv .venv
@@ -53,6 +53,14 @@ Launch the web dashboard:
 `ash
 universal --web
 `
+
+## Key Capabilities
+
+- **Mission Control Dashboard & Telemetry:** Real-time state-machine visualizer (`Intent -> Guardrail -> MCTS Plan -> Tool Exec -> Deep Verifier -> Delivery`), live tool performance matrix, and system logs.
+- **AST Code Intelligence:** Tree-aware surgical code replacement for functions and classes via `ASTPatcher` to prevent indentation and syntax regressions.
+- **Deep Test-Driven Verification:** Self-healing verification loop that autonomously generates `pytest` suites and verifies code in isolated environments before returning results.
+- **Dual-Shield Cyber Defense:** In-line Blue Team monitoring, prompt injection defense, and automated secret exfiltration guards.
+- **Flexible Provider Brains:** Supports local zero-cost models (`Ollama`) as well as high-throughput cloud endpoints (`Groq`, `Google Gemini`, `OpenRouter`, `DeepSeek`, `Claude`, `OpenAI`).
 
 ## Architecture Overview
 
