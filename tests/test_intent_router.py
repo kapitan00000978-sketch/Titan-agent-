@@ -140,3 +140,25 @@ def test_tool_catalog_includes_subagent_route():
     props = by_name["subagent_route"]["function"]["parameters"]["properties"]
     assert "task" in props
     assert "required" in by_name["subagent_route"]["function"]["parameters"]
+
+
+def test_route_multilingual_uzbek_and_russian():
+    """Verify that intent routing natively supports Uzbek and Russian tokens."""
+    cases = {
+        "ushbu funksiya uchun unit test yoz": "test_writer",
+        "yangi versiyani serverga deploy qil": "deployer",
+        "login tizimida xavfsizlik va zaiflikni tekshir": "security",
+        "barcha testlarni ishga tushir": "tester",
+        "matnni qisqartir va umumlashtir": "summarizer",
+        "muhim qarorni xotiraga saqla": "memory_keeper",
+        "kodni ko'rib chiq va taqriz ber": "reviewer",
+        "loyiha uchun reja tuz": "planner",
+        "xatoni to'g'irla va kod yoz": "coder",
+        "написать код для новой фичи": "coder",
+        "проверить безопасность системы": "security",
+    }
+    for task, expected in cases.items():
+        route = route_intent(task)
+        assert route.primary_role == expected, (
+            f"{task!r} -> {route.primary_role} (want {expected})"
+        )

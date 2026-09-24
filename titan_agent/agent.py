@@ -108,6 +108,14 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - subagent_route — INTENT ROUTER: deterministic keyword routing that decides which specialist role(s) should handle an incoming task (primary + supporting + why). Call before delegating a big request.
 - docker_sandbox_run — DOCKER SANDBOX: run untrusted or disposable code/commands safely inside an isolated Docker container with cpu, memory and network limits.
 - apply_patch — UNIFIED DIFF PATCH: apply unified diffs (--- a/... +++ b/...) across files with automatic hunk matching.
+- ast_replace_function / ast_replace_class / ast_patch_file — SURGICAL AST CODE INTEL: replace entire Python functions or classes accurately using AST boundary detection (avoids line-number offset errors).
+- deep_verify_code — SELF-HEALING TEST VERIFIER: runs syntax & pytest in an isolated sandbox, automatically diagnosing failures and applying code fixes until 100% verified.
+- orchestrator_run — META-ORCHESTRATOR (Genesis Level 1): executes complex, multi-milestone project goals through the Genesis hierarchy (Chief Agent -> Department Leads -> Specialist Workers).
+- team_delegate / team_status — DEPARTMENT LEADS (Genesis Level 2): delegate directly to engineering, research, operations, or quality_security department leads.
+- dag_plan_and_run / dag_visualize — TASK GRAPH DAG (Genesis Level 5): breaks complex goals into DAG nodes and executes independent steps in parallel waves.
+- debate_solve — MULTI-AGENT DEBATE (Genesis Level 4): Advocate vs Skeptic vs Judge consensus arbitration.
+- reflexion_solve — ITERATIVE REFLEXION (Genesis Level 4): 3-cycle autonomous self-critique and refinement.
+- kg_query / kg_impact_analysis / kg_index_workspace — KNOWLEDGE GRAPH (Genesis Level 3): semantic dependency tracking and code modification blast-radius analysis.
 - skill_save — AUTONOMOUS SKILLS: synthesize and save a reusable workflow playbook directly to the skills library.
 - browser_* — VISUAL BROWSER AUTOMATION: use browser_goto, browser_click, browser_type, browser_screenshot, and browser_extract_text to navigate and interact with real websites visually using Playwright.
 
@@ -165,7 +173,28 @@ Do not repeat the history — output only the final answer (or the tool call nee
 
 # Tools that mutate the workspace; their use is the trigger for the bounded
 # post-check pass (Phase 26).
-WRITE_TOOL_NAMES = ("write_file", "edit_file", "deep_coder", "apply_patch")
+WRITE_TOOL_NAMES = (
+    "write_file",
+    "edit_file",
+    "deep_coder",
+    "apply_patch",
+    "ast_patch_file",
+    "ast_replace_function",
+    "ast_replace_class",
+)
+
+# Idempotent read-only tools eligible for in-run caching
+READ_CACHEABLE_TOOLS = {
+    "read_file",
+    "workspace_rag",
+    "system_info",
+    "list_directory",
+    "team_status",
+    "model_budget_status",
+    "kg_query",
+    "kg_impact_analysis",
+    "task_stats",
+}
 
 
 # Phase 26: one bounded verification turn before finalizing when files were
@@ -565,6 +594,8 @@ class TitanAgent:
         # wrapper records decisions even without run_task; run_task resets them.
         self._guard_actions: list[dict[str, Any]] = []
         self._guard_totals: dict[str, int] = {}
+        # Phase 39: in-run idempotent read cache for read-only tools
+        self._read_cache: dict[str, str] = {}
         self.tools = tools or ToolRegistry()
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
@@ -1291,8 +1322,16 @@ class TitanAgent:
         guarded = repeat_guard_enabled()
         gkey = None
         prior = 0
-        if guarded:
+        if guarded or name in READ_CACHEABLE_TOOLS:
             gkey = self._guard_key(name, args)
+
+        # Phase 39: Idempotent in-run read caching — instant 0ms return for repeated reads
+        if name in READ_CACHEABLE_TOOLS and gkey:
+            read_cache = getattr(self, "_read_cache", None)
+            if read_cache is not None and gkey in read_cache:
+                return read_cache[gkey]
+
+        if guarded and gkey:
             prior = self._guard_failures.get(gkey, 0)
             if prior >= repeat_guard_limit():
                 # Phase 38: log the decision so the guard's effect is visible.
@@ -1314,7 +1353,7 @@ class TitanAgent:
                 error=type(exc).__name__,
                 output_chars=0,
             )
-            if guarded:
+            if guarded and gkey:
                 self._guard_failures[gkey] = prior + 1
             raise
         ok = not (isinstance(result, str) and result.startswith("Error"))
@@ -1325,11 +1364,19 @@ class TitanAgent:
             error=None if ok else "tool_error",
             output_chars=len(result) if isinstance(result, str) else 0,
         )
-        if guarded:
+        if guarded and gkey:
             if ok:
                 self._guard_failures.pop(gkey, None)  # success forgives
             else:
                 self._guard_failures[gkey] = prior + 1  # single counting point
+
+        # Cache management: store successful read results; invalidate all on any mutating write
+        if hasattr(self, "_read_cache"):
+            if ok and name in READ_CACHEABLE_TOOLS and gkey:
+                self._read_cache[gkey] = str(result)
+            elif name in WRITE_TOOL_NAMES or name in ("execute_command", "tool_execute_command", "self_heal", "sandbox_execute"):
+                self._read_cache.clear()
+
         return result
 
     async def _execute_tool_unified(self, name: str, args: dict[str, Any]) -> str:
@@ -2112,6 +2159,7 @@ class TitanAgent:
         # Phase 38: per-run guard decision log + totals. Reset on every run_task.
         self._guard_actions: list[dict[str, Any]] = []
         self._guard_totals: dict[str, int] = {}
+        self._read_cache.clear()
         grounded = False  # Phase 20: zero-tool answers get exactly ONE verification pass
 
         while iteration < max_steps:
