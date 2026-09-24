@@ -933,7 +933,10 @@ class TitanAgent:
         return self.tool_policy is None or self.tool_policy.allows(name)
 
     def _build_tool_catalog_text(self) -> str:
-        """Compact live tool catalog appended to the system prompt each turn."""
+        """Compact live tool catalog appended to the system prompt each turn (cached for efficiency)."""
+        cached = getattr(self, "_catalog_cache", None)
+        if cached is not None:
+            return cached
         lines = []
         for t in self.tools.get_tool_definitions():
             fn = t.get("function", {})
@@ -985,7 +988,9 @@ class TitanAgent:
                 if not self._policy_allows(str(fn.get("name", ""))):
                     continue
                 lines.append(f"- {fn.get('name')}: {fn.get('description', '')}")
-        return "\n".join(lines)
+        res = "\n".join(lines)
+        self._catalog_cache = res
+        return res
 
     def _build_structured_context(self, user_input: str, mode: str, effort: str) -> str:
         """System context for the Phase 3 structured engines: agent identity,

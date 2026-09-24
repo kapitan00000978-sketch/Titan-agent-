@@ -29,6 +29,15 @@
         </div>
       </div>
 
+      <nav class="header-nav" id="header-nav">
+        <button class="nav-tab active" id="tab-btn-workspace" onclick="switchMainTab('workspace')">
+          <span class="icon">💬</span> Cockpit
+        </button>
+        <button class="nav-tab" id="tab-btn-dashboard" onclick="switchMainTab('dashboard')">
+          <span class="icon">📊</span> System Dashboard &amp; Telemetry
+        </button>
+      </nav>
+
       <div class="header-actions">
         <div class="status-pill online">
           <span class="dot"></span>
@@ -36,11 +45,9 @@
         </div>
 
         <div class="model-badge" id="active-model-display">
-          <span class="provider-tag" id="current-provider">PUTER</span>
-          <span class="model-name" id="current-model">deepseek-v4-pro</span>
+          <span class="provider-tag" id="current-provider">OLLAMA</span>
+          <span class="model-name" id="current-model">hermes3:8b</span>
         </div>
-
-        <span class="token-guard" title="Token throughput guardrail: slowest 214,000 tokens/second, never exceeded">🔒 214k tok/s</span>
 
         <button class="icon-btn" id="open-settings-btn" title="Settings">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -201,7 +208,191 @@
             <div class="empty-hint">No pending approvals</div>
           </div>
         </div>
-      </aside>
+    </div>
+
+    <!-- Live System Dashboard & Telemetry Cockpit -->
+    <div class="dashboard-view" id="dashboard-view" style="display: none;">
+      <div class="dashboard-header-bar">
+        <div class="dash-title-group">
+          <h2>Autonomous Agent <span>Mission Control &amp; Telemetry</span></h2>
+          <p class="dash-subtitle">Real-time state machine, tool performance metrics, security sentinel status, and subagent orchestration.</p>
+        </div>
+        <div class="dash-controls">
+          <button class="dash-btn" onclick="refreshDashboardData()">
+            <span class="icon">🔄</span> Live Refresh
+          </button>
+          <span class="live-pulse-badge"><span class="pulse-dot"></span> Streaming Realtime</span>
+        </div>
+      </div>
+
+      <!-- Execution State Machine Pipeline -->
+      <section class="dash-card pipeline-card">
+        <div class="dash-card-header">
+          <span class="icon">⚡</span>
+          <h3>Live Execution Cycle (State Machine)</h3>
+          <span class="badge-active" id="dash-agent-state">STATE: IDLE / READY</span>
+        </div>
+        <div class="pipeline-steps">
+          <div class="pipeline-step" id="step-intent">
+            <div class="step-num">01</div>
+            <div class="step-label">Intent Routing</div>
+            <div class="step-sub">Fast/Deep/Search</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step" id="step-guard">
+            <div class="step-num">02</div>
+            <div class="step-label">Dual-Shield Guard</div>
+            <div class="step-sub">Blue Team Sentinel</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step" id="step-reason">
+            <div class="step-num">03</div>
+            <div class="step-label">Planning &amp; MCTS</div>
+            <div class="step-sub">Tree-of-Thoughts</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step" id="step-exec">
+            <div class="step-num">04</div>
+            <div class="step-label">Tool Execution</div>
+            <div class="step-sub">Parallel Sandbox</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step" id="step-verify">
+            <div class="step-num">05</div>
+            <div class="step-label">Deep Verification</div>
+            <div class="step-sub">AST / Reflection</div>
+          </div>
+          <div class="pipeline-arrow">➔</div>
+          <div class="pipeline-step" id="step-final">
+            <div class="step-num">06</div>
+            <div class="step-label">Verified Delivery</div>
+            <div class="step-sub">User Markdown</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KPI Metrics Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Active Brain &amp; Model</span>
+            <span class="kpi-icon">🧠</span>
+          </div>
+          <div class="kpi-value" id="kpi-model">hermes3:8b</div>
+          <div class="kpi-sub" id="kpi-provider">Provider: OLLAMA · Local Engine</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Tool Invocations &amp; Telemetry</span>
+            <span class="kpi-icon">🛠️</span>
+          </div>
+          <div class="kpi-value" id="kpi-tools-count">0 calls</div>
+          <div class="kpi-sub" id="kpi-tools-sub">Success Rate: 100% · 0 failed</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Dual-Shield Cyber Defense</span>
+            <span class="kpi-icon">🛡️</span>
+          </div>
+          <div class="kpi-value" id="kpi-security-state">Sentinel Active</div>
+          <div class="kpi-sub" id="kpi-security-sub">Repeat Guard: ON · Malformed: 0</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Memory Vault &amp; Checkpoints</span>
+            <span class="kpi-icon">💾</span>
+          </div>
+          <div class="kpi-value" id="kpi-memory-count">0 items</div>
+          <div class="kpi-sub" id="kpi-memory-sub">SQLite persistent store active</div>
+        </div>
+      </div>
+
+      <!-- Detail Panels Grid -->
+      <div class="dash-panels-grid">
+        <!-- Tools Performance Matrix -->
+        <section class="dash-card">
+          <div class="dash-card-header">
+            <div class="title-with-icon">
+              <span class="icon">📊</span>
+              <h3>Tool Performance Matrix</h3>
+            </div>
+            <span class="header-tag" id="tool-matrix-total">Active Catalog</span>
+          </div>
+          <div class="dash-card-body table-container">
+            <table class="dash-table" id="tools-perf-table">
+              <thead>
+                <tr>
+                  <th>Tool Name</th>
+                  <th>Calls</th>
+                  <th>Success</th>
+                  <th>Failures</th>
+                  <th>Avg Latency</th>
+                </tr>
+              </thead>
+              <tbody id="tools-perf-body">
+                <tr><td colspan="5" class="table-empty">Loading tool performance stats...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Subagent Swarm Network & Roles -->
+        <section class="dash-card">
+          <div class="dash-card-header">
+            <div class="title-with-icon">
+              <span class="icon">👥</span>
+              <h3>Subagent Swarm &amp; Roles</h3>
+            </div>
+            <span class="header-tag" id="swarm-roster-count">17 Specialists</span>
+          </div>
+          <div class="dash-card-body">
+            <div class="swarm-cards-grid" id="swarm-cards-grid">
+              <div class="swarm-role-card">
+                <div class="role-badge">Lead</div>
+                <h4>Task Planner</h4>
+                <p>Decomposes user goals into structured dependency DAGs.</p>
+              </div>
+              <div class="swarm-role-card">
+                <div class="role-badge">Core</div>
+                <h4>Deep Coder</h4>
+                <p>AST-level code patching, refactoring, and test writing.</p>
+              </div>
+              <div class="swarm-role-card">
+                <div class="role-badge">Security</div>
+                <h4>Security Auditor</h4>
+                <p>Blue Team sentinel &amp; secret leakage prevention.</p>
+              </div>
+              <div class="swarm-role-card">
+                <div class="role-badge">Review</div>
+                <h4>Critic &amp; Verifier</h4>
+                <p>MCTS reflection, grounded post-check, and evidence critique.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Live Event & System Log Stream -->
+      <section class="dash-card logs-dash-card">
+        <div class="dash-card-header">
+          <div class="title-with-icon">
+            <span class="icon">📜</span>
+            <h3>Real-Time System Log &amp; Event Stream</h3>
+          </div>
+          <div class="log-controls">
+            <span class="live-indicator">LIVE</span>
+            <button class="tiny-btn" onclick="fetchRecentLogs()">Fetch Logs</button>
+          </div>
+        </div>
+        <div class="dash-card-body">
+          <div class="live-log-terminal" id="live-log-terminal">
+            <div class="log-entry system">[SYSTEM] Dashboard initialized. Polling system telemetry from /api/tools/stats and /api/guard/state...</div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- Settings Modal -->

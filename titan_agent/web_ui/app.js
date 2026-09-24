@@ -1020,10 +1020,25 @@ async function sendPuterMessage(prompt, card, statusLine) {
 }
 
 function handleAgentEvent(event, card, statusLine, state) {
+  const dashStateBadge = document.getElementById("dash-agent-state");
+
   if (event.type === "status") {
     statusLine.innerHTML = `⚡ ${escapeHtml(event.data)}`;
+    const text = (event.data || "").toLowerCase();
+    if (text.includes("guard") || text.includes("sentinel") || text.includes("shield")) {
+      updatePipelineStep("step-guard");
+      if (dashStateBadge) dashStateBadge.textContent = "STATE: DUAL-SHIELD INSPECT";
+    } else if (text.includes("plan") || text.includes("analyz") || text.includes("reason")) {
+      updatePipelineStep("step-reason");
+      if (dashStateBadge) dashStateBadge.textContent = "STATE: PLANNING / MCTS";
+    } else if (text.includes("postcheck") || text.includes("verif") || text.includes("review")) {
+      updatePipelineStep("step-verify");
+      if (dashStateBadge) dashStateBadge.textContent = "STATE: DEEP VERIFICATION";
+    }
   }
   else if (event.type === "thought") {
+    updatePipelineStep("step-reason");
+    if (dashStateBadge) dashStateBadge.textContent = "STATE: REASONING (CoT)";
     let acc = state.getThought();
     if (!acc) {
       acc = document.createElement("div");
@@ -1047,9 +1062,11 @@ function handleAgentEvent(event, card, statusLine, state) {
     body.textContent += event.data + "\n";
   }
   else if (event.type === "tool_call") {
+    const tName = event.data.name;
+    updatePipelineStep("step-exec");
+    if (dashStateBadge) dashStateBadge.textContent = `STATE: EXEC (${tName})`;
     const toolCard = document.createElement("div");
     toolCard.className = "tool-step-card";
-    const tName = event.data.name;
     const tArgs = JSON.stringify(event.data.arguments || {});
     toolCard.id = `tool-${tName}-${Date.now()}`;
     toolCard.innerHTML = `
@@ -1074,6 +1091,8 @@ function handleAgentEvent(event, card, statusLine, state) {
     card.insertBefore(resCard, statusLine);
   }
   else if (event.type === "final_answer") {
+    updatePipelineStep("step-final");
+    if (dashStateBadge) dashStateBadge.textContent = "STATE: COMPLETED / VERIFIED";
     let ans = state.getAnswer();
     if (!ans) {
       ans = document.createElement("div");
@@ -1082,6 +1101,8 @@ function handleAgentEvent(event, card, statusLine, state) {
       state.setAnswer(ans);
     }
     ans.innerHTML = marked.parse(event.data);
+    // Refresh telemetry stats after turn completion
+    setTimeout(refreshDashboardData, 800);
   }
   else if (event.type === "error") {
     const errDiv = document.createElement("div");
@@ -1091,6 +1112,7 @@ function handleAgentEvent(event, card, statusLine, state) {
     errDiv.style.borderRadius = "8px";
     errDiv.innerHTML = `<strong>Error:</strong> ${escapeHtml(event.data)}`;
     card.insertBefore(errDiv, statusLine);
+    if (dashStateBadge) dashStateBadge.textContent = "STATE: ERROR ENCOUNTERED";
   }
 }
 
@@ -1107,3 +1129,192 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+/* ==========================================================================
+   SYSTEM DASHBOARD & TELEMETRY CONTROLLER
+   ========================================================================== */
+
+let dashPollingInterval = null;
+
+function switchMainTab(tab) {
+  const workspaceView = document.querySelector(".main-body");
+  const dashboardView = document.getElementById("dashboard-view");
+  const tabWsBtn = document.getElementById("tab-btn-workspace");
+  const tabDashBtn = document.getElementById("tab-btn-dashboard");
+
+  if (tab === "dashboard") {
+    if (workspaceView) workspaceView.style.display = "none";
+    if (dashboardView) dashboardView.style.display = "flex";
+    tabWsBtn?.classList.remove("active");
+    tabDashBtn?.classList.add("active");
+    refreshDashboardData();
+    if (!dashPollingInterval) {
+      dashPollingInterval = setInterval(() => {
+        if (dashboardView && dashboardView.style.display !== "none") {
+          refreshDashboardData();
+        }
+      }, 5000);
+    }
+  } else {
+    if (dashboardView) dashboardView.style.display = "none";
+    if (workspaceView) workspaceView.style.display = "flex";
+    tabDashBtn?.classList.remove("active");
+    tabWsBtn?.classList.add("active");
+    if (dashPollingInterval) {
+      clearInterval(dashPollingInterval);
+      dashPollingInterval = null;
+    }
+  }
+}
+
+function updatePipelineStep(stepId) {
+  const steps = ["step-intent", "step-guard", "step-reason", "step-exec", "step-verify", "step-final"];
+  steps.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("active");
+  });
+  if (stepId) {
+    const activeEl = document.getElementById(stepId);
+    if (activeEl) activeEl.classList.add("active");
+  }
+}
+
+async function refreshDashboardData() {
+  // 1. Fetch Config & Brain Info
+  try {
+    const res = await apiFetch("/api/config");
+    if (res.ok) {
+      const cfg = await res.json();
+      const modelEl = document.getElementById("kpi-model");
+      const provEl = document.getElementById("kpi-provider");
+      if (modelEl) modelEl.textContent = cfg.model || "Unknown";
+      if (provEl) provEl.textContent = `Provider: ${(cfg.provider || "ollama").toUpperCase()} · Ready`;
+    }
+  } catch (e) { /* ignore */ }
+
+  // 2. Fetch Tool Performance Stats
+  try {
+    const res = await apiFetch("/api/tools/stats");
+    if (res.ok) {
+      const data = await res.json();
+      const stats = data.tools || {};
+      const toolNames = Object.keys(stats);
+      let totalCalls = 0;
+      let totalFailures = 0;
+      let rowsHtml = "";
+
+      if (toolNames.length === 0) {
+        rowsHtml = `<tr><td colspan="5" class="table-empty" style="text-align:center; padding:15px; color:var(--text-muted);">No tool calls recorded in this session yet.</td></tr>`;
+      } else {
+        toolNames.forEach(tName => {
+          const s = stats[tName];
+          const calls = s.calls || 0;
+          const fails = s.failures || 0;
+          const success = calls - fails;
+          const avgSec = s.avg_duration ? `${s.avg_duration.toFixed(2)}s` : "-";
+          totalCalls += calls;
+          totalFailures += fails;
+          rowsHtml += `
+            <tr>
+              <td><code>${escapeHtml(tName)}</code></td>
+              <td><strong>${calls}</strong></td>
+              <td style="color:var(--accent-emerald); font-weight:600;">${success}</td>
+              <td style="color:${fails > 0 ? 'var(--accent-rose)' : 'var(--text-muted)'}; font-weight:600;">${fails}</td>
+              <td>${avgSec}</td>
+            </tr>
+          `;
+        });
+      }
+
+      const countEl = document.getElementById("kpi-tools-count");
+      const subEl = document.getElementById("kpi-tools-sub");
+      const bodyEl = document.getElementById("tools-perf-body");
+      if (countEl) countEl.textContent = `${totalCalls} calls`;
+      if (subEl) {
+        const rate = totalCalls > 0 ? Math.round(((totalCalls - totalFailures) / totalCalls) * 100) : 100;
+        subEl.textContent = `Success Rate: ${rate}% · ${totalFailures} failed`;
+      }
+      if (bodyEl) bodyEl.innerHTML = rowsHtml;
+    }
+  } catch (e) { /* ignore */ }
+
+  // 3. Fetch Guard State & Cyber Defense
+  try {
+    const res = await apiFetch("/api/guard/state");
+    if (res.ok) {
+      const data = await res.json();
+      const stateEl = document.getElementById("kpi-security-state");
+      const stateSub = document.getElementById("kpi-security-sub");
+      if (stateEl) {
+        stateEl.textContent = data.dual_shield ? "Dual-Shield Sentinel ON" : "Sentinel Active";
+        stateEl.style.color = "var(--accent-emerald)";
+      }
+      if (stateSub) {
+        stateSub.textContent = `Repeat Guard: ${data.repeat_guard ? 'ON' : 'OFF'} · Malformed Guard: ${data.malformed_guard ? 'ON' : 'OFF'}`;
+      }
+    }
+  } catch (e) { /* ignore */ }
+
+  // 4. Fetch Memory Vault Items
+  try {
+    const res = await apiFetch("/api/memory/vault");
+    if (res.ok) {
+      const data = await res.json();
+      const items = data.items || [];
+      const memCount = document.getElementById("kpi-memory-count");
+      const memSub = document.getElementById("kpi-memory-sub");
+      if (memCount) memCount.textContent = `${items.length} units`;
+      if (memSub) memSub.textContent = "SQLite memory store synchronized";
+    }
+  } catch (e) { /* ignore */ }
+
+  // 5. Fetch Subagent Roles
+  try {
+    const res = await apiFetch("/api/staff/roles");
+    if (res.ok) {
+      const data = await res.json();
+      const roles = data.roles || [];
+      const grid = document.getElementById("swarm-cards-grid");
+      const badgeCount = document.getElementById("swarm-roster-count");
+      if (badgeCount && roles.length) badgeCount.textContent = `${roles.length} Specialists`;
+      if (grid && roles.length > 0) {
+        grid.innerHTML = roles.map(r => `
+          <div class="swarm-role-card">
+            <div class="role-badge">${escapeHtml(r.badge || r.category || 'Specialist')}</div>
+            <h4>${escapeHtml(r.name || r.id)}</h4>
+            <p>${escapeHtml(r.description || 'Autonomous agent role')}</p>
+          </div>
+        `).join("");
+      }
+    }
+  } catch (e) { /* ignore */ }
+
+  // 6. Fetch Recent Event Logs
+  fetchRecentLogs();
+}
+
+async function fetchRecentLogs() {
+  try {
+    const res = await apiFetch("/api/logs/recent");
+    if (res.ok) {
+      const data = await res.json();
+      const entries = data.logs || [];
+      const terminal = document.getElementById("live-log-terminal");
+      if (terminal && entries.length > 0) {
+        terminal.innerHTML = entries.map(l => {
+          let cls = "system";
+          if (l.includes("ERROR") || l.includes("failed")) cls = "error";
+          else if (l.includes("tool") || l.includes("execute")) cls = "tool";
+          else if (l.includes("success") || l.includes("done")) cls = "success";
+          return `<div class="log-entry ${cls}">[${new Date().toLocaleTimeString()}] ${escapeHtml(l)}</div>`;
+        }).join("");
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+    }
+  } catch (e) { /* ignore */ }
+}
+
+// Global expose
+window.switchMainTab = switchMainTab;
+window.refreshDashboardData = refreshDashboardData;
+window.fetchRecentLogs = fetchRecentLogs;
