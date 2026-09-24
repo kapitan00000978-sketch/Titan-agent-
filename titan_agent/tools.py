@@ -1482,6 +1482,38 @@ class ToolRegistry:
             {
                 "type": "function",
                 "function": {
+                    "name": "ast_replace_function",
+                    "description": "Surgically replaces a complete Python function definition by name using AST analysis. Ensures no indentation or syntax errors are introduced.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string", "description": "Path to the Python file."},
+                            "function_name": {"type": "string", "description": "Name of the function to replace."},
+                            "new_function_code": {"type": "string", "description": "Complete new function code (including def line and docstring)."}
+                        },
+                        "required": ["path", "function_name", "new_function_code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "ast_replace_class",
+                    "description": "Surgically replaces a complete Python class definition by name using AST analysis. Ensures clean class boundary replacement without syntax errors.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string", "description": "Path to the Python file."},
+                            "class_name": {"type": "string", "description": "Name of the class to replace."},
+                            "new_class_code": {"type": "string", "description": "Complete new class code (including class line and methods)."}
+                        },
+                        "required": ["path", "class_name", "new_class_code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "deep_verify_code",
                     "description": "Runs a Deep Verification Loop on target code: generates tests, runs them in the sandbox, and heals the code if they fail.",
                     "parameters": {
@@ -1677,17 +1709,48 @@ class ToolRegistry:
         except ASTPatchError as e:
             return f"Error applying AST patch: {e}"
 
+    async def tool_ast_replace_function(self, path: str, function_name: str, new_function_code: str) -> str:
+        """Surgically replace a Python function definition using AST boundary detection."""
+        from titan_agent.core.code_intel.ast_patcher import ASTPatcher, ASTPatchError
+        target = self._resolve_path(path)
+        if not target.exists():
+            return f"Error: File {target} not found."
+        original = target.read_text(encoding="utf-8")
+        try:
+            new_code = ASTPatcher.replace_function(original, function_name, new_function_code)
+            target.write_text(new_code, encoding="utf-8")
+            return f"Function '{function_name}' in {target} successfully updated via AST."
+        except ASTPatchError as e:
+            return f"Error replacing function: {e}"
+
+    async def tool_ast_replace_class(self, path: str, class_name: str, new_class_code: str) -> str:
+        """Surgically replace a Python class definition using AST boundary detection."""
+        from titan_agent.core.code_intel.ast_patcher import ASTPatcher, ASTPatchError
+        target = self._resolve_path(path)
+        if not target.exists():
+            return f"Error: File {target} not found."
+        original = target.read_text(encoding="utf-8")
+        try:
+            new_code = ASTPatcher.replace_class(original, class_name, new_class_code)
+            target.write_text(new_code, encoding="utf-8")
+            return f"Class '{class_name}' in {target} successfully updated via AST."
+        except ASTPatchError as e:
+            return f"Error replacing class: {e}"
+
     async def tool_deep_verify_code(self, code: str, intent: str) -> str:
         from titan_agent.core.verification.deep_verifier import DeepVerifier
         from titan_agent.llm_client import LLMClient
         llm = LLMClient()
         
-        async def runner(script: str) -> str:
-            return await self.tool_docker_sandbox_run(
-                command=f"python -c {shlex.quote(script)}",
-                image="python:3.11-slim",
-                timeout=60.0,
-            )
+        runner = None
+        if shutil.which("docker"):
+            async def _docker_runner(script: str) -> str:
+                return await self.tool_docker_sandbox_run(
+                    command=f"python -c {shlex.quote(script)}",
+                    image="python:3.11-slim",
+                    timeout=60.0,
+                )
+            runner = _docker_runner
             
         verifier = DeepVerifier(llm, sandbox_runner=runner)
         result = await verifier.self_heal_loop(code, intent, max_iterations=3)

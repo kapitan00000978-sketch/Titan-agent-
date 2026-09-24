@@ -78,24 +78,54 @@ EOF
 
 python -m pytest test_target.py -v
 """
-        # Run inside sandbox
+        # Run inside sandbox runner if provided, otherwise run in an isolated native tempdir
         if self.sandbox_runner:
             result_json = await self.sandbox_runner(script)
-        else:
-            result_json = '{"exit_code": 1, "stdout": "", "stderr": "sandbox_runner not configured"}'
-            
-        try:
-            result = json.loads(result_json)
-        except (json.JSONDecodeError, ValueError):
-            return {"success": False, "stdout": "", "stderr": result_json, "exit_code": -1}
-            
-        success = result.get("exit_code") == 0
-        return {
-            "success": success,
-            "stdout": result.get("stdout", ""),
-            "stderr": result.get("stderr", ""),
-            "exit_code": result.get("exit_code", -1)
-        }
+            try:
+                result = json.loads(result_json)
+            except (json.JSONDecodeError, ValueError):
+                return {"success": False, "stdout": "", "stderr": result_json, "exit_code": -1}
+            return {
+                "success": result.get("exit_code") == 0,
+                "stdout": result.get("stdout", ""),
+                "stderr": result.get("stderr", ""),
+                "exit_code": result.get("exit_code", -1)
+            }
+
+        # Native isolated fallback (Runs pytest locally without needing Docker daemon)
+        import asyncio
+        import sys
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            target_path = tmp_path / "target.py"
+            test_path = tmp_path / "test_target.py"
+
+            target_path.write_text(target_code, encoding="utf-8")
+            clean_test = test_code.replace("from target import", "import target\n# ")
+            test_path.write_text(f"import target\n{clean_test}", encoding="utf-8")
+
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    sys.executable, "-m", "pytest", str(test_path), "-v",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=str(tmp_path),
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+                exit_code = proc.returncode or 0
+                return {
+                    "success": exit_code == 0,
+                    "stdout": stdout.decode("utf-8", errors="replace"),
+                    "stderr": stderr.decode("utf-8", errors="replace"),
+                    "exit_code": exit_code
+                }
+            except asyncio.TimeoutError:
+                return {"success": False, "stdout": "", "stderr": "Test execution timed out after 30s.", "exit_code": -1}
+            except Exception as exc:
+                return {"success": False, "stdout": "", "stderr": str(exc), "exit_code": -1}
 
     async def self_heal_loop(
         self,
