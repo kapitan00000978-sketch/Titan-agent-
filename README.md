@@ -1,16 +1,16 @@
-# Titan Agent (Universal Agent HP)
+# Universal Agent HP
 
-[![CI - Titan Agent Tests](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml/badge.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml)
+[![CI - Universal Agent Tests](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml/badge.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Architecture: Tri--Loop](https://img.shields.io/badge/Architecture-Tri--Loop%20Metacognition-purple.svg)](#architecture-tri-loop-metacognitive-execution)
 [![Tests: 675+ Passing](https://img.shields.io/badge/tests-675%2B%20passing-brightgreen.svg)](#testing--security)
 
-Titan Agent is a high-performance autonomous AI operating system designed to execute complex real-world software engineering, research, and system administration workflows with verified correctness and zero context drift.
+Universal Agent HP is a high-performance autonomous AI operating system designed to execute complex real-world software engineering, research, and system administration workflows with verified correctness and zero context drift.
 
 ```
    ┌────────────────────────────────────────────────────────────────────────┐
-   │                       TITAN UNIVERSAL AGENT                            │
+   │                         UNIVERSAL AGENT HP                             │
    │                                                                        │
    │   [System 1: Fast Intuition] ──> Instant Heuristic Path (0ms)          │
    │   [System 2: Planning Engine] ──> MCTS + Bayes Reasoning + TDD Loop     │

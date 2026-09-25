@@ -24,4 +24,4 @@ universal-agent = "titan_agent.entrypoint:universal_cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["titan_agent*"]
+include = ["titan_agent*", "universal_agent*"]

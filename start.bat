@@ -1,8 +1,8 @@
 @echo off
-title Titan Agent - Autonomous AI Cockpit
+title Universal Agent HP - Autonomous AI Cockpit
 color 0b
 echo ========================================================
-echo        TITAN AGENT - AUTONOMOUS AI SYSTEM
+echo     UNIVERSAL AGENT HP - AUTONOMOUS AI SYSTEM
 echo ========================================================
 echo.
 echo 1) Modern Terminal TUI (Textual / OpenCode style)

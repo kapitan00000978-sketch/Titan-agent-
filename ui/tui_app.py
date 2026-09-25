@@ -304,7 +304,7 @@ class UniversalAgentTUI(App):
             with Horizontal(id="sub-bar"):
                 yield Label("Build ", classes="badge-mode")
                 yield Label("· ", classes="separator")
-                yield Label("OmniRoute / Titan-R1 ", classes="badge-model")
+                yield Label("OmniRoute / Universal-R1 ", classes="badge-model")
                 yield Label("Universal Zen", classes="sub-text")
 
             # Qisqa klaviatura buyruqlari
@@ -355,7 +355,7 @@ class UniversalAgentTUI(App):
             else:
                 result = f"Command processed: {prompt}"
 
-            self.output_log.write(f"[bold green]Titan Agent:[/bold green]\n{result}")
+            self.output_log.write(f"[bold green]Universal Agent HP:[/bold green]\n{result}")
         except Exception as e:
             self.output_log.write(f"[bold red]Execution Error:[/bold red] {e}")
 

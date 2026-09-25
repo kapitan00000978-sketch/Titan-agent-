@@ -19,7 +19,7 @@ from titan_agent.agent import TitanAgent
 from titan_agent.tui import TitanOS
 
 def main():
-    print("Booting Titan OS...")
+    print("Booting Universal Agent HP OS...")
     # Initialize the agent
     agent = TitanAgent()
     

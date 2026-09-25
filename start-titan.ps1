@@ -70,7 +70,7 @@ function Ensure-Env {
 function Start-Titan {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor DarkCyan
-    Write-Host "   ⚡ TITAN AGENT — Autonomous AI System (PowerShell)" -ForegroundColor Cyan
+    Write-Host "   ⚡ UNIVERSAL AGENT HP — Autonomous AI System" -ForegroundColor Cyan
     Write-Host "============================================================" -ForegroundColor DarkCyan
     Write-Host ""
 
