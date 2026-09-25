@@ -119,6 +119,9 @@ TITAN_SYSTEM_PROMPT = """You are TITAN AGENT — an ultra-powerful autonomous AI
 - synthesize_tool — ON-THE-FLY TOOL SYNTHESIS: dynamically creates, tests in an isolated sandbox, compiles, and registers a brand new Python tool when existing tools cannot solve the problem.
 - symbolic_check_code — SYMBOLIC AST INVARIANT CHECKER: verifies code safety, infinite loops, shell injections, and resource leaks before runtime execution.
 - skill_save — AUTONOMOUS SKILLS: synthesize and save a reusable workflow playbook directly to the skills library.
+- tdd_cycle — AUTONOMOUS TDD ENGINE: executes rigorous Red-Green-Refactor software cycles in an isolated sandbox (proves test fails first, writes code, passes symbolic invariants).
+- consensus_deliberation — MULTI-AGENT CONSENSUS: convenes an architectural committee (Architect, Security Officer, Pragmatist) to formally evaluate and vote on critical proposals.
+- working_memory_update — ACTIVE WORKING MEMORY: updates live operational HUD (confirmed facts, refuted dead-ends, key paths, subtasks).
 - browser_* — VISUAL BROWSER AUTOMATION: use browser_goto, browser_click, browser_type, browser_screenshot, and browser_extract_text to navigate and interact with real websites visually using Playwright.
 
 ### SKILLS:
@@ -599,6 +602,13 @@ class TitanAgent:
         # Phase 39: in-run idempotent read cache for read-only tools
         self._read_cache: dict[str, str] = {}
         self.tools = tools or ToolRegistry()
+        # Phase 09: Active Working Memory Virtualizer
+        from titan_agent.core.memory.working_memory_virtualizer import (
+            WorkingMemoryVirtualizer,
+        )
+        self._working_memory = WorkingMemoryVirtualizer()
+        if hasattr(self.tools, "_working_memory_ref"):
+            self.tools._working_memory_ref = self._working_memory
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
         self.skills = skills or SkillRegistry()
@@ -1821,6 +1831,19 @@ class TitanAgent:
         if block:
             messages.append(block)
 
+    def _inject_or_update_working_memory_hud(self, messages: list[dict[str, Any]]) -> None:
+        """Phase 09: Pins or updates the active Working Memory HUD in the context."""
+        if not hasattr(self, "_working_memory") or not self._working_memory:
+            return
+        hud_text = self._working_memory.render_hud_block()
+        marker = "### WORKING MEMORY HUD"
+        for idx in range(len(messages) - 1, -1, -1):
+            msg = messages[idx]
+            if msg.get("role") == "system" and marker in str(msg.get("content") or ""):
+                msg["content"] = hud_text
+                return
+        messages.append({"role": "system", "content": hud_text})
+
     def _critic_llm(self) -> Any:
         """The model used for the critic/reflection pass.
 
@@ -2171,6 +2194,14 @@ class TitanAgent:
         )
         self._overseer = MetacognitiveOverseer(user_input)
 
+        # Phase 09: Active Working Memory Virtualizer
+        from titan_agent.core.memory.working_memory_virtualizer import (
+            WorkingMemoryVirtualizer,
+        )
+        self._working_memory = WorkingMemoryVirtualizer(user_input)
+        if hasattr(self.tools, "_working_memory_ref"):
+            self.tools._working_memory_ref = self._working_memory
+
         while iteration < max_steps:
             iteration += 1
             yield AgentEvent("step_start", {"step": iteration, "max_steps": max_steps})
@@ -2229,6 +2260,9 @@ class TitanAgent:
 
             available_tools = self._build_tools_list()
 
+            # Phase 09: Refresh Active Working Memory HUD in context
+            self._inject_or_update_working_memory_hud(messages)
+
             try:
                 response, messages, chat_notes = await self._chat_with_recovery(
                     messages, available_tools, anchor=user_input
@@ -2273,6 +2307,13 @@ class TitanAgent:
                         first_tool_args = json.loads(str(response.tool_calls[0].get("function", {}).get("arguments") or "{}"))
                     except Exception:
                         pass
+
+                # Phase 09: Working Memory autonomous extraction from tool outcome
+                self._working_memory.auto_observe_tool_outcome(
+                    tool_name=used_names[0] if used_names else "none",
+                    tool_args=first_tool_args,
+                    tool_result=latest_tool_content,
+                )
 
                 meta_report = self._overseer.evaluate_step(
                     step_idx=iteration,

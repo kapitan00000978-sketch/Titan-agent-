@@ -60,6 +60,9 @@ universal --web
   - **System 1 (Fast Intuition):** 0ms pattern-matched instant path bypassing heavy tool reasoning for simple queries.
   - **System 2 (Deliberative Planning):** Multi-hop ReAct, Tree-of-Thoughts, and Monte Carlo Tree Search (MCTS) with Bayesian candidate hypothesis tracking.
   - **System 3 (Metacognitive Overseer):** Real-time monitoring of Shannon cognitive entropy, hallucination drift, and cyclic dead-ends with autonomous strategy pivoting (MCTS, Adversarial Debate, or Tool Synthesis).
+- **Autonomous TDD Engine (Red-Green-Refactor Loop):** Guarantees high-integrity software changes by strictly proving test failure first (RED), writing minimal passing code (GREEN), and verifying symbolic AST invariants (REFACTOR) in an isolated sandbox.
+- **Active Working Memory Virtualizer:** Real-time operational HUD pinned into the system context, tracking confirmed facts, refuted dead-ends, key file paths, and active subtasks to eliminate context drift on long-horizon tasks.
+- **Multi-Agent Consensus & Deliberation Engine:** Convenes an architectural committee (`Architect`, `SecurityOfficer`, `Pragmatist`) with weighted voting and signed consensus memos before executing risky or high blast-radius changes.
 - **On-The-Fly Autonomous Tool & Skill Synthesis:** When a task requires capabilities not present in static registries, the agent writes the Python tool, executes verification tests in an isolated sandbox, compiles it, and hot-injects it into `ToolRegistry` during the live session.
 - **Symbolic AST Invariant Checker:** Statically scans Python code prior to execution to detect infinite loops (`while True` without escape), command injection hazards, and resource leaks.
 - **Mission Control Dashboard & Telemetry:** Real-time state-machine visualizer (`[01. Intent Routing] -> [02. Dual-Shield Guard] -> [03. Planning & MCTS] -> [04. Tool Execution] -> [05. Deep Verification] -> [06. Verified Delivery]`), live tool performance matrix, and real-time SSE event log streaming.
@@ -103,7 +106,7 @@ The project is governed by a 120-stage progressive evolution roadmap spanning 6 
 6. **Stages 101–120:** Multimodal Telemetry, Visual Self-Correction & Industrial Delivery (Playwright DOM Inspector, Singularity Auto-Evolution).
 
 ## Testing & Security
-- **Tests:** Run the test suite with `pytest tests/` (103+ unit & integration tests).
+- **Tests:** Run the test suite with `pytest tests/` (285+ unit & integration tests, 100% green).
 - **Security:** Static analysis, AST invariant checking, and secret scanning are integrated directly into the tool execution funnel.
 
 ## Contributing

@@ -1625,6 +1625,54 @@ class ToolRegistry:
                         "required": ["code"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "tdd_cycle",
+                    "description": "AUTONOMOUS TDD ENGINE: Executes a rigorous Red-Green-Refactor software cycle. Proves the test fails first (RED), writes the implementation to pass it (GREEN), and verifies symbolic invariants (REFACTOR).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "test_code": {"type": "string", "description": "Pytest test code asserting the expected feature or bugfix."},
+                            "implementation_code": {"type": "string", "description": "Python source code implementing the requested feature."},
+                            "test_filename": {"type": "string", "description": "Filename for the test (default: test_feature.py)."},
+                            "code_filename": {"type": "string", "description": "Filename for the code module (default: feature.py)."}
+                        },
+                        "required": ["test_code", "implementation_code"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "consensus_deliberation",
+                    "description": "MULTI-AGENT CONSENSUS: Convenes an architectural committee (Architect, Security Officer, Pragmatist) to formally evaluate and vote on critical code or design proposals.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "proposal": {"type": "string", "description": "The architectural, refactoring, or design proposal to deliberate upon."},
+                            "context": {"type": "string", "description": "Current system context, constraints, and dependencies."}
+                        },
+                        "required": ["proposal"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "working_memory_update",
+                    "description": "ACTIVE WORKING MEMORY: Pins confirmed operational facts, marks refuted dead-ends to avoid repeating, or updates current subtask.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "confirmed_fact": {"type": "string", "description": "A verified fact to remember across the run."},
+                            "dead_end": {"type": "string", "description": "A failed approach or path to avoid repeating."},
+                            "subtask": {"type": "string", "description": "The active sub-problem currently being solved."},
+                            "todo": {"type": "string", "description": "A pending todo item to track."}
+                        }
+                    }
+                }
             }
         ])
         from .browser_automation import BrowserAutomation
@@ -1823,6 +1871,55 @@ class ToolRegistry:
         from titan_agent.core.code_intel.symbolic_checker import SymbolicInvariantChecker
         report = SymbolicInvariantChecker.check_code(code)
         return report.summary()
+
+    async def tool_tdd_cycle(
+        self,
+        test_code: str,
+        implementation_code: str,
+        test_filename: str = "test_feature.py",
+        code_filename: str = "feature.py",
+    ) -> str:
+        """Executes a full autonomous Red-Green-Refactor software cycle in an isolated sandbox."""
+        from titan_agent.core.code_intel.tdd_engine import AutonomousTDDEngine
+        engine = AutonomousTDDEngine(self.workspace)
+        report = await engine.execute_tdd_cycle(
+            test_code=test_code,
+            implementation_code=implementation_code,
+            test_filename=test_filename,
+            code_filename=code_filename,
+        )
+        return report.format_text()
+
+    def tool_consensus_deliberation(self, proposal: str, context: str = "") -> str:
+        """Convenes an architectural committee to render formal consensus on critical changes."""
+        from titan_agent.core.reasoning.consensus_engine import ConsensusEngine
+        memo = ConsensusEngine.evaluate_heuristic(proposal, context)
+        return memo.format_memo()
+
+    def tool_working_memory_update(
+        self,
+        confirmed_fact: str = "",
+        dead_end: str = "",
+        subtask: str = "",
+        todo: str = "",
+    ) -> str:
+        """Pins verified facts or marks dead-ends to avoid repeating in the live working memory."""
+        agent_mem = getattr(self, "_working_memory_ref", None)
+        if agent_mem is None:
+            from titan_agent.core.memory.working_memory_virtualizer import WorkingMemoryVirtualizer
+            agent_mem = WorkingMemoryVirtualizer()
+            self._working_memory_ref = agent_mem
+
+        if confirmed_fact:
+            agent_mem.confirm_fact(confirmed_fact)
+        if dead_end:
+            agent_mem.record_dead_end(dead_end)
+        if subtask:
+            agent_mem.set_subtask(subtask)
+        if todo:
+            agent_mem.add_todo(todo)
+
+        return agent_mem.render_hud_block()
 
     async def tool_execute_command(self, command: str, cwd: str = "") -> str:
         working_dir = self._resolve_path(cwd) if cwd else self.workspace
