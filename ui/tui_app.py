@@ -349,14 +349,31 @@ class UniversalAgentTUI(App):
                 from titan_agent.agent import TitanAgent
                 self._agent = TitanAgent()
 
+            final_answer = ""
             if hasattr(self._agent, "run_task"):
-                result = await self._agent.run_task(prompt)
+                async for event in self._agent.run_task(prompt):
+                    ev_type = getattr(event, "type", "")
+                    ev_data = getattr(event, "data", "")
+                    if ev_type == "thought" and ev_data:
+                        self.output_log.write(f"[dim magenta]🧠 {ev_data}[/dim magenta]")
+                    elif ev_type == "tool_call":
+                        tool_name = ev_data.get("name", "tool") if isinstance(ev_data, dict) else str(ev_data)
+                        self.output_log.write(f"[yellow]🔧 Tool:[/yellow] [cyan]{tool_name}[/cyan]")
+                    elif ev_type == "final_answer":
+                        final_answer = str(ev_data)
+                    elif ev_type == "error":
+                        self.output_log.write(f"[bold red]❌ Error:[/bold red] {ev_data}")
+                    elif ev_type == "status":
+                        self.output_log.write(f"[dim blue]ℹ️ {ev_data}[/dim blue]")
             elif hasattr(self._agent, "run"):
-                result = await self._agent.run(prompt)
+                final_answer = await self._agent.run(prompt)
             else:
-                result = f"Command processed: {prompt}"
+                final_answer = f"Command processed: {prompt}"
 
-            self.output_log.write(f"[bold green]Universal Agent HP:[/bold green]\n{result}")
+            if final_answer:
+                self.output_log.write(f"[bold green]Extra LLM X:[/bold green]\n{final_answer}")
+            else:
+                self.output_log.write("[bold green]Extra LLM X:[/bold green] Task finished.")
         except Exception as e:
             self.output_log.write(f"[bold red]Execution Error:[/bold red] {e}")
 
