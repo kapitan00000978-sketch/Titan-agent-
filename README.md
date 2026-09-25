@@ -6,7 +6,7 @@
 [![Architecture: Tri--Loop](https://img.shields.io/badge/Architecture-Tri--Loop%20Metacognition-purple.svg)](#architecture-tri-loop-metacognitive-execution)
 [![Tests: 675+ Passing](https://img.shields.io/badge/tests-675%2B%20passing-brightgreen.svg)](#testing--security)
 
-Universal Agent HP is a high-performance autonomous AI operating system designed to execute complex real-world software engineering, research, and system administration workflows with verified correctness and zero context drift.
+Universal Agent HP is an autonomous AI software engineering and operations system built for real-world development environments. It combines **Tri-Loop Metacognitive Reasoning**, an **Autonomous TDD Engine**, **Anthropic Model Context Protocol (MCP)** integration, **Human-in-the-Loop Guardrails**, and **Local Semantic Caching** into a verified, drift-free execution framework.
 
 ```
    ┌────────────────────────────────────────────────────────────────────────┐
@@ -21,167 +21,167 @@ Universal Agent HP is a high-performance autonomous AI operating system designed
 
 ---
 
-## ⚠️ Important Notice Regarding Model Providers
+## Nimalarga Kerak? (Real-World Use Cases)
 
-This project supports standard commercial APIs (`groq`, `gemini`, `openrouter`), local self-hosted engines (`ollama`), as well as experimental providers. For maximum production stability, low latency, and security, configure `TITAN_PROVIDER` in your `.env` to official APIs or local Ollama instances.
+Universal Agent HP shunchaki oddiy chat-bot emas. U ishlab chiquvchilar, jamoalar va korxonalar uchun quyidagi aniq amaliy muammolarni hal qilish uchun yaratilgan:
+
+### 1. Avtonom Kod Yozish, Testlash va Xatolarni Tuzatish (Self-Healing Bug Fixing)
+* **Muammo:** Dasturchilar xatolarni qidirish, sinab ko'rish va takroriy testlarni yurgizishga soatlab vaqt sarflaydi.
+* **Universal Agent yechimi:** Agent topshiriqni olgach, avval sinov testini yozadi (`pytest`), test qulashini isbotlaydi (RED), so'ngra kodni yozadi (GREEN) va xavfsizlik invariantlarini tekshiradi (REFACTOR). Agar test o'tmasa, agent o'z xatosini o'zi tahlil qilib kodni mustaqil tuzatadi.
+
+### 2. Xavfsiz GitOps: Tarmoq Ochish va Pull Request (PR) Tayyorlash
+* **Muammo:** AI agentlarining to'g'ridan-to'g'ri `main` tarmoqqa yozishi yoki xom kodni commit qilishi loyihani buzib qo'yishi mumkin.
+* **Universal Agent yechimi:** Agent har bir vazifa uchun alohida `agent/feature-<nom>` tarmog'ini ochadi. Barcha testlar 100% yashil o'tmaguncha git commit qilinmaydi. Testlar o'tgach, GitHub/GitLab'da to'liq hisobot bilan avtomatik Pull Request ochadi.
+
+### 3. Tashqi Tizimlar bilan 1-Qatorda Ulanish (MCP Integratsiyasi)
+* **Muammo:** Har bir ma'lumotlar bazasi yoki servis uchun alohida API yozib chiqish murakkab.
+* **Universal Agent yechimi:** Anthropic Model Context Protocol (MCP) standarti orqali dunyodagi istalgan tayyor serverni bitta buyruq bilan ulaydi:
+  * `postgres`: SQL so'rovlar va jadvallar tahlili
+  * `github`: Masalalar (issues) va PRlarni boshqarish
+  * `slack`: Xabarlar va jamoa integratsiyasi
+  * `brave_search`: Internetdan eng so'nggi ma'lumotlarni qidirish
+  * `filesystem` & `sqlite`: Mahalliy fayllar va bazalar bilan xavfsiz ishlash
+
+### 4. Halokatli Amallarni To'xtatish (Human-in-the-Loop Xavfsizlik)
+* **Muammo:** Agentning tasodifan muhim fayllarni o'chirib yuborishi (`rm -rf`), `git push --force` qilishi yoki maxfiy kalitlarni o'zgartirishi xavfi.
+* **Universal Agent yechimi:** `DangerousActionClassifier` xavfli amallarni zudlik bilan ushlab qoladi va to'xtaydi:
+  > *«Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»*  
+  Inson tasdiqlamaguncha birorta xavfli buyruq bajarilmaydi.
+
+### 5. LLM Token Xarajatini 30–40% Tejash (Semantic Caching)
+* **Muammo:** Bitta kod bo'lagi yoki o'xshash savollar uchun har safar qimmatbaho tashqi LLM API'lariga so'rov yuborish ortiqcha xarajat keltirib chiqaradi.
+* **Universal Agent yechimi:** Mahalliy SQLite (`semantic_cache.db`) bazasida kosinus vektor o'xshashligi orqali keshdan **0ms** ichida javob beradi va hisoblagichda tejab qolingan tokenlar hamda dollar miqdorini aniq ko'rsatadi.
+
+### 6. Oldingi Xatolardan Saboq Olish (Episodik Xotira)
+* **Muammo:** Agentlar bir xil kutubxona versiyasi yoki sintaksis xatosiga qayta-qayta duch kelganda qaytadan adashadi.
+* **Universal Agent yechimi:** Agent avvalgi xatolarning barmoq izi (fingerprint) va ularga qo'llangan muvaffaqiyatli kod yechimini `experience_replay.db` da saqlab boradi. Xuddi shunday xato sodir bo'lganda, avvalgi yechimni eslab darhol to'g'rilaydi.
+
+### 7. 100% Maxfiy va Mahalliy Rejim (Air-Gapped Local AI)
+* **Muammo:** Kompaniyalar o'zlarining tijorat sirlari bo'lgan kodlarini ommaviy bulutli servislarga yuborishdan cho'chiydi.
+* **Universal Agent yechimi:** `Ollama` yoki `LM Studio` orqali kompyuteringizdagi mahalliy modellar bilan to'liq offline ishlay oladi. Bir bayt ham ma'lumot tashqariga chiqmaydi.
 
 ---
 
-## Installation
+## Hech Qanday Yolg'onsiz: Nima Qila Oladi va Nima Qila Olmaydi?
 
-### Prerequisites
-- Python 3.11 or higher
-- Git
+### ✅ Tizim Haqiqatda Qila Oladigan Imkoniyatlar (Kod va Testlar Bilan Tasdiqlangan):
+1. **Tri-Loop Kognitiv Fikrlash:**
+   * **System 1 (Tezkor Intuitsiya):** Oddiy savollar va suhbatlarni vositalarsiz (toolless) 0ms da ajratib darhol javob beradi.
+   * **System 2 (ReAct & MCTS):** Murakkab dasturiy masalalarda gipotezalar daraxtini (Bayesian hypothesis tracking) tuzib, qadam-baqadam yechadi.
+   * **System 3 (Shannon Entropiya Nazoratchisi):** Agar agent bir nuqtada aylanib qolsa (stagnation), buni matematik aniqlab strategiyani o'zgartiradi.
+2. **Kodni Jarrohlik Usulida Yamoqlash (AST Patcher):** Qator raqamlari o'zgarib ketganda ham funksiya va klasslarni xatosiz topib almashtiradi.
+3. **Statik Xavfsizlik Skanyeri (Symbolic Checker):** Cheksiz `while True` sikllari, buyruq inyeksiyalari (`shell=True`) va yopilmagan fayllarni kod yurgizilishidan oldin aniqlaydi.
+4. **Haqiqiy Ko'p Sessiyali Interfeyslar:**
+   * **Textual TUI:** Zamonaviy to'liq ekranli terminal interfeysi (`python run.py`).
+   * **Web Dashboard:** Real vaqt rejimida SSE oqimi bilan brauzer konsoli (`python run.py --web`).
+   * **CLI & Telegram:** Buyruqlar qatori va mobil boshqaruv bot.
+5. **Avtomatlashtirilgan Test To'plami:** Repozitoriyda **675 dan ortiq unit va integratsiya testlari** mavjud bo'lib, har bir commit'da GitHub Actions CI orqali 100% yashil o'tishi tekshiriladi.
 
-### Setup
+### ⚠️ Cheklovlar va Aniq Haqiqatlar (Honest Boundaries):
+1. **Sehrli AGI emas:** Agent ishlashi uchun unga orqa fonda kuchli til modeli (LLM) kerak. Tizim mantiq, test, xotira va vositalarni boshqaradi, ammo til tushunish sifati ulangan modelga (Claude, GPT-4o, DeepSeek, Llama-3) bog'liq.
+2. **Inson Ruxsatisiz Xavfli Amallar Qilinmaydi:** Agent mustaqil ravishda fayllarni o'chira olmaydi yoki majburiy push qila olmaydi — xavfsizlik filtri uni qat'iyan to'xtatadi.
+3. **Kutubxona API Cheklovlari:** Agar foydalanayotgan tashqi API'laringizda (masalan, Groq yoki OpenRouter) token limiti tugasa, agent tejamkor keshdan foydalanadi yoki zaxira provayderga o'tishni taklif qiladi.
+
+---
+
+## Tezkor Ishga Tushirish
+
+### 1. O'rnatish
 
 ```bash
-# Clone the repository
+# Repozitoriyni klonlash
 git clone https://github.com/kapitan00000978-sketch/Universal-Agent-HP.git
 cd Universal-Agent-HP
 
-# Create and activate virtual environment
+# Virtual muhitni yaratish va faollashtirish
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows uchun: .venv\Scripts\activate
 
-# Install dependencies and project package
+# Bog'liqliklarni o'rnatish
 pip install -r requirements.txt
 pip install -e .
 ```
 
-### Configuration
+### 2. Konfiguratsiya
 
-Copy the environment template and set your API keys:
+Namunaviy fayldan `.env` nusxasini oling va o'z modelingiz kalitini kiriting:
 
 ```bash
 cp .env.example .env
 ```
 
----
-
-## Quick Start
-
-### 1. One-Shot Execution
-Execute a direct autonomous task from the command line:
-
-```bash
-universal "Write a python script that prints Hello World"
+Mahalliy Ollama bilan ishlatish uchun:
+```env
+TITAN_PROVIDER=ollama
+TITAN_MODEL=llama3:latest
 ```
 
-### 2. Ultra-Modern Terminal TUI (OpenCode / Textual Style)
-Launch the full-screen Textual TUI with active session tabs, real-time thoughts, 27-agent matrix, and command palette:
+---
+
+## 3 Xil Ishga Tushirish Usuli
+
+### Variant 1: Zamonaviy Terminal TUI (OpenCode / Textual Uslubi)
+Terminalda hech qanday qo'shimcha parametrsiz ishga tushiring:
 
 ```bash
 python run.py
-# or explicitly:
-python run.py --tui
 ```
-- `shift+tab`: 27 Specialist Agents matrix
-- `ctrl+p`: Command Palette (`/dag`, `/debate`, `/mcp`, `/pr`, `/rollback`, `/status`)
-- `ctrl+l`: Clear terminal log
+* <kbd>Shift</kbd> + <kbd>Tab</kbd>: 27 ta mutaxassis agent matritsasi
+* <kbd>Ctrl</kbd> + <kbd>P</kbd>: Buyruqlar palitrasi (`/dag`, `/debate`, `/mcp`, `/pr`, `/rollback`, `/status`)
+* <kbd>Ctrl</kbd> + <kbd>L</kbd>: Ekranni tozalash
 
-### 3. Interactive Terminal CLI
-Launch the interactive terminal shell with live syntax highlighting and tool feedback:
+### Variant 2: Web Dashboard (Brauzer Boshqaruv Paneli)
+Brauzer orqali to'liq grafik vizualizatsiya va SSE voqealar oqimi bilan boshqarish:
+
+```bash
+python run.py --web
+```
+Brauzerda oching: `http://localhost:7860`
+
+### Variant 3: Terminal CLI (Klassik Konsol)
 
 ```bash
 universal --cli
 ```
 
-### 4. Mission Control Web Dashboard
-Launch the web dashboard with real-time SSE event streams and telemetry:
-
-```bash
-python run.py --web
-```
-
-Open your browser at `http://localhost:7860` to access the Mission Control UI.
-
 ---
 
-## Key Capabilities
-
-- **Tri-Loop Metacognitive Reasoning Engine:**
-  - **System 1 (Fast Intuition):** 0ms pattern-matched instant path bypassing heavy tool reasoning for simple queries.
-  - **System 2 (Deliberative Planning):** Multi-hop ReAct, Tree-of-Thoughts, and Monte Carlo Tree Search (MCTS) with Bayesian candidate hypothesis tracking.
-  - **System 3 (Metacognitive Overseer):** Real-time monitoring of Shannon cognitive entropy, hallucination drift, and cyclic dead-ends with autonomous strategy pivoting (MCTS, Adversarial Debate, or Tool Synthesis).
-- **Autonomous TDD Engine (Red-Green-Refactor Loop):** Guarantees high-integrity software changes by strictly proving test failure first (RED), writing minimal passing code (GREEN), and verifying symbolic AST invariants (REFACTOR) in an isolated sandbox.
-- **Active Working Memory Virtualizer:** Real-time operational HUD pinned into the system context, tracking confirmed facts, refuted dead-ends, key file paths, and active subtasks to eliminate context drift on long-horizon tasks.
-- **Multi-Agent Consensus & Deliberation Engine:** Convenes an architectural committee (`Architect`, `SecurityOfficer`, `Pragmatist`) with weighted voting and signed consensus memos before executing risky or high blast-radius changes.
-- **On-The-Fly Autonomous Tool & Skill Synthesis:** When a task requires capabilities not present in static registries, the agent writes the Python tool, executes verification tests in an isolated sandbox, compiles it, and hot-injects it into `ToolRegistry` during the live session.
-- **Symbolic AST Invariant Checker:** Statically scans Python code prior to execution to detect infinite loops (`while True` without escape), command injection hazards, and resource leaks.
-- **Mission Control Dashboard & Telemetry:** Real-time state-machine visualizer (`[01. Intent Routing] -> [02. Dual-Shield Guard] -> [03. Planning & MCTS] -> [04. Tool Execution] -> [05. Deep Verification] -> [06. Verified Delivery]`), live tool performance matrix, and real-time SSE event log streaming.
-- **AST Code Intelligence & Surgical Patching:** Boundary-accurate replacement for functions and classes via `ASTPatcher`, preventing line-number offset errors.
-- **Deep Test-Driven Verification:** Self-healing verification loop that autonomously runs `pytest` in isolated sandboxes with Docker or native fallback.
-- **Dual-Shield Cyber Defense:** Integrated Blue Team security sentinels and emergency Red Team forensic analysis.
-- **Enterprise-Grade Capabilities (Phase 47):**
-  - **1-Line Model Context Protocol (MCP) Presets:** Instant connection to industry-standard MCP servers (`postgres`, `github`, `slack`, `brave_search`, `sqlite`, `filesystem`, `puppeteer`, `gdrive`) with standard environment mapping and automated tool discovery.
-  - **Human-in-the-Loop (HITL) Dangerous Action Gate:** Automatic interceptor for catastrophic or irreversible operations (`rm -rf`, `delete_file`, `git push --force`, `.env`/secret modifications, raw disk writes) that halts and requests human authorization (`«Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»`) via Web Dashboard, CLI, or Telegram.
-  - **Automated GitOps Branching & PR Engine:** Enforces safe development hygiene by isolating work in clean feature branches (`agent/feature-<slug>`), enforcing test-suite pass gates before committing, and opening fully documented Pull Requests on GitHub.
-  - **Semantic Caching Layer:** SQLite-backed word cosine vector cache that intercepts repeated or semantically equivalent queries/tool executions, returning instant 0ms responses and cutting token costs by 30–40%.
-  - **Episodic Experience Replay:** Persistent error fingerprint repository that records past runtime errors, root causes, and verified code diffs. Instantly recalls proven remediation recipes when matching errors occur in future workflows.
-
----
-
-## Architecture: Tri-Loop Metacognitive Execution
+## Arxitektura: Tri-Loop Metacognitive Execution
 
 ```mermaid
 graph TD
-    User([User Request]) --> Router[Multilingual Intent Router]
-    Router --> Shield{Dual-Shield Guard}
-    Shield -- Allowed --> TriLoop[Tri-Loop Reasoning Core]
+    User([Foydalanuvchi Vazifasi]) --> Router[Multilingual Intent Router]
+    Router --> Shield{Dual-Shield Guard & HITL}
+    Shield -- Xavfli Amal --> HITL[«Ruxsat berasizmi? [Ha/Yo'q]»]
+    Shield -- Ruxsat Berilgan --> TriLoop[Tri-Loop Fikrlash O'zagi]
     
     subgraph "Tri-Loop Metacognitive Architecture"
-        TriLoop --> S1[System 1: Fast Heuristics 0ms]
-        TriLoop --> S2[System 2: Deliberative ReAct / MCTS]
-        TriLoop --> S3[System 3: Metacognitive Overseer]
+        TriLoop --> S1[System 1: Tezkor 0ms Intuitsiya]
+        TriLoop --> S2[System 2: MCTS + ReAct + TDD Sikli]
+        TriLoop --> S3[System 3: Metakognitiv Nazoratchi]
         
-        S2 <--> Bayes[(Bayesian Hypotheses)]
-        S2 <--> ToolExec[Concurrent Tool Execution]
+        S2 <--> Cache[(Semantik Kesh SQLite)]
+        S2 <--> Memory[(Episodik Xotira & Working HUD)]
+        S2 <--> ToolExec[MCP & Tizim Vositalari]
         
-        S3 -. Entropy & Drift Monitored .-> S2
-        S3 -. Stuck Detected: Trigger Synthesis .-> Synth[Dynamic Tool Synthesizer]
-        Synth -. Sandbox Tested & Injected .-> ToolExec
+        S3 -. Entropiya & Stagnatsiya Nazorati .-> S2
+        S3 -. Xato Sodir Bo'lsa: Tajribani Eslash .-> Memory
     end
     
-    ToolExec --> PostCheck{Symbolic & AST Postcheck}
-    PostCheck -- Verified --> Output([Verified Delivery])
+    ToolExec --> PostCheck{AST & Pytest Verifikatsiyasi}
+    PostCheck -- 100% Yashil --> GitEngine[Git Branch & PR Engine]
+    GitEngine --> Output([Muvaffaqiyatli Natija])
 ```
-
----
-
-## 120-Stage Master Architecture Blueprint
-
-The project is governed by a 120-stage progressive evolution roadmap spanning 6 core capability tracks:
-1. **Stages 001–020:** Metacognitive Core & Tri-Loop Engine (Entropy, Bayesian Belief, Stagnation Breakers).
-2. **Stages 021–040:** Autonomous Dynamic Tool & Skill Synthesis (Hot-Reloading, Sandbox Verifier, API Reverse-Engineering).
-3. **Stages 041–060:** Deep Code Intelligence & Symbolic Invariants (AST Invariant Prover, Mutation Testing, Dependency Conflict Resolver).
-4. **Stages 061–080:** Hierarchical Multi-Agent Swarm & Raft Consensus (Meta-Orchestrator, Department Leads, Raft Voting).
-5. **Stages 081–100:** Persistent Multi-Tier Memory & Knowledge Graph (Causal Impact Analysis, WAL High Concurrency Storage).
-6. **Stages 101–120:** Multimodal Telemetry, Visual Self-Correction & Industrial Delivery (Playwright DOM Inspector, Singularity Auto-Evolution).
-
-For the full specification, see [120_stages_universal_agent_blueprint.md](120_stages_universal_agent_blueprint.md).
 
 ---
 
 ## Testing & Security
 
-- **Tests:** Run the test suite with `pytest tests/ -q` (**675+ unit & integration tests, 100% green**).
-- **Security:** Static analysis, AST invariant checking, and secret scanning are integrated directly into the tool execution funnel.
+* **Avtomatlashtirilgan testlar:** `pytest tests/ -q` buyrug'i orqali **675+ unit va integratsiya testlari** 100% yashil o'tadi.
+* **Xavfsizlik:** AST darajasidagi statik inyeksiyalar nazorati, maxfiy kalitlarni himoyalash va destruktiv operatsiyalarni bloklash tizimning har bir qadamiga kiritilgan.
 
 ---
 
-## Contributing
+## Litsenziya
 
-We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## Releases
-
-For a history of stable releases and versioning, check the [Releases page](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/releases).
-
----
-
-## License
-
-MIT License
+Ushbu loyiha [MIT License](LICENSE) litsenziyasi ostida taqdim etiladi.
