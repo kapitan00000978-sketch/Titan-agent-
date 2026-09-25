@@ -578,6 +578,8 @@ class TitanAgent:
         hitl_timeout: float = 120.0,
         reviewer_llm: Any | None = None,
         tool_stats: ToolStatsCollector | None = None,
+        domain: str | None = None,
+        domain_manager: Any | None = None,
     ):
         self.llm = llm or LLMClient()
         # Phase 21: dedicated reviewer for the critic/reflection pass. When
@@ -614,6 +616,16 @@ class TitanAgent:
         self._working_memory = WorkingMemoryVirtualizer()
         if hasattr(self.tools, "_working_memory_ref"):
             self.tools._working_memory_ref = self._working_memory
+        # Omni-Domain adaptation framework
+        from titan_agent.core.domain.manager import DomainManager
+        if domain_manager is not None:
+            self.domain_manager = domain_manager
+        else:
+            self.domain_manager = DomainManager.get_instance()
+            if domain:
+                self.domain_manager.switch_domain(domain)
+        if hasattr(self.tools, "_domain_manager_ref"):
+            self.tools._domain_manager_ref = self.domain_manager
         self.mcp = mcp or MCPManager()
         self.memory = memory or MemoryManager()
         self.skills = skills or SkillRegistry()
@@ -1049,6 +1061,11 @@ class TitanAgent:
             + "\n\n### LIVE TOOL CATALOG (all tools currently available):\n"
             + self._build_tool_catalog_text()
         )
+        # Omni-Domain adaptation: inject active industry domain persona & guardrails
+        if hasattr(self, "domain_manager") and self.domain_manager:
+            domain_overlay = self.domain_manager.build_system_overlay()
+            if domain_overlay:
+                content += "\n\n" + domain_overlay
         recalled = self.memory.recall_relevant(user_input, limit=5)
         if recalled:
             content += "\n\n### REMEMBERED FACTS (from long-term memory, relevant to this request):\n"
@@ -1336,6 +1353,12 @@ class TitanAgent:
         # execution funnel — classic loop, structured engines (ToolBridge),
         # cron, queue, direct calls — goes through here, so one shared collector
         # and one shared guard counter govern all of them.
+        # Omni-Domain tool restriction check
+        if hasattr(self, "domain_manager") and self.domain_manager:
+            allowed, reason = self.domain_manager.is_tool_allowed(name)
+            if not allowed:
+                return f"Error: {reason}"
+
         guarded = repeat_guard_enabled()
         gkey = None
         prior = 0
@@ -2023,6 +2046,11 @@ class TitanAgent:
         # right after the base identity so it steers behaviour from the start.
         if system_extra:
             system_content += "\n\n" + system_extra
+        # Omni-Domain adaptation: inject active industry domain persona & guardrails
+        if hasattr(self, "domain_manager") and self.domain_manager:
+            domain_overlay = self.domain_manager.build_system_overlay()
+            if domain_overlay:
+                system_content += "\n\n" + domain_overlay
         # Auto-recall: seed remembered facts relevant to this request (Memory
         # Agent pattern) so the model starts the turn already knowing the user.
         recalled = self.memory.recall_relevant(user_input, limit=5)

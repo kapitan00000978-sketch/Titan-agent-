@@ -160,6 +160,7 @@ LOCAL_COMMANDS = {
     "mode": "Switch mode: fast, deep, deep_search. Usage: /mode deep",
     "effort": "Switch effort: auto, low, medium, high, ultra. Usage: /effort high",
     "skills": "List available skill playbooks.",
+    "domain": "Switch or inspect industry domain profile (finance, healthcare, legal, dev, science, universal). Usage: /domain [name]",
     "memory": "Search long-term memory. Usage: /memory <query>",
     "handoffs": "List open handoff notes.",
     "queue": "Autonomous task queue: list/stats/enqueue/cancel. Usage: /queue list | /queue stats | /queue add <task> | /queue cancel <id>",

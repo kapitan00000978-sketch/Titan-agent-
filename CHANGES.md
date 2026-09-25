@@ -2,6 +2,47 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🌐 Omni-Domain Industry Adaptation Framework — Omni-Enterprise Tailoring
+
+Engineered a universal domain adaptation framework enabling Universal Agent HP to be configured, specialized, and deployed across any field or industry:
+
+### 1. Omni-Domain Core (`titan_agent/core/domain/`)
+- **`DomainProfile` (`titan_agent/core/domain/profile.py`)**:
+  - Encapsulates domain persona, operational methodology, mandatory compliance guardrails, preferred and restricted tool sets, suggested skill playbooks, and custom rules.
+  - Generates structured, high-priority prompt overlays injected directly into the agent's cognitive loops.
+- **Pre-Configured Industry Profiles (`titan_agent/core/domain/builtin_domains.py`)**:
+  - 🌐 `universal`: General omni-purpose adaptive intelligence.
+  - 💻 `software_engineering`: Architecture, clean code, TDD cycles, surgical AST patching, and GitOps workflows.
+  - 📈 `finance`: DCF valuations, financial statements (GAAP/IFRS), sensitivity modeling, and non-advisory risk disclosures.
+  - ⚕️ `healthcare`: Evidence-based clinical research review, pharmacological mechanism queries, and medical safety disclaimers.
+  - ⚖️ `legal`: Contract audits, regulatory compliance (GDPR/HIPAA/SOC 2), IRAC argumentation, and legal counsel disclaimers.
+  - 📢 `marketing`: Copywriting frameworks (AIDA, PAS), SEO keyword clustering, viral hooks, and customer persona targeting.
+  - 🔬 `science`: Hypothesis testing, peer-review rigor, LaTeX mathematical notation, and empirical verification.
+  - 🎓 `education`: Socratic inquiry, progressive hints, Feynman pedagogy, and interactive student quizzes.
+  - 🛒 `ecommerce`: Product merchandising, CAC/LTV unit economics, inventory modeling, and competitor pricing analysis.
+  - 🎧 `customer_support`: Empathetic customer communication, first-contact resolution, and FAQ knowledge-base generation.
+  - 🎬 `multimedia`: Video editing (FFmpeg / MoviePy) and Blender 3D headless background rendering.
+  - 🛡️ `cybersecurity`: SAST audits, OWASP Top 10 mitigation, secret scanning, and defensive hardening.
+- **`DomainManager` (`titan_agent/core/domain/manager.py`)**:
+  - Dynamic switching on-the-fly via command line, environment variable (`TITAN_DOMAIN`), slash command (`/domain`), or agent tools.
+  - Custom enterprise profile persistence (`.titan/domains/*.json`).
+  - Active tool policy gating (`is_tool_allowed`).
+
+### 2. User Interfaces & Tool Integration
+- **CLI & TUI & Run Options**:
+  - `python run.py --domain <name>` (e.g. `python run.py --domain finance`).
+  - Terminal CLI slash command `/domain [name]`.
+  - TUI Command Palette integration (`/domain`).
+- **Agent Tools (`titan_agent/tools.py`)**:
+  - `domain_list`: Lists all available built-in and enterprise custom domains.
+  - `domain_switch`: Changes active domain on the fly.
+  - `domain_get_active`: Inspects active domain instructions and guardrails.
+  - `domain_create`: Defines and persists a new custom domain profile.
+
+### 3. Verification
+- 6 comprehensive tests in `tests/test_domain_framework.py` verifying domain loading, switching, aliases, prompt injection, custom persistence, and tool execution.
+- 100% test pass rate across domain, multimedia, and tool suites.
+
 ## 🎬 Multimedia & 3D Engineering — Video Montage & Blender Pipelines
 
 Added comprehensive skills, execution engines, and tool interfaces for automated video editing/montage (FFmpeg & MoviePy) and Blender 3D modeling and headless rendering (bpy):

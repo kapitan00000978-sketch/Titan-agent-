@@ -1874,6 +1874,72 @@ class ToolRegistry:
                         "required": ["script_path"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "domain_list",
+                    "description": "OMNI-DOMAIN: Lists all registered industry domain profiles (Finance, Healthcare, Legal, Software, Marketing, Science, etc.) and highlights the currently active one.",
+                    "parameters": {"type": "object", "properties": {}}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "domain_switch",
+                    "description": "OMNI-DOMAIN: Switches the agent's active operational domain profile on-the-fly (e.g. 'finance', 'healthcare', 'legal', 'software_engineering', 'universal').",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "domain": {
+                                "type": "string",
+                                "description": "Target domain identifier (e.g. 'finance', 'healthcare', 'legal', 'software_engineering', 'science', 'marketing', 'universal')."
+                            }
+                        },
+                        "required": ["domain"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "domain_get_active",
+                    "description": "OMNI-DOMAIN: Returns full operational guidelines, instructions, guardrails, and tool configurations for the active domain profile.",
+                    "parameters": {"type": "object", "properties": {}}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "domain_create",
+                    "description": "OMNI-DOMAIN: Creates and permanently persists a custom domain profile tailored for any specific enterprise, workflow, or industry.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Unique domain identifier (e.g. 'real_estate', 'aviation', 'biotech')."},
+                            "display_name": {"type": "string", "description": "Human-readable title (e.g. 'Real Estate & Property Management')."},
+                            "description": {"type": "string", "description": "Overview of domain responsibilities and scope."},
+                            "system_prompt_overlay": {"type": "string", "description": "Specific domain methodology, cognitive rules, standards, and guidelines."},
+                            "icon": {"type": "string", "description": "Optional single emoji or icon (default: 🌐)."},
+                            "mandatory_guardrails": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of domain compliance rules and required disclaimers."
+                            },
+                            "preferred_tools": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of prioritized tool names."
+                            },
+                            "forbidden_tools": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of restricted tool names."
+                            }
+                        },
+                        "required": ["name", "display_name", "description", "system_prompt_overlay"]
+                    }
+                }
             }
         ])
         from .browser_automation import BrowserAutomation
@@ -4057,6 +4123,94 @@ class ToolRegistry:
             f"- Exit Code: {res.get('returncode')}\n"
             f"```\n{res.get('stdout_tail')}\n```"
         )
+
+    @property
+    def domain_manager(self):
+        """Lazy accessor for active DomainManager."""
+        if getattr(self, "_domain_manager_ref", None) is None:
+            from titan_agent.core.domain.manager import DomainManager
+            self._domain_manager_ref = DomainManager.get_instance()
+        return self._domain_manager_ref
+
+    def tool_domain_list(self) -> str:
+        """Lists all registered domain profiles and indicates the active one."""
+        domains = self.domain_manager.list_domains()
+        lines = [f"🌐 **Universal Agent Industry Domains ({len(domains)} available)**:"]
+        for d in domains:
+            active_marker = " 👈 **[ACTIVE]**" if d["is_active"] else ""
+            builtin_label = "Built-in" if d["is_builtin"] else "Custom Enterprise"
+            lines.append(
+                f"- {d['icon']} **`{d['name']}`** — {d['display_name']} *({builtin_label})*{active_marker}\n"
+                f"  {d['description']}"
+            )
+        lines.append("\n💡 *To switch active domain, call `domain_switch(domain='...')` or run CLI with `--domain <name>`.*")
+        return "\n".join(lines)
+
+    def tool_domain_switch(self, domain: str) -> str:
+        """Switches the active industry domain profile."""
+        try:
+            profile = self.domain_manager.switch_domain(domain)
+            return (
+                f"✅ **Switched Active Domain**: {profile.icon} **{profile.display_name}** (`{profile.name}`)\n"
+                f"- Description: {profile.description}\n"
+                f"- Guardrails Active: {len(profile.mandatory_guardrails)}\n"
+                f"- Recommended Tools: {', '.join(profile.preferred_tools) or 'All'}"
+            )
+        except ValueError as e:
+            return f"❌ Error switching domain: {e}"
+
+    def tool_domain_get_active(self) -> str:
+        """Returns details of the currently active domain profile."""
+        current = self.domain_manager.active_domain
+        guardrails_str = "\n".join(f"- ⚠️ {g}" for g in current.mandatory_guardrails) if current.mandatory_guardrails else "(None)"
+        tools_str = ", ".join(current.preferred_tools) if current.preferred_tools else "All standard tools"
+        return (
+            f"🌐 **Current Active Domain Profile**:\n"
+            f"- **Identifier:** `{current.name}`\n"
+            f"- **Name:** {current.icon} {current.display_name}\n"
+            f"- **Type:** {'Built-in' if current.is_builtin else 'Custom Enterprise'}\n"
+            f"- **Description:** {current.description}\n\n"
+            f"**Operational Guidelines:**\n{current.system_prompt_overlay}\n\n"
+            f"**Mandatory Guardrails:**\n{guardrails_str}\n\n"
+            f"**Preferred Tools:** {tools_str}"
+        )
+
+    def tool_domain_create(
+        self,
+        name: str,
+        display_name: str,
+        description: str,
+        system_prompt_overlay: str,
+        icon: str = "🌐",
+        mandatory_guardrails: list[str] | None = None,
+        preferred_tools: list[str] | None = None,
+        forbidden_tools: list[str] | None = None,
+    ) -> str:
+        """Defines and persists a new custom industry domain profile."""
+        from titan_agent.core.domain.profile import DomainProfile
+        norm_name = str(name).strip().lower().replace(" ", "_")
+        if not norm_name:
+            return "❌ Error: domain name cannot be empty."
+
+        profile = DomainProfile(
+            name=norm_name,
+            display_name=display_name.strip() or norm_name,
+            icon=icon.strip() or "🌐",
+            description=description.strip(),
+            system_prompt_overlay=system_prompt_overlay.strip(),
+            mandatory_guardrails=mandatory_guardrails or [],
+            preferred_tools=preferred_tools or [],
+            forbidden_tools=forbidden_tools or [],
+            is_builtin=False,
+        )
+        self.domain_manager.register_domain(profile, persist=True)
+        return (
+            f"✅ Custom Domain Profile `{norm_name}` created and persisted successfully!\n"
+            f"- Name: {profile.icon} {profile.display_name}\n"
+            f"- Stored to: `{self.domain_manager.domains_dir / f'{norm_name}.json'}`\n"
+            f"- You can activate it now with `domain_switch(domain='{norm_name}')`."
+        )
+
 
 
 

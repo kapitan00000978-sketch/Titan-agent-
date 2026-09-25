@@ -36,6 +36,7 @@ htmlcov/
 *.log
 workspace/
 _staging/
+.titan/
 knowledge_graph.json
 skills/learned-*.md
 $null

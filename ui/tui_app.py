@@ -147,6 +147,7 @@ class CommandsModal(ModalScreen):
         ("/pr", "Open automated feature branch & GitHub Pull Request"),
         ("/cache", "Inspect Semantic Cache hits and saved tokens"),
         ("/memory", "Inspect Episodic Memory & Working Memory HUD"),
+        ("/domain", "Switch industry domain profile (Finance, Healthcare, Legal, etc.)"),
         ("/rollback", "Undo last code modification or git checkpoint"),
         ("/status", "Show active LLM provider, latency and telemetry"),
         ("/clear", "Clear chat output and restart visual session"),

@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--telegram", action="store_true", help="Launch Telegram Bot mode")
     parser.add_argument("--tui", action="store_true", help="Launch full-screen Terminal TUI mode (OpenCode/Textual style)")
     parser.add_argument("--web", action="store_true", help="Launch Web Control Panel UI in browser")
+    parser.add_argument("--domain", default=None, help="Set active industry domain profile (finance, healthcare, legal, software_engineering, science, marketing, universal)")
 
     args = parser.parse_args()
 
@@ -40,6 +41,8 @@ def main():
         os.environ["TITAN_MODE"] = args.mode
     if args.effort:
         os.environ["TITAN_EFFORT"] = args.effort
+    if args.domain:
+        os.environ["TITAN_DOMAIN"] = args.domain
 
     # Import here so the env overrides take effect
     from titan_agent.config import SERVER_HOST, SERVER_PORT

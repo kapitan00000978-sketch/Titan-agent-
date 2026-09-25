@@ -588,6 +588,25 @@ async def main():
                             ))
                         else:
                             console.print("[yellow]No skills loaded.[/yellow]")
+                    elif name_l == "domain":
+                        arg = local.get("arg", "").strip()
+                        if not arg:
+                            domains = agent.domain_manager.list_domains()
+                            lines = []
+                            for d in domains:
+                                active = " [bold green][ACTIVE][/bold green]" if d["is_active"] else ""
+                                lines.append(f"{d['icon']} [cyan]{d['name']}[/cyan]: {d['display_name']}{active}\n  [dim]{d['description']}[/dim]")
+                            console.print(Panel.fit(
+                                "\n".join(lines),
+                                title="[bold magenta]Omni-Domain Industry Profiles[/bold magenta]",
+                                border_style="magenta",
+                            ))
+                        else:
+                            try:
+                                switched = agent.domain_manager.switch_domain(arg)
+                                console.print(f"[bold green]Switched active domain to: {switched.icon} {switched.display_name} ({switched.name})[/bold green]")
+                            except ValueError as err:
+                                console.print(f"[bold red]{err}[/bold red]")
                     elif name_l == "memory":
                         query = local["arg"]
                         if not query:
