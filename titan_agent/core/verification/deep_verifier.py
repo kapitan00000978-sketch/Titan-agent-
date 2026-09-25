@@ -66,6 +66,7 @@ class DeepVerifier:
         Returns a dict with 'success', 'stdout', 'stderr'.
         """
         # We prepare a small shell script to create the files and run pytest
+        sanitized_test = test_code.replace("from target import", "import target\n# ")
         script = f"""
 cat << 'EOF' > target.py
 {target_code}
@@ -73,7 +74,7 @@ EOF
 
 cat << 'EOF' > test_target.py
 import target
-{test_code.replace('from target import', 'import target\\n# ')}
+{sanitized_test}
 EOF
 
 python -m pytest test_target.py -v
