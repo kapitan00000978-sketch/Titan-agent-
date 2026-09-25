@@ -276,7 +276,7 @@ def test_chat_with_recovery_halves_on_repeated_overflow(tmp_path, monkeypatch):
 def test_run_recovers_from_context_overflow_end_to_end(tmp_path):
     # Seed a FAT conversation so the first model call overflows a small window;
     # the run must recover via trimming and finish normally.
-    llm = _ScriptedLLM(overflow_above=30_000)
+    llm = _ScriptedLLM(overflow_above=45_000)
     agent = TitanAgent(
         llm=llm,
         memory=MemoryManager(tmp_path / "ov.db"),
