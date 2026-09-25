@@ -171,8 +171,21 @@ class LLMClient:
             self.api_key = HUGGINGFACE_API_KEY
         elif self.provider in ("extra-llm-x", "extra_llm_x", "elx"):
             # Extra LLM X — Unified Autonomous AI Gateway
-            self.base_url = EXTRA_LLM_X_BASE_URL
-            self.api_key = EXTRA_LLM_X_API_KEY
+            base_url = EXTRA_LLM_X_BASE_URL
+            if "localhost:3000" in base_url or "127.0.0.1:3000" in base_url:
+                try:
+                    import socket
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.settimeout(0.3)
+                        if s.connect_ex(("127.0.0.1", 3000)) != 0:
+                            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
+                                s2.settimeout(0.3)
+                                if s2.connect_ex(("127.0.0.1", 3001)) == 0:
+                                    base_url = base_url.replace(":3000", ":3001")
+                except Exception:
+                    pass
+            self.base_url = base_url
+            self.api_key = EXTRA_LLM_X_API_KEY or "elx-master-admin-key"
             if self.model == DEFAULT_MODEL:
                 self.model = EXTRA_LLM_X_MODEL
         elif self.provider == "together":

@@ -33,8 +33,8 @@ OMNI_BASE_URL = os.getenv("OMNI_BASE_URL", "http://localhost:20128/v1")
 OMNI_MODEL = os.getenv("OMNI_MODEL", "auto")
 OMNI_AUTO_MODELS = ("auto", "auto/coding", "auto/fast", "auto/smart", "auto/offline", "auto/cheap")
 
-# Extra LLM X — Unified Autonomous Gateway (localhost:3000)
-EXTRA_LLM_X_API_KEY = os.getenv("EXTRA_LLM_X_API_KEY", os.getenv("ELX_API_KEY", "extra-llm-x-free-key"))
+# Extra LLM X — Unified Autonomous Gateway (localhost:3000 / localhost:3001)
+EXTRA_LLM_X_API_KEY = os.getenv("EXTRA_LLM_X_API_KEY", os.getenv("ELX_API_KEY", "elx-master-admin-key"))
 EXTRA_LLM_X_BASE_URL = os.getenv("EXTRA_LLM_X_BASE_URL", os.getenv("ELX_BASE_URL", "http://localhost:3000/v1"))
 EXTRA_LLM_X_MODEL = os.getenv("EXTRA_LLM_X_MODEL", "extra/auto-free")
 EXTRA_LLM_X_MODELS = (
