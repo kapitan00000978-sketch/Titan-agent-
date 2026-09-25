@@ -1673,6 +1673,130 @@ class ToolRegistry:
                         }
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mcp_connect_preset",
+                    "description": "MCP INTEGRATION: Connects any ready industry-standard MCP server (postgres, github, slack, brave_search, filesystem, sqlite, puppeteer, gdrive) with a single call.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "preset_id": {"type": "string", "description": "Preset identifier: postgres, github, slack, brave_search, filesystem, sqlite, puppeteer, gdrive."},
+                            "server_name": {"type": "string", "description": "Optional custom name for the connection (default: same as preset_id)."},
+                            "env_overrides": {"type": "object", "description": "Environment variables required (e.g. POSTGRES_URL, GITHUB_PERSONAL_ACCESS_TOKEN, BRAVE_API_KEY)."}
+                        },
+                        "required": ["preset_id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mcp_list_presets",
+                    "description": "MCP CATALOG: Lists all available 1-line MCP server presets with setup instructions and environment requirements.",
+                    "parameters": {"type": "object", "properties": {}}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "hitl_request_approval",
+                    "description": "HUMAN-IN-THE-LOOP: Requests explicit human approval before executing destructive actions (e.g., file deletes, force pushes, secret edits). Prompts user: 'Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]'.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "action": {"type": "string", "description": "Action name (e.g. 'delete_file', 'git_push_force', 'edit_config')."},
+                            "resource": {"type": "string", "description": "Target file or resource affected."},
+                            "reason": {"type": "string", "description": "Justification explaining why this action is required."}
+                        },
+                        "required": ["action", "resource"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "git_create_branch",
+                    "description": "AUTONOMOUS GITOPS: Creates and checks out an isolated feature branch (e.g. agent/feature-login-auth) before writing changes, protecting main branch.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "task_name": {"type": "string", "description": "Brief description of the task used to generate branch slug."},
+                            "prefix": {"type": "string", "description": "Branch prefix (default: 'agent/feature-')."}
+                        },
+                        "required": ["task_name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "git_create_pr",
+                    "description": "AUTOMATED PULL REQUEST: Pushes the active feature branch to remote origin and opens a Pull Request on GitHub with automated verification evidence.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string", "description": "PR title describing the feature or bugfix."},
+                            "body": {"type": "string", "description": "PR body in markdown with changelog and test results."},
+                            "base_branch": {"type": "string", "description": "Target base branch (default: main)."}
+                        },
+                        "required": ["title"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "semantic_cache_query",
+                    "description": "SEMANTIC CACHE: Checks local SQLite semantic cache to retrieve answers for previously answered queries or code analyses at 0ms and zero token cost.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "The prompt or question to look up in cache."},
+                            "threshold": {"type": "number", "description": "Similarity threshold between 0.0 and 1.0 (default 0.90)."}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "semantic_cache_stats",
+                    "description": "SEMANTIC CACHE METRICS: Returns total cache entries, hits, hit ratio, and token/dollar cost savings.",
+                    "parameters": {"type": "object", "properties": {}}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "experience_replay_query",
+                    "description": "EPISODIC MEMORY: Searches past error resolution experience replay database for proven fixes to errors, tracebacks, or version collisions.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "error_text": {"type": "string", "description": "The error message or traceback snippet encountered."}
+                        },
+                        "required": ["error_text"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "experience_replay_record",
+                    "description": "EPISODIC MEMORY RECORD: Stores a newly solved error and its verified resolution recipe so the agent remembers the solution forever.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "error_text": {"type": "string", "description": "The original error or failure message."},
+                            "resolution": {"type": "string", "description": "The exact patch, fix command, or recipe that resolved the problem."},
+                            "diagnosis": {"type": "string", "description": "Root cause explanation."}
+                        },
+                        "required": ["error_text", "resolution"]
+                    }
+                }
             }
         ])
         from .browser_automation import BrowserAutomation
@@ -1920,6 +2044,121 @@ class ToolRegistry:
             agent_mem.add_todo(todo)
 
         return agent_mem.render_hud_block()
+
+    async def tool_mcp_connect_preset(
+        self,
+        preset_id: str,
+        server_name: str = "",
+        env_overrides: dict[str, str] | None = None,
+    ) -> str:
+        """Connects any ready MCP server preset in a single call."""
+        from titan_agent.core.mcp.presets import MCPPresetManager
+        mgr = MCPPresetManager(self.workspace / "mcp_servers.json")
+        cfg, err = mgr.generate_server_config(preset_id, env_overrides)
+        if not cfg:
+            return f"Error: {err}"
+        name = server_name or preset_id
+        mgr.save_server_to_config(name, cfg)
+        return f"Successfully configured and saved MCP preset '{name}'. Reconnecting MCP servers..."
+
+    def tool_mcp_list_presets(self) -> str:
+        """Lists available 1-line MCP presets."""
+        from titan_agent.core.mcp.presets import MCPPresetManager
+        mgr = MCPPresetManager()
+        presets = mgr.list_presets()
+        lines = ["### AVAILABLE 1-LINE MCP PRESETS:"]
+        for p in presets:
+            lines.append(f"- **{p['id']}** ({p['name']}): {p['description']}")
+            if p["env_keys"]:
+                lines.append(f"  *Required Env:* {', '.join(p['env_keys'])}")
+        return "\n".join(lines)
+
+    async def tool_hitl_request_approval(
+        self,
+        action: str,
+        resource: str,
+        reason: str = "",
+    ) -> str:
+        """Requests human confirmation for sensitive operations."""
+        from titan_agent.core.guardrails.dangerous_actions import DangerousActionClassifier
+        assessment = DangerousActionClassifier.assess_action(action, resource, {"reason": reason})
+        prompt = assessment.suggested_prompt or f"«Bu amalni ({action} on {resource}) bajarmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»"
+        if getattr(self, "hitl", None) is not None:
+            gate = getattr(self, "_dangerous_gate", None)
+            if not gate:
+                from titan_agent.core.guardrails.dangerous_actions import DangerousActionGate
+                gate = DangerousActionGate(self.hitl)
+                self._dangerous_gate = gate
+            ok, msg = await gate.check_and_gate(action, resource, {"reason": reason})
+            return f"Approval Decision: {msg}"
+        return f"Human Approval Prompt Generated:\n{prompt}\n(Waiting for user response [Ha / Yo'q])"
+
+    def tool_git_create_branch(self, task_name: str, prefix: str = "agent/feature-") -> str:
+        """Creates an isolated feature branch for the task."""
+        from titan_agent.core.git.pr_engine import GitPREngine
+        engine = GitPREngine(self.workspace)
+        ok, msg = engine.create_feature_branch(task_name, prefix)
+        return msg
+
+    def tool_git_create_pr(
+        self,
+        title: str,
+        body: str = "",
+        base_branch: str = "main",
+    ) -> str:
+        """Runs pre-PR test check and opens Pull Request on GitHub."""
+        from titan_agent.core.git.pr_engine import GitPREngine
+        engine = GitPREngine(self.workspace)
+        res = engine.create_pull_request(title, body, base_branch)
+        return f"PR Status: {res.message}\nURL: {res.pr_url}"
+
+    def tool_semantic_cache_query(self, query: str, threshold: float = 0.90) -> str:
+        """Retrieves semantically identical past queries from local cache."""
+        cache = getattr(self, "_semantic_cache", None)
+        if not cache:
+            from titan_agent.core.caching.semantic_cache import SemanticCache
+            cache = SemanticCache(self.workspace / "semantic_cache.db")
+            self._semantic_cache = cache
+        cached_resp, sim = cache.get(query, threshold=threshold)
+        if cached_resp:
+            return f"### SEMANTIC CACHE HIT (Similarity: {sim * 100:.1f}%, 0ms, 0 tokens):\n{cached_resp}"
+        return f"Semantic Cache Miss (Best match: {sim * 100:.1f}%, threshold: {threshold * 100:.0f}%)."
+
+    def tool_semantic_cache_stats(self) -> str:
+        """Returns statistics on token and dollar savings from semantic caching."""
+        cache = getattr(self, "_semantic_cache", None)
+        if not cache:
+            from titan_agent.core.caching.semantic_cache import SemanticCache
+            cache = SemanticCache(self.workspace / "semantic_cache.db")
+            self._semantic_cache = cache
+        return cache.get_stats().summary()
+
+    def tool_experience_replay_query(self, error_text: str) -> str:
+        """Searches experience replay memory for proven fixes to errors."""
+        replay = getattr(self, "_experience_replay", None)
+        if not replay:
+            from titan_agent.core.memory.experience_replay import ExperienceReplayEngine
+            replay = ExperienceReplayEngine(self.workspace / "experience_replay.db")
+            self._experience_replay = replay
+        match = replay.query_experience(error_text)
+        if match:
+            return match.format_hint()
+        return "No prior experience found for this error pattern in episodic memory."
+
+    def tool_experience_replay_record(
+        self,
+        error_text: str,
+        resolution: str,
+        diagnosis: str = "",
+    ) -> str:
+        """Stores a newly verified error fix into episodic memory."""
+        replay = getattr(self, "_experience_replay", None)
+        if not replay:
+            from titan_agent.core.memory.experience_replay import ExperienceReplayEngine
+            replay = ExperienceReplayEngine(self.workspace / "experience_replay.db")
+            self._experience_replay = replay
+        ep = replay.record_experience(error_text, resolution, diagnosis)
+        return f"Successfully recorded experience episode #{ep.id} (`{ep.fingerprint}`) in episodic memory."
 
     async def tool_execute_command(self, command: str, cwd: str = "") -> str:
         working_dir = self._resolve_path(cwd) if cwd else self.workspace

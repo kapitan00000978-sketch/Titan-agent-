@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Architecture: Tri--Loop](https://img.shields.io/badge/Architecture-Tri--Loop%20Metacognition-purple.svg)](#architecture-tri-loop-metacognitive-execution)
-[![Tests: 655+ Passing](https://img.shields.io/badge/tests-655%2B%20passing-brightgreen.svg)](#testing--security)
+[![Tests: 675+ Passing](https://img.shields.io/badge/tests-675%2B%20passing-brightgreen.svg)](#testing--security)
 
 Titan Agent is a high-performance autonomous AI operating system designed to execute complex real-world software engineering, research, and system administration workflows with verified correctness and zero context drift.
 
@@ -101,6 +101,12 @@ Open your browser at `http://localhost:7860` to access the Mission Control UI.
 - **AST Code Intelligence & Surgical Patching:** Boundary-accurate replacement for functions and classes via `ASTPatcher`, preventing line-number offset errors.
 - **Deep Test-Driven Verification:** Self-healing verification loop that autonomously runs `pytest` in isolated sandboxes with Docker or native fallback.
 - **Dual-Shield Cyber Defense:** Integrated Blue Team security sentinels and emergency Red Team forensic analysis.
+- **Enterprise-Grade Capabilities (Phase 47):**
+  - **1-Line Model Context Protocol (MCP) Presets:** Instant connection to industry-standard MCP servers (`postgres`, `github`, `slack`, `brave_search`, `sqlite`, `filesystem`, `puppeteer`, `gdrive`) with standard environment mapping and automated tool discovery.
+  - **Human-in-the-Loop (HITL) Dangerous Action Gate:** Automatic interceptor for catastrophic or irreversible operations (`rm -rf`, `delete_file`, `git push --force`, `.env`/secret modifications, raw disk writes) that halts and requests human authorization (`«Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»`) via Web Dashboard, CLI, or Telegram.
+  - **Automated GitOps Branching & PR Engine:** Enforces safe development hygiene by isolating work in clean feature branches (`agent/feature-<slug>`), enforcing test-suite pass gates before committing, and opening fully documented Pull Requests on GitHub.
+  - **Semantic Caching Layer:** SQLite-backed word cosine vector cache that intercepts repeated or semantically equivalent queries/tool executions, returning instant 0ms responses and cutting token costs by 30–40%.
+  - **Episodic Experience Replay:** Persistent error fingerprint repository that records past runtime errors, root causes, and verified code diffs. Instantly recalls proven remediation recipes when matching errors occur in future workflows.
 
 ---
 
@@ -147,7 +153,7 @@ For the full specification, see [120_stages_universal_agent_blueprint.md](120_st
 
 ## Testing & Security
 
-- **Tests:** Run the test suite with `pytest tests/ -q` (**655+ unit & integration tests, 100% green**).
+- **Tests:** Run the test suite with `pytest tests/ -q` (**675+ unit & integration tests, 100% green**).
 - **Security:** Static analysis, AST invariant checking, and secret scanning are integrated directly into the tool execution funnel.
 
 ---

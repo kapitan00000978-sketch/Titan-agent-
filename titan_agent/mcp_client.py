@@ -442,3 +442,30 @@ class MCPManager:
             await asyncio.gather(*(conn.stop() for conn in conns), return_exceptions=True)
         self.servers.clear()
         self._tool_map = {}
+
+    async def connect_preset(
+        self,
+        preset_id: str,
+        server_name: str | None = None,
+        env_overrides: dict[str, str] | None = None,
+        custom_args: list[str] | None = None,
+        workspace_dir: Path | None = None,
+    ) -> tuple[bool, str]:
+        """Dynamically configures and hot-connects an MCP preset in one call."""
+        from titan_agent.core.mcp.presets import MCPPresetManager
+        mgr = MCPPresetManager(self.config_file)
+        cfg, err = mgr.generate_server_config(preset_id, env_overrides, custom_args)
+        if not cfg:
+            return False, err
+
+        name = server_name or preset_id
+        # Save to config file so it persists across runs
+        mgr.save_server_to_config(name, cfg)
+
+        ws = workspace_dir or (self.config_file.parent if self.config_file else Path.cwd())
+        cmd, args, env = self._resolve_server_command(cfg, ws)
+        conn = MCPServerConnection(name, cmd, args, env)
+        ok = await self._start_one(conn)
+        if ok:
+            return True, f"Successfully connected MCP server '{name}' with {len(conn.tools)} tools."
+        return False, f"Failed to start MCP server '{name}'. Check logs/dependencies."
