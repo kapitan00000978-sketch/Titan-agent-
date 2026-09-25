@@ -2,6 +2,34 @@
 
 All fixes and improvements made during the completion effort of this project.
 
+## 🎬 Multimedia & 3D Engineering — Video Montage & Blender Pipelines
+
+Added comprehensive skills, execution engines, and tool interfaces for automated video editing/montage (FFmpeg & MoviePy) and Blender 3D modeling and headless rendering (bpy):
+
+### 1. Skill Playbooks (`skills/`)
+- **`skills/video-editing.md`**: Operational guide for zero-loss stream copy cuts (`-c copy`), aspect ratio conversion (16:9 to vertical 9:16 for Reels/Shorts/TikTok), multi-track audio mixing (`amix`), playback speed alteration (`setpts`/`atempo`), and audio normalization.
+- **`skills/blender-ops.md`**: Operational guide for headless background execution (`blender -b -P`), procedural mesh generation, PBR material creation (`Principled BSDF`), 3-point studio lighting, and EEVEE/Cycles render configuration.
+
+### 2. Multimedia Execution Engines (`titan_agent/core/multimedia/`)
+- **`VideoEngine` (`titan_agent/core/multimedia/video_engine.py`)**:
+  - `locate_ffmpeg()` & `locate_ffprobe()`: Automatic path discovery across standard Windows, Linux, and macOS locations with graceful fallback diagnostics.
+  - `probe_media(file_path)`: Extracts media duration, resolution, codecs, framerate, and audio channels.
+  - `generate_montage_command(...)`: Produces validated, non-destructive FFmpeg commands for trimming, cropping, audio merging, and speed alteration.
+- **`BlenderEngine` (`titan_agent/core/multimedia/blender_engine.py`)**:
+  - `locate_blender()`: Auto-locates Blender installations across version directories and PATH.
+  - `generate_procedural_scene_script(...)`: Generates complete, syntactically verified standalone Python `bpy` scripts.
+  - `execute_blender_script(script_path)`: Headless background execution with timeout protection and standard output tail capture.
+
+### 3. Agent Tool Integrations (`titan_agent/tools.py`)
+- `video_probe(file_path)`: Media metadata extraction.
+- `video_montage_command(operation, input_video, output_video, ...)`: Generates optimized FFmpeg commands.
+- `blender_generate_scene(primitive, output_image, engine, save_path)`: Synthesizes procedural 3D scenes.
+- `blender_execute_script(script_path)`: Runs Blender scripts in headless background mode.
+
+### 4. Verification
+- 6 comprehensive tests in `tests/test_multimedia_skills_and_tools.py` covering skill discovery, FFmpeg command generation, Blender AST verification, execution fallbacks, and tool registry dispatch.
+- 100% test pass rate across multimedia and core tool suites.
+
 ## 👑 Phase 30 — SELF-IMPROVEMENT LOOP & EVAL SUITE (Genesis Darajasi 10 — Cho'qqi)
 
 Completed the final pinnacle layer of the Genesis Master Architecture: autonomous self-improvement, continuous failure learning, prompt evolution diffing, and regression benchmark evaluation:

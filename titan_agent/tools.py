@@ -1797,6 +1797,83 @@ class ToolRegistry:
                         "required": ["error_text", "resolution"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "video_probe",
+                    "description": "MULTIMEDIA: Inspects video or audio file metadata (duration, resolution, fps, video/audio codecs, file size) via ffprobe.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "Absolute or relative path to the media file."}
+                        },
+                        "required": ["file_path"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "video_montage_command",
+                    "description": "MULTIMEDIA: Generates optimized FFmpeg commands for video editing operations: trim, crop_vertical (9:16 for Reels/Shorts/TikTok), merge_audio, or speed adjustment.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "description": "Editing operation to perform.",
+                                "enum": ["trim", "crop_vertical", "merge_audio", "speed"]
+                            },
+                            "input_video": {"type": "string", "description": "Input video file path."},
+                            "output_video": {"type": "string", "description": "Target output video file path."},
+                            "start_time": {"type": "string", "description": "Optional start timestamp (e.g. '00:01:30' or '10')."},
+                            "duration": {"type": "string", "description": "Optional duration (e.g. '00:00:15' or '15')."},
+                            "audio_track": {"type": "string", "description": "Audio file path for merge_audio operation."},
+                            "speed": {"type": "number", "description": "Playback speed multiplier (e.g. 1.5, 2.0, 0.5)."}
+                        },
+                        "required": ["operation", "input_video", "output_video"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "blender_generate_scene",
+                    "description": "3D GRAPHICS & RENDERING: Generates a complete standalone headless Python script (bpy) to build 3D geometry, configure PBR materials, set 3-point studio lighting, and render high-resolution images via Blender.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "primitive": {
+                                "type": "string",
+                                "description": "Base procedural mesh primitive.",
+                                "enum": ["cube", "sphere", "cylinder", "torus"]
+                            },
+                            "output_image": {"type": "string", "description": "Output rendered image file path (e.g. 'render.png')."},
+                            "engine": {
+                                "type": "string",
+                                "description": "Render engine: 'BLENDER_EEVEE' or 'CYCLES'.",
+                                "enum": ["BLENDER_EEVEE", "CYCLES"]
+                            },
+                            "save_path": {"type": "string", "description": "Optional file path to save the generated Python bpy script."}
+                        },
+                        "required": ["primitive", "output_image"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "blender_execute_script",
+                    "description": "3D GRAPHICS & RENDERING: Executes a Python bpy script in Blender in headless background mode (blender --background --python <script>). Automatically discovers Blender installation.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "script_path": {"type": "string", "description": "Path to the Blender Python (.py) script to execute."}
+                        },
+                        "required": ["script_path"]
+                    }
+                }
             }
         ])
         from .browser_automation import BrowserAutomation
@@ -3873,5 +3950,113 @@ class ToolRegistry:
             return f"Skill '{name}' saved successfully to {path.name} ({len(guidance)} chars guidance). It will be auto-injected for matching tasks."
         except Exception as e:  # noqa: BLE001
             return f"Error saving skill: {e!s}"
+
+    def tool_video_probe(self, file_path: str) -> str:
+        """Inspects media file metadata via VideoEngine."""
+        from titan_agent.core.multimedia.video_engine import VideoEngine
+        target = self._resolve_path(file_path)
+        info = VideoEngine.probe_media(str(target))
+        if "error" in info:
+            return f"❌ Video Probe Failed: {info['error']}"
+        if "notice" in info:
+            return f"ℹ️ {info.get('file')}: Size={info.get('size_mb')}MB. {info['notice']}"
+
+        v = info.get("video", {})
+        a = info.get("audio", {})
+        return (
+            f"🎬 **Media Metadata for {Path(file_path).name}**:\n"
+            f"- Duration: {info.get('duration_sec', 0):.2f}s | Size: {info.get('size_mb', 0)} MB | Format: {info.get('format_name', 'unknown')}\n"
+            f"- Video Stream: Codec={v.get('codec')} | Resolution={v.get('width')}x{v.get('height')} | FPS={v.get('fps')}\n"
+            f"- Audio Stream: Codec={a.get('codec')} | Channels={a.get('channels')} | Sample Rate={a.get('sample_rate')} Hz"
+        )
+
+    def tool_video_montage_command(
+        self,
+        operation: str,
+        input_video: str,
+        output_video: str,
+        start_time: str | None = None,
+        duration: str | None = None,
+        audio_track: str | None = None,
+        aspect_ratio: str | None = None,
+        speed: float = 1.0,
+    ) -> str:
+        """Generates and provides the FFmpeg montage command via VideoEngine."""
+        from titan_agent.core.multimedia.video_engine import VideoEngine
+        in_p = self._resolve_path(input_video)
+        out_p = self._resolve_path(output_video)
+        audio_p = str(self._resolve_path(audio_track)) if audio_track else None
+
+        res = VideoEngine.generate_montage_command(
+            operation=operation,
+            input_video=str(in_p),
+            output_video=str(out_p),
+            start_time=start_time,
+            duration=duration,
+            audio_track=audio_p,
+            aspect_ratio=aspect_ratio,
+            speed=speed,
+        )
+        if "error" in res:
+            return f"❌ Montage Command Error: {res['error']}"
+
+        status_icon = "✅" if res.get("ffmpeg_available") else "⚠️"
+        availability = "FFmpeg found in PATH/system" if res.get("ffmpeg_available") else "FFmpeg not detected in PATH (install via 'winget install Gyan.FFmpeg')"
+
+        return (
+            f"{status_icon} **Video Montage Command ({operation})**:\n"
+            f"```bash\n{res['command_str']}\n```\n"
+            f"- Status: {availability}\n"
+            f"- You can run this command directly with `execute_command`."
+        )
+
+    def tool_blender_generate_scene(
+        self,
+        primitive: str = "cube",
+        output_image: str = "render.png",
+        engine: str = "BLENDER_EEVEE",
+        save_path: str | None = None,
+    ) -> str:
+        """Generates a standalone headless Python script (bpy) for Blender 3D scene creation and rendering."""
+        from titan_agent.core.multimedia.blender_engine import BlenderEngine
+        out_img = str(self._resolve_path(output_image))
+        script_code = BlenderEngine.generate_procedural_scene_script(
+            primitive=primitive,
+            output_image=out_img,
+            engine=engine,
+        )
+        if save_path:
+            save_p = self._resolve_path(save_path)
+            save_p.parent.mkdir(parents=True, exist_ok=True)
+            save_p.write_text(script_code, encoding="utf-8")
+            return (
+                f"✅ Blender procedural scene script generated and saved to `{save_path}`!\n"
+                f"To render headlessly, run:\n"
+                f"```bash\nblender --background --python {save_p}\n```\n"
+                f"Or execute using the `blender_execute_script` tool."
+            )
+
+        return f"```python\n{script_code}\n```"
+
+    def tool_blender_execute_script(self, script_path: str) -> str:
+        """Executes a Blender Python script in headless background mode."""
+        from titan_agent.core.multimedia.blender_engine import BlenderEngine
+        target = self._resolve_path(script_path)
+        if not target.exists():
+            return f"❌ Error: Script file not found: {target}"
+
+        res = BlenderEngine.execute_blender_script(str(target))
+        if not res.get("success"):
+            err = res.get("error", "Unknown error")
+            notice = res.get("notice", "")
+            return f"❌ Blender execution failed: {err}\n{notice}"
+
+        return (
+            f"✅ Blender background execution completed successfully!\n"
+            f"- Binary: `{res.get('blender_path')}`\n"
+            f"- Exit Code: {res.get('returncode')}\n"
+            f"```\n{res.get('stdout_tail')}\n```"
+        )
+
 
 

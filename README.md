@@ -75,7 +75,10 @@ Universal Agent HP is engineered to solve acute, real-world engineering bottlene
    * **Terminal TUI:** Full-screen Textual dark interface (`python run.py`).
    * **Mission Control Web Dashboard:** Real-time visual control panel with SSE telemetry (`python run.py --web`).
    * **Interactive Terminal CLI & Telegram:** Lightweight console shell and remote mobile bot.
-5. **Comprehensive Automated Verification:** 675+ unit and integration tests verified 100% green on every commit via GitHub Actions CI across Python 3.11 and 3.12.
+5. **Comprehensive Automated Verification:** 680+ unit and integration tests verified 100% green on every commit via GitHub Actions CI across Python 3.11 and 3.12.
+6. **Multimedia & 3D Engineering (Video Montage & Blender bpy):**
+   * **Automated Video Editing:** Zero-loss cuts (`-c copy`), dynamic aspect ratio conversion (16:9 to vertical 9:16 for Reels/Shorts/TikTok), multi-track audio sync, and speed alterations powered by `VideoEngine` and FFmpeg.
+   * **Headless Blender 3D (bpy):** Procedural 3D mesh synthesis (cubes, spheres, cylinders, toruses), PBR material assignment (`Principled BSDF`), 3-point studio lighting, and background batch rendering via `BlenderEngine`.
 
 ### ⚠️ Realistic Boundaries & Limitations:
 1. **Requires an LLM Engine:** Universal Agent HP is a cognitive orchestration and verification operating system; underlying reasoning power depends on the connected model (Claude 3.5 Sonnet, GPT-4o, DeepSeek, or local Llama 3).
