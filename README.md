@@ -223,32 +223,83 @@ Universal Agent HP har bir vazifani oddiy, bir martalik chaqiruv bilan emas, bal
 
 ---
 
-## Arxitektura: Tri-Loop Metacognitive Execution
+---
+
+## Arxitektura: Genesis 10-Bosqichli Kognitiv Ierarxiya (Levels 1 - 10)
+
+Universal Agent HP korporativ darajadagi ko'p agentli ierarxiya (Hierarchical Swarm Architecture) asosida ishlaydi:
 
 ```mermaid
 graph TD
-    User([Foydalanuvchi Vazifasi]) --> Router[Multilingual Intent Router]
-    Router --> Shield{Dual-Shield Guard & HITL}
-    Shield -- Xavfli Amal --> HITL[«Ruxsat berasizmi? [Ha/Yo'q]»]
-    Shield -- Ruxsat Berilgan --> TriLoop[Tri-Loop Fikrlash O'zagi]
-    
-    subgraph "Tri-Loop Metacognitive Architecture"
-        TriLoop --> S1[System 1: Tezkor 0ms Intuitsiya]
-        TriLoop --> S2[System 2: MCTS + ReAct + TDD Sikli]
-        TriLoop --> S3[System 3: Metakognitiv Nazoratchi]
-        
-        S2 <--> Cache[(Semantik Kesh SQLite)]
-        S2 <--> Memory[(Episodik Xotira & Working HUD)]
-        S2 <--> ToolExec[MCP & Tizim Vositalari]
-        
-        S3 -. Entropiya & Stagnatsiya Nazorati .-> S2
-        S3 -. Xato Sodir Bo'lsa: Tajribani Eslash .-> Memory
+    CEO["👑 Level 1: CEO Meta-Orchestrator<br/>• Global Goal Memory<br/>• Token & USD Spend Budget<br/>• Department Conflict Arbiter"]
+
+    CTO["🛠️ Level 2: Engineering Lead (CTO)<br/>• System Architecture<br/>• Code Synthesis & API Schemas"]
+    SCI["🔬 Level 2: Research Lead (Chief Scientist)<br/>• Multi-Hop Web Research<br/>• Doc Audits & Vector RAG"]
+    OPS["⚙️ Level 2: Operations Lead (DevOps/SRE)<br/>• Terminal & Docker Sandboxes<br/>• DB & Git Migrations"]
+    SEC["🛡️ Level 2: Quality & Security Lead (QA/Sec)<br/>• AST Security Scanning<br/>• Test Suites & Rollback"]
+
+    CEO --> CTO
+    CEO --> SCI
+    CEO --> OPS
+    CEO --> SEC
+
+    subgraph L3 ["Level 3: 29 Specialist Worker Roles (staff.py)"]
+        W1["💻 Backend / Frontend / DB Coder"]
+        W2["📚 Vector RAG & Researcher"]
+        W3["🚀 Deployer & Dependency Updater"]
+        W4["🛡️ Blue Team Defense Sentinel"]
+        W5["🚨 Emergency Red Team Operator"]
+        W6["🧪 Test Writer & QA Verifier"]
     end
-    
-    ToolExec --> PostCheck{AST & Pytest Verifikatsiyasi}
-    PostCheck -- 100% Yashil --> GitEngine[Git Branch & PR Engine]
-    GitEngine --> Output([Muvaffaqiyatli Natija])
+
+    CTO --> W1
+    SCI --> W2
+    OPS --> W3
+    SEC --> W4
+    SEC --> W5
+    SEC --> W6
+
+    subgraph L4_10 ["Levels 4 - 10: Cognitive Engines & Self-Improvement"]
+        L4["⚡ Level 4: Kahn's DAG Parallel Wave Planner"]
+        L5["🗣️ Level 5: Reflexion & Multi-Agent Debate Arena"]
+        L6["🕸️ Level 6: Causal Knowledge Graph & Blast-Radius"]
+        L7["🔧 Level 7: Dynamic Tool Discovery & Reliability EWMA"]
+        L8["🧠 Level 8: 500+ Model Capability Routing & Budget"]
+        L9["⏪ Level 9: SHA-256 Zero-Loss Filesystem Rollback"]
+        L10["📈 Level 10: Drift Detection & Self-Improvement Suite"]
+    end
+
+    W1 -.-> L4
+    W6 -.-> L5
+    L4 --> L5
+    L5 --> L6
+    L6 --> L7
+    L7 --> L8
+    L8 --> L9
+    L9 --> L10
 ```
+
+### 10-Bosqichli Arxitekturaning To‘liq Tafsiloti:
+
+* **Level 1 — CEO Meta-Orchestrator:**
+  * Loyihaning global missiyasi va ko‘p qadamli maqsadlarini boshqaradi (`Global Goal Memory`).
+  * Token sarfi va USD moliyaviy byudjetini nazorat qiladi.
+  * Bo‘limlararo ziddiyatlarni hal qiluvchi bosh hakam (`Department Conflict Arbiter`).
+* **Level 2 — 4 Ta Bo‘lim Boshliqlari (Department Leads):**
+  * **Engineering Lead (CTO):** Tizim arxitekturasi, kod sintezi va API sxemalari.
+  * **Research Lead (Chief Scientist):** Internet qidiruvi, hujjatlar auditi va ko‘p qadamli Vector RAG.
+  * **Operations Lead (DevOps/SRE):** Terminal va Docker qumdonlari, DB migratsiyalari va Git boshqaruvi.
+  * **Quality & Security Lead (QA/Sec):** AST xavfsizlik skaneri, test to‘plamlari va xatolarda avtomatik orqaga qaytish (Rollback).
+* **Level 3 — 29 Ta Mutaxassis Ishchi Rollari (`staff.py`):**
+  * `Backend / Frontend / DB Coder`, `Vector RAG & Researcher`, `Deployer & Dependency Updater`, `Blue Team Defense Sentinel`, `Emergency Red Team Operator`, `Test Writer & QA Verifier` va boshqalar.
+* **Levels 4 - 10 — Kognitiv Mexanizmlar va O‘z-o‘zini Rivojlantirish:**
+  * **Level 4: Kahn's DAG Parallel Wave Planner:** Vazifalarni bog‘liqlik grafigi (DAG) asosida to‘lqinli parallel rejalashtirish.
+  * **Level 5: Reflexion & Multi-Agent Debate Arena:** Agentlar o‘rtasidagi me'moriy bahs va xatolarni chuqur refleksiya qilish maydoni.
+  * **Level 6: Causal Knowledge Graph & Blast-Radius:** Sabab-oqibat bilimlar grafi va o‘zgarishlarning ta'sir radiusini (blast radius) hisoblash.
+  * **Level 7: Dynamic Tool Discovery & Reliability EWMA:** Vositalarning ishonchliligini EWMA statistikasi orqali baholash va parvozda yangi vositalarni kashf qilish.
+  * **Level 8: 500+ Model Capability Routing & Budget:** Vazifaning og‘irligiga qarab optimal modelni tanlash va sarf-xarajatni optimallashtirish.
+  * **Level 9: SHA-256 Zero-Loss Filesystem Rollback:** Kod yozishdan oldin fayllarning SHA-256 nusxasini olib, xatolik yuz berganda 0ms ichida 100% zararsiz orqaga qaytarish.
+  * **Level 10: Drift Detection & Self-Improvement Suite:** Kontekst siljishini aniqlash va agentning o‘z qoidalarini mustaqil ravishda yaxshilab borishi.
 
 ---
 
