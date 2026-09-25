@@ -3,10 +3,10 @@
 [![CI - Universal Agent Tests](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml/badge.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Architecture: Tri--Loop](https://img.shields.io/badge/Architecture-Tri--Loop%20Metacognition-purple.svg)](#architecture-tri-loop-metacognitive-execution)
+[![Architecture: Tri--Loop](https://img.shields.io/badge/Architecture-Tri--Loop%20Metacognition-purple.svg)](#architecture-genesis-10-level-cognitive-swarm-hierarchy-levels-1---10)
 [![Tests: 675+ Passing](https://img.shields.io/badge/tests-675%2B%20passing-brightgreen.svg)](#testing--security)
 
-Universal Agent HP is an autonomous AI software engineering and operations system built for real-world development environments. It combines **Tri-Loop Metacognitive Reasoning**, an **Autonomous TDD Engine**, **Anthropic Model Context Protocol (MCP)** integration, **Human-in-the-Loop Guardrails**, and **Local Semantic Caching** into a verified, drift-free execution framework.
+Universal Agent HP is an autonomous AI software engineering and operations operating system built for real-world production environments. It fuses **Tri-Loop Metacognitive Reasoning**, an **Autonomous TDD Engine**, **Anthropic Model Context Protocol (MCP)** integration, **Human-in-the-Loop Guardrails**, and **Local Semantic Caching** into a verified, drift-free execution framework.
 
 ```
    ┌────────────────────────────────────────────────────────────────────────┐
@@ -21,96 +21,96 @@ Universal Agent HP is an autonomous AI software engineering and operations syste
 
 ---
 
-## Nimalarga Kerak? (Real-World Use Cases)
+## Why Universal Agent HP? (Real-World Use Cases)
 
-Universal Agent HP shunchaki oddiy chat-bot emas. U ishlab chiquvchilar, jamoalar va korxonalar uchun quyidagi aniq amaliy muammolarni hal qilish uchun yaratilgan:
+Universal Agent HP is engineered to solve acute, real-world engineering bottlenecks for developers, teams, and enterprises:
 
-### 1. Avtonom Kod Yozish, Testlash va Xatolarni Tuzatish (Self-Healing Bug Fixing)
-* **Muammo:** Dasturchilar xatolarni qidirish, sinab ko'rish va takroriy testlarni yurgizishga soatlab vaqt sarflaydi.
-* **Universal Agent yechimi:** Agent topshiriqni olgach, avval sinov testini yozadi (`pytest`), test qulashini isbotlaydi (RED), so'ngra kodni yozadi (GREEN) va xavfsizlik invariantlarini tekshiradi (REFACTOR). Agar test o'tmasa, agent o'z xatosini o'zi tahlil qilib kodni mustaqil tuzatadi.
+### 1. Autonomous Software Engineering & Self-Healing Bug Fixes
+* **The Problem:** Developers spend hours manually isolating bugs, crafting regression tests, and repeatedly testing code fixes.
+* **Universal Agent Solution:** Upon receiving an issue or bug report, the agent executes an autonomous **TDD cycle**: writes a failing verification test (`pytest`), confirms failure (RED), writes minimal passing code (GREEN), and asserts AST safety invariants (REFACTOR). If tests fail, the self-healing loop autonomously debugs and iterates until 100% green.
 
-### 2. Xavfsiz GitOps: Tarmoq Ochish va Pull Request (PR) Tayyorlash
-* **Muammo:** AI agentlarining to'g'ridan-to'g'ri `main` tarmoqqa yozishi yoki xom kodni commit qilishi loyihani buzib qo'yishi mumkin.
-* **Universal Agent yechimi:** Agent har bir vazifa uchun alohida `agent/feature-<nom>` tarmog'ini ochadi. Barcha testlar 100% yashil o'tmaguncha git commit qilinmaydi. Testlar o'tgach, GitHub/GitLab'da to'liq hisobot bilan avtomatik Pull Request ochadi.
+### 2. Safe GitOps: Automated Feature Branching & Pull Requests
+* **The Problem:** Blind AI code agents directly writing to `main` or committing unverified code can compromise codebase stability.
+* **Universal Agent Solution:** Isolates all development inside dedicated `agent/feature-<slug>` branches. The commit engine enforces a strict pass gate on the test suite before any git commit is permitted. Once verified, it automatically opens a formatted, context-rich Pull Request via `gh pr create`.
 
-### 3. Tashqi Tizimlar bilan 1-Qatorda Ulanish (MCP Integratsiyasi)
-* **Muammo:** Har bir ma'lumotlar bazasi yoki servis uchun alohida API yozib chiqish murakkab.
-* **Universal Agent yechimi:** Anthropic Model Context Protocol (MCP) standarti orqali dunyodagi istalgan tayyor serverni bitta buyruq bilan ulaydi:
-  * `postgres`: SQL so'rovlar va jadvallar tahlili
-  * `github`: Masalalar (issues) va PRlarni boshqarish
-  * `slack`: Xabarlar va jamoa integratsiyasi
-  * `brave_search`: Internetdan eng so'nggi ma'lumotlarni qidirish
-  * `filesystem` & `sqlite`: Mahalliy fayllar va bazalar bilan xavfsiz ishlash
+### 3. One-Line Ecosystem Integration (Anthropic Model Context Protocol)
+* **The Problem:** Writing custom API adapters for disparate enterprise databases and services is slow and error-prone.
+* **Universal Agent Solution:** Standardized MCP client enables 1-line connection to any industry-standard server:
+  * `postgres`: Direct SQL inspection, schema analysis, and migrations
+  * `github`: Repository management, issues, and PR workflows
+  * `slack`: Real-time alerts, messaging, and team collaboration
+  * `brave_search`: Live web search for latest documentation and dependencies
+  * `filesystem` & `sqlite`: Secure local sandboxes and query engines
 
-### 4. Halokatli Amallarni To'xtatish (Human-in-the-Loop Xavfsizlik)
-* **Muammo:** Agentning tasodifan muhim fayllarni o'chirib yuborishi (`rm -rf`), `git push --force` qilishi yoki maxfiy kalitlarni o'zgartirishi xavfi.
-* **Universal Agent yechimi:** `DangerousActionClassifier` xavfli amallarni zudlik bilan ushlab qoladi va to'xtaydi:
+### 4. Halting Catastrophic Actions (Human-in-the-Loop Safety)
+* **The Problem:** AI agents inadvertently executing destructive commands (`rm -rf`, `delete_file`, `git push --force`, or leaking credentials in `.env`).
+* **Universal Agent Solution:** The `DangerousActionClassifier` intercepts irreversible actions and halts execution, prompting the operator across Terminal TUI, Web Dashboard, or Telegram:
   > *«Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»*  
-  Inson tasdiqlamaguncha birorta xavfli buyruq bajarilmaydi.
+  Zero destructive actions execute without explicit human authorization.
 
-### 5. LLM Token Xarajatini 30–40% Tejash (Semantic Caching)
-* **Muammo:** Bitta kod bo'lagi yoki o'xshash savollar uchun har safar qimmatbaho tashqi LLM API'lariga so'rov yuborish ortiqcha xarajat keltirib chiqaradi.
-* **Universal Agent yechimi:** Mahalliy SQLite (`semantic_cache.db`) bazasida kosinus vektor o'xshashligi orqali keshdan **0ms** ichida javob beradi va hisoblagichda tejab qolingan tokenlar hamda dollar miqdorini aniq ko'rsatadi.
+### 5. Slashing LLM Token Costs by 30–40% (Semantic Caching)
+* **The Problem:** Repetitive tool calls, static file reads, and semantically equivalent queries needlessly burn expensive model tokens.
+* **Universal Agent Solution:** An embedded SQLite vector cache (`semantic_cache.db`) calculates word cosine similarity, returning **0ms** responses for matching or near-equivalent requests, cutting LLM bills by 30–40% with live token and dollar savings telemetry.
 
-### 6. Oldingi Xatolardan Saboq Olish (Episodik Xotira)
-* **Muammo:** Agentlar bir xil kutubxona versiyasi yoki sintaksis xatosiga qayta-qayta duch kelganda qaytadan adashadi.
-* **Universal Agent yechimi:** Agent avvalgi xatolarning barmoq izi (fingerprint) va ularga qo'llangan muvaffaqiyatli kod yechimini `experience_replay.db` da saqlab boradi. Xuddi shunday xato sodir bo'lganda, avvalgi yechimni eslab darhol to'g'rilaydi.
+### 6. Continuous Learning from Historical Mistakes (Episodic Experience Replay)
+* **The Problem:** Most AI agents repeat identical syntax, version conflict, and dependency errors across different sessions.
+* **Universal Agent Solution:** Maintains an episodic failure repository (`experience_replay.db`). When runtime exceptions occur, it records normalized error fingerprints and verified remediation diffs, instantly recalling proven solutions when encountering similar errors in the future.
 
-### 7. 100% Maxfiy va Mahalliy Rejim (Air-Gapped Local AI)
-* **Muammo:** Kompaniyalar o'zlarining tijorat sirlari bo'lgan kodlarini ommaviy bulutli servislarga yuborishdan cho'chiydi.
-* **Universal Agent yechimi:** `Ollama` yoki `LM Studio` orqali kompyuteringizdagi mahalliy modellar bilan to'liq offline ishlay oladi. Bir bayt ham ma'lumot tashqariga chiqmaydi.
-
----
-
-## Hech Qanday Yolg'onsiz: Nima Qila Oladi va Nima Qila Olmaydi?
-
-### ✅ Tizim Haqiqatda Qila Oladigan Imkoniyatlar (Kod va Testlar Bilan Tasdiqlangan):
-1. **Tri-Loop Kognitiv Fikrlash:**
-   * **System 1 (Tezkor Intuitsiya):** Oddiy savollar va suhbatlarni vositalarsiz (toolless) 0ms da ajratib darhol javob beradi.
-   * **System 2 (ReAct & MCTS):** Murakkab dasturiy masalalarda gipotezalar daraxtini (Bayesian hypothesis tracking) tuzib, qadam-baqadam yechadi.
-   * **System 3 (Shannon Entropiya Nazoratchisi):** Agar agent bir nuqtada aylanib qolsa (stagnation), buni matematik aniqlab strategiyani o'zgartiradi.
-2. **Kodni Jarrohlik Usulida Yamoqlash (AST Patcher):** Qator raqamlari o'zgarib ketganda ham funksiya va klasslarni xatosiz topib almashtiradi.
-3. **Statik Xavfsizlik Skanyeri (Symbolic Checker):** Cheksiz `while True` sikllari, buyruq inyeksiyalari (`shell=True`) va yopilmagan fayllarni kod yurgizilishidan oldin aniqlaydi.
-4. **Haqiqiy Ko'p Sessiyali Interfeyslar:**
-   * **Textual TUI:** Zamonaviy to'liq ekranli terminal interfeysi (`python run.py`).
-   * **Web Dashboard:** Real vaqt rejimida SSE oqimi bilan brauzer konsoli (`python run.py --web`).
-   * **CLI & Telegram:** Buyruqlar qatori va mobil boshqaruv bot.
-5. **Avtomatlashtirilgan Test To'plami:** Repozitoriyda **675 dan ortiq unit va integratsiya testlari** mavjud bo'lib, har bir commit'da GitHub Actions CI orqali 100% yashil o'tishi tekshiriladi.
-
-### ⚠️ Cheklovlar va Aniq Haqiqatlar (Honest Boundaries):
-1. **Sehrli AGI emas:** Agent ishlashi uchun unga orqa fonda kuchli til modeli (LLM) kerak. Tizim mantiq, test, xotira va vositalarni boshqaradi, ammo til tushunish sifati ulangan modelga (Claude, GPT-4o, DeepSeek, Llama-3) bog'liq.
-2. **Inson Ruxsatisiz Xavfli Amallar Qilinmaydi:** Agent mustaqil ravishda fayllarni o'chira olmaydi yoki majburiy push qila olmaydi — xavfsizlik filtri uni qat'iyan to'xtatadi.
-3. **Kutubxona API Cheklovlari:** Agar foydalanayotgan tashqi API'laringizda (masalan, Groq yoki OpenRouter) token limiti tugasa, agent tejamkor keshdan foydalanadi yoki zaxira provayderga o'tishni taklif qiladi.
+### 7. 100% Private & Air-Gapped Local AI
+* **The Problem:** Organizations cannot expose proprietary source code to public third-party cloud APIs.
+* **Universal Agent Solution:** First-class native integration with `Ollama` and `LM Studio` runs models entirely locally on your hardware. Zero bytes leave your infrastructure.
 
 ---
 
-## Tezkor Ishga Tushirish
+## Transparent Capabilities: What It Can and Cannot Do
 
-### 1. O'rnatish
+### ✅ Real, Verified Capabilities (Backed by 675+ Passing Tests):
+1. **Tri-Loop Metacognitive Reasoning Engine:**
+   * **System 1 (Fast Intuition):** 0ms instant heuristic dispatch bypassing tool execution for direct conversational prompts.
+   * **System 2 (Deliberative Planning):** Tree-of-Thoughts, Multi-Hop ReAct, and Monte Carlo Tree Search (MCTS) with Bayesian hypothesis tracking.
+   * **System 3 (Metacognitive Overseer):** Real-time monitoring of Shannon cognitive entropy and stagnation breakers that autonomously pivot strategy when stuck.
+2. **Surgical AST Code Patching:** Identifies exact AST target nodes to replace functions and classes without line-number offset errors.
+3. **Symbolic AST Safety Scanner:** Statically detects unbounded `while True` loops, dangerous shell injections (`subprocess` with `shell=True`), and resource leaks before code execution.
+4. **Three Production-Ready Interfaces:**
+   * **Terminal TUI:** Full-screen Textual dark interface (`python run.py`).
+   * **Mission Control Web Dashboard:** Real-time visual control panel with SSE telemetry (`python run.py --web`).
+   * **Interactive Terminal CLI & Telegram:** Lightweight console shell and remote mobile bot.
+5. **Comprehensive Automated Verification:** 675+ unit and integration tests verified 100% green on every commit via GitHub Actions CI across Python 3.11 and 3.12.
+
+### ⚠️ Realistic Boundaries & Limitations:
+1. **Requires an LLM Engine:** Universal Agent HP is a cognitive orchestration and verification operating system; underlying reasoning power depends on the connected model (Claude 3.5 Sonnet, GPT-4o, DeepSeek, or local Llama 3).
+2. **Destructive Operations Require Consent:** By design, the agent cannot bypass security guardrails or execute destructive operations without operator authorization.
+3. **Third-Party Provider Rate Limits:** When external commercial APIs experience rate limits or outages, the agent falls back to cached responses or configured fallback providers.
+
+---
+
+## Quick Start & Installation
+
+### 1. Prerequisites & Installation
 
 ```bash
-# Repozitoriyni klonlash
+# Clone the repository
 git clone https://github.com/kapitan00000978-sketch/Universal-Agent-HP.git
 cd Universal-Agent-HP
 
-# Virtual muhitni yaratish va faollashtirish
+# Create and activate virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Windows uchun: .venv\Scripts\activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Bog'liqliklarni o'rnatish
+# Install dependencies and local package
 pip install -r requirements.txt
 pip install -e .
 ```
 
-### 2. Konfiguratsiya
+### 2. Configuration
 
-Namunaviy fayldan `.env` nusxasini oling va o'z modelingiz kalitini kiriting:
+Copy the template configuration and configure your model provider:
 
 ```bash
 cp .env.example .env
 ```
 
-Mahalliy Ollama bilan ishlatish uchun:
+For 100% offline execution with local Ollama:
 ```env
 TITAN_PROVIDER=ollama
 TITAN_MODEL=llama3:latest
@@ -118,27 +118,27 @@ TITAN_MODEL=llama3:latest
 
 ---
 
-## 3 Xil Ishga Tushirish Usuli
+## 3 Flexible Ways to Launch
 
-### Variant 1: Zamonaviy Terminal TUI (OpenCode / Textual Uslubi)
-Terminalda hech qanday qo'shimcha parametrsiz ishga tushiring:
+### Option 1: Ultra-Modern Terminal TUI (OpenCode / Textual Style)
+Launch the full-screen terminal interface directly:
 
 ```bash
 python run.py
 ```
-* <kbd>Shift</kbd> + <kbd>Tab</kbd>: 27 ta mutaxassis agent matritsasi
-* <kbd>Ctrl</kbd> + <kbd>P</kbd>: Buyruqlar palitrasi (`/dag`, `/debate`, `/mcp`, `/pr`, `/rollback`, `/status`)
-* <kbd>Ctrl</kbd> + <kbd>L</kbd>: Ekranni tozalash
+* <kbd>Shift</kbd> + <kbd>Tab</kbd>: Open 27 Specialist Agents Matrix
+* <kbd>Ctrl</kbd> + <kbd>P</kbd>: Command Palette (`/dag`, `/debate`, `/mcp`, `/pr`, `/rollback`, `/status`)
+* <kbd>Ctrl</kbd> + <kbd>L</kbd>: Clear terminal log
 
-### Variant 2: Web Dashboard (Brauzer Boshqaruv Paneli)
-Brauzer orqali to'liq grafik vizualizatsiya va SSE voqealar oqimi bilan boshqarish:
+### Option 2: Mission Control Web Dashboard
+Launch the graphical browser interface with live telemetry and SSE event logs:
 
 ```bash
 python run.py --web
 ```
-Brauzerda oching: `http://localhost:7860`
+Open `http://localhost:7860` in your browser.
 
-### Variant 3: Terminal CLI (Klassik Konsol)
+### Option 3: Interactive Terminal CLI
 
 ```bash
 universal --cli
@@ -146,88 +146,58 @@ universal --cli
 
 ---
 
-## Agentning To‘liq Ishlash Sikli (Autonomous 6-Stage Lifecycle)
+## Autonomous Execution Lifecycle (Closed-Loop Engine)
 
-Universal Agent HP har bir vazifani oddiy, bir martalik chaqiruv bilan emas, balki qat'iy **6 bosqichli o'z-o'zini tekshiruvchi yopiq sikl (closed-loop lifecycle)** orqali bajaradi:
+Universal Agent HP processes every complex engineering task through a disciplined **6-stage closed-loop lifecycle**:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│              UNIVERSAL AGENT HP — AVTONOM ISHLASH SIKLI                  │
+│              UNIVERSAL AGENT HP — AUTONOMOUS LIFECYCLE                   │
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  [01. Intent Routing & Recall]                                           │
-│   ├── Ko'p tilli niyatni aniqlash (Multilingual Intent Router)           │
-│   ├── Semantik Kesh tekshiruvi (0ms exact/fuzzy hit bo'lsa darhol qaytarish)│
-│   └── Ishchi Xotira HUD (Working Memory) pinned kontekstni yuklash       │
+│   ├── Multilingual intent classification (Router)                        │
+│   ├── Semantic Cache lookup (0ms exact/fuzzy hit returns immediately)    │
+│   └── Working Memory HUD (in-place operational context anchoring)        │
 │                                │                                         │
 │                                ▼                                         │
 │  [02. Dual-Shield & HITL Guard]                                          │
-│   ├── Statik AST inyeksiyalari va maxfiy ma'lumotlar tahlili             │
-│   └── Xavfli amallar to'xtatuvchisi (DangerousActionGate):               │
+│   ├── Static AST injection and secret credential scanning                │
+│   └── Dangerous Action Gate (HITL approval prompts):                     │
 │       «Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi?»     │
 │                                │                                         │
 │                                ▼                                         │
 │  [03. Deliberative Planning & Consensus]                                 │
-│   ├── Multi-hop ReAct yoki MCTS (Monte Carlo Tree Search) rejalashtirish │
-│   ├── Konsensus Qo'mitasi (Architect, Security, Pragmatist) vaznli ovozi │
-│   └── Kerakli yangi vosita bo'lmasa: Parvoz paytida Tool Synthesizer     │
+│   ├── Multi-hop ReAct, Tree-of-Thoughts & MCTS hypothesis planning       │
+│   ├── Consensus Committee (Architect, Security, Pragmatist) weighted vote│
+│   └── Missing capability detection -> On-the-fly Dynamic Tool Synthesis  │
 │                                │                                         │
 │                                ▼                                         │
 │  [04. Concurrent Execution & Active Context]                             │
-│   ├── 1-qatorda ulangan MCP serverlar (Postgres, GitHub, Slack, Brave)  │
-│   ├── Episodik Xotira (Experience Replay): O'tmishdagi xatoni eslash    │
-│   └── Xotira Virtualizatori (HUD): Har qadamda faktlar va xatolarni qayd │
+│   ├── 1-line MCP presets (Postgres, GitHub, Slack, Brave Search)         │
+│   ├── Episodik Experience Replay: automatic error fingerprint lookup     │
+│   └── Working Memory Virtualizer: real-time confirmed facts & dead ends  │
 │                                │                                         │
 │                                ▼                                         │
 │  [05. Deep Verification & TDD Loop]                                      │
-│   ├── Qat'iy TDD sikli: RED (test qulashi) -> GREEN (kod) -> REFACTOR    │
-│   ├── Izolyatsiyalangan pytest qumdoni (Deep Verifier)                   │
-│   └── Shannon Entropiya monitoringi: Aylanib to'xtab qolishni sindirish  │
+│   ├── Strict TDD cycle: RED (prove failure) -> GREEN -> REFACTOR         │
+│   ├── Hermetic sandbox pytest runner (Deep Verifier)                     │
+│   └── Shannon entropy telemetry: cyclic stagnation & dead-end breaks     │
 │                                │                                         │
 │                                ▼                                         │
 │  [06. GitOps Delivery & Verified PR]                                     │
-│   ├── Yangi izolyatsiyalangan tarmoq ochish (agent/feature-<slug>)       │
-│   ├── 100% yashil testlar o'tgandan keyin xavfsiz git commit             │
-│   └── GitHub/GitLab'da avtomatik hisobot bilan Pull Request (PR) ochish  │
+│   ├── Clean feature branch isolation (agent/feature-<slug>)              │
+│   ├── Test-suite pass gated atomic git commit                            │
+│   └── Automated, fully documented Pull Request (PR) opening on GitHub    │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Sikl Bosqichlarining Batafsil Vazifasi:
-
-1. **[01. Intent Routing & Recall] — Niyatni Aniqlash va Tezkor Kesh:**
-   * Foydalanuvchi so'rovi (o'zbekcha, inglizcha, ruscha, kod) qabul qilinadi.
-   * Agar savol avval berilgan bo'lsa yoki deyarli o'xshash bo'lsa, **Semantik Kesh** orqali tashqi LLM'ga bormasdan **0ms** ichida javob beriladi (token sarfi tejaladi).
-   * Yangi vazifa bo'lsa, **Ishchi Xotira Virtualizatori (HUD)** tasdiqlangan faktlar va maqsadlarni kontekstga joylaydi.
-
-2. **[02. Dual-Shield & HITL Guard] — Kiber-Xavfsizlik va Inson Nazorati:**
-   * So'rov statik tahlil qilinadi. Cheksiz sikllar, shell inyeksiyalari yoki maxfiy tokenlar fosh bo'lish xavfi elakdan o'tkaziladi.
-   * Agar amal halokatli yoki qaytarib bo'lmaydigan bo'lsa (`rm -rf`, `delete_file`, `git push --force`, `.env` o'zgartirish), agent ishni to'xtatib, Web dashboard, Telegram yoki CLI orqali inson tasdig'ini so'raydi.
-
-3. **[03. Deliberative Planning & Consensus] — Chuqur Rejalashtirish va Konsensus:**
-   * Murakkab topshiriqlarda ko'p qadamli MCTS (Monte Carlo Tree Search) va Bayes gipotezalar daraxti shakllantiriladi.
-   * Yuqori xatarga ega o'zgarishlar oldidan uch mutaxassisdan iborat **Konsensus Qo'mitasi** (`Architect`, `SecurityOfficer`, `Pragmatist`) rasmiy ovoz berish orqali xulosani imzolaydi.
-   * Agar tizimda mavjud bo'lmagan yangi vosita talab qilinsa, **Dynamic Tool Synthesizer** vositani Python'da yozadi, qumdonda test qiladi va tirik registratsiyaga inject qiladi.
-
-4. **[04. Concurrent Execution & Active Context] — Vositalar va Episodik Xotira:**
-   * MCP serverlar (PostgreSQL, GitHub, Slack, Brave Search) orqali tashqi tizimlar bilan parallel yoki ketma-ket amallar bajariladi.
-   * Kutilmagan dasturiy xato (masalan, kutubxona mos kelmasligi) yuz bersa, **Episodik Xotira (Experience Replay)** zudlik bilan avvalgi tajribalarni qidirib, sinovdan o'tgan tuzatish retseptini qo'llaydi.
-
-5. **[05. Deep Verification & TDD Loop] — Chuqur Sinov va TDD Sikli:**
-   * Kod yozilgach, darhol qabul qilinmaydi. Agent dasturiy test yozadi, xato qulashini ko'radi (RED), so'ngra kodni yozadi (GREEN) va AST invariantlarini tekshiradi (REFACTOR).
-   * **Shannon Entropiyasi Nazoratchisi (System 3):** Agar agent bir xil xatoni takrorlayotgan bo'lsa yoki fikr aylanib qolsa, entropiya ko'rsatkichi asosida darhol boshqa strategiyaga o'tadi.
-
-6. **[06. GitOps Delivery & Verified PR] — Xavfsiz Yetkazib Berish:**
-   * Kod asosiy (`main`) tarmoqqa to'g'ridan-to'g'ri qo'shilmaydi.
-   * `agent/feature-<slug>` tarmog'iga ajratiladi, 100% yashil test natijalari bilan commit qilinadi va avtomatik ravishda GitHub'da Pull Request ochiladi.
-
 ---
 
----
+## Architecture: Genesis 10-Level Cognitive Swarm Hierarchy (Levels 1 - 10)
 
-## Arxitektura: Genesis 10-Bosqichli Kognitiv Ierarxiya (Levels 1 - 10)
-
-Universal Agent HP korporativ darajadagi ko'p agentli ierarxiya (Hierarchical Swarm Architecture) asosida ishlaydi:
+Universal Agent HP operates as a hierarchical, corporate-level cognitive organization:
 
 ```mermaid
 graph TD
@@ -279,37 +249,43 @@ graph TD
     L9 --> L10
 ```
 
-### 10-Bosqichli Arxitekturaning To‘liq Tafsiloti:
+### Detailed Specifications of Levels 1 to 10:
 
 * **Level 1 — CEO Meta-Orchestrator:**
-  * Loyihaning global missiyasi va ko‘p qadamli maqsadlarini boshqaradi (`Global Goal Memory`).
-  * Token sarfi va USD moliyaviy byudjetini nazorat qiladi.
-  * Bo‘limlararo ziddiyatlarni hal qiluvchi bosh hakam (`Department Conflict Arbiter`).
-* **Level 2 — 4 Ta Bo‘lim Boshliqlari (Department Leads):**
-  * **Engineering Lead (CTO):** Tizim arxitekturasi, kod sintezi va API sxemalari.
-  * **Research Lead (Chief Scientist):** Internet qidiruvi, hujjatlar auditi va ko‘p qadamli Vector RAG.
-  * **Operations Lead (DevOps/SRE):** Terminal va Docker qumdonlari, DB migratsiyalari va Git boshqaruvi.
-  * **Quality & Security Lead (QA/Sec):** AST xavfsizlik skaneri, test to‘plamlari va xatolarda avtomatik orqaga qaytish (Rollback).
-* **Level 3 — 29 Ta Mutaxassis Ishchi Rollari (`staff.py`):**
-  * `Backend / Frontend / DB Coder`, `Vector RAG & Researcher`, `Deployer & Dependency Updater`, `Blue Team Defense Sentinel`, `Emergency Red Team Operator`, `Test Writer & QA Verifier` va boshqalar.
-* **Levels 4 - 10 — Kognitiv Mexanizmlar va O‘z-o‘zini Rivojlantirish:**
-  * **Level 4: Kahn's DAG Parallel Wave Planner:** Vazifalarni bog‘liqlik grafigi (DAG) asosida to‘lqinli parallel rejalashtirish.
-  * **Level 5: Reflexion & Multi-Agent Debate Arena:** Agentlar o‘rtasidagi me'moriy bahs va xatolarni chuqur refleksiya qilish maydoni.
-  * **Level 6: Causal Knowledge Graph & Blast-Radius:** Sabab-oqibat bilimlar grafi va o‘zgarishlarning ta'sir radiusini (blast radius) hisoblash.
-  * **Level 7: Dynamic Tool Discovery & Reliability EWMA:** Vositalarning ishonchliligini EWMA statistikasi orqali baholash va parvozda yangi vositalarni kashf qilish.
-  * **Level 8: 500+ Model Capability Routing & Budget:** Vazifaning og‘irligiga qarab optimal modelni tanlash va sarf-xarajatni optimallashtirish.
-  * **Level 9: SHA-256 Zero-Loss Filesystem Rollback:** Kod yozishdan oldin fayllarning SHA-256 nusxasini olib, xatolik yuz berganda 0ms ichida 100% zararsiz orqaga qaytarish.
-  * **Level 10: Drift Detection & Self-Improvement Suite:** Kontekst siljishini aniqlash va agentning o‘z qoidalarini mustaqil ravishda yaxshilab borishi.
+  * Maintains global project mission, overarching objectives, and multi-turn context (`Global Goal Memory`).
+  * Enforces token consumption caps and monetary USD budgets.
+  * Serves as final arbitrator for conflicting inter-departmental proposals (`Department Conflict Arbiter`).
+* **Level 2 — 4 Department Team Leads:**
+  * **Engineering Lead (CTO):** System architecture, interface contracts, code generation, and API schemas.
+  * **Research Lead (Chief Scientist):** Internet exploration, documentation auditing, and multi-hop Vector RAG.
+  * **Operations Lead (DevOps/SRE):** Terminal command execution, Docker container sandboxes, database migrations, and Git operations.
+  * **Quality & Security Lead (QA/Sec):** AST vulnerability scanning, regression test suites, and automated sandbox rollback.
+* **Level 3 — 29 Specialist Worker Roles (`staff.py`):**
+  * `Backend / Frontend / DB Coder`, `Vector RAG & Researcher`, `Deployer & Dependency Updater`, `Blue Team Defense Sentinel`, `Emergency Red Team Operator`, `Test Writer & QA Verifier`, and specialized domain agents.
+* **Levels 4 - 10 — Cognitive Engines & Continuous Self-Improvement:**
+  * **Level 4: Kahn's DAG Parallel Wave Planner:** Decomposes complex tasks into directed acyclic graphs and executes independent wave tasks concurrently.
+  * **Level 5: Reflexion & Multi-Agent Debate Arena:** Facilitates adversarial deliberation between agents to surface edge cases before code execution.
+  * **Level 6: Causal Knowledge Graph & Blast-Radius:** Maps codebase dependencies and predicts ripple effects of proposed modifications.
+  * **Level 7: Dynamic Tool Discovery & Reliability EWMA:** Evaluates tool execution stability using exponentially weighted moving averages and synthesizes new tools on-the-fly.
+  * **Level 8: 500+ Model Capability Routing & Budget:** Optimizes model selection per subtask to balance latency, reasoning depth, and cost.
+  * **Level 9: SHA-256 Zero-Loss Filesystem Rollback:** Takes cryptographic state snapshots prior to modifications, enabling instant 0ms restoration upon failure.
+  * **Level 10: Drift Detection & Self-Improvement Suite:** Continuously monitors for cognitive context drift and refines system rules over time.
 
 ---
 
 ## Testing & Security
 
-* **Avtomatlashtirilgan testlar:** `pytest tests/ -q` buyrug'i orqali **675+ unit va integratsiya testlari** 100% yashil o'tadi.
-* **Xavfsizlik:** AST darajasidagi statik inyeksiyalar nazorati, maxfiy kalitlarni himoyalash va destruktiv operatsiyalarni bloklash tizimning har bir qadamiga kiritilgan.
+* **Automated Test Suite:** Execute tests via `pytest tests/ -q` (**675+ unit and integration tests passing 100% green**).
+* **Integrated Security:** AST invariant verification, secret scanning, and destructive command interception are embedded directly into the execution pipeline.
 
 ---
 
-## Litsenziya
+## Contributing
 
-Ushbu loyiha [MIT License](LICENSE) litsenziyasi ostida taqdim etiladi.
+Contributions are welcome! Please consult [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
