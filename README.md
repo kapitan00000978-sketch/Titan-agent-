@@ -157,47 +157,54 @@ universal --cli
 
 Universal Agent HP processes every complex engineering task through a disciplined **6-stage closed-loop lifecycle**:
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│              UNIVERSAL AGENT HP — AUTONOMOUS LIFECYCLE                   │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  [01. Intent Routing & Recall]                                           │
-│   ├── Multilingual intent classification (Router)                        │
-│   ├── Semantic Cache lookup (0ms exact/fuzzy hit returns immediately)    │
-│   └── Working Memory HUD (in-place operational context anchoring)        │
-│                                │                                         │
-│                                ▼                                         │
-│  [02. Dual-Shield & HITL Guard]                                          │
-│   ├── Static AST injection and secret credential scanning                │
-│   └── Dangerous Action Gate (HITL approval prompts):                     │
-│       «Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi?»     │
-│                                │                                         │
-│                                ▼                                         │
-│  [03. Deliberative Planning & Consensus]                                 │
-│   ├── Multi-hop ReAct, Tree-of-Thoughts & MCTS hypothesis planning       │
-│   ├── Consensus Committee (Architect, Security, Pragmatist) weighted vote│
-│   └── Missing capability detection -> On-the-fly Dynamic Tool Synthesis  │
-│                                │                                         │
-│                                ▼                                         │
-│  [04. Concurrent Execution & Active Context]                             │
-│   ├── 1-line MCP presets (Postgres, GitHub, Slack, Brave Search)         │
-│   ├── Episodik Experience Replay: automatic error fingerprint lookup     │
-│   └── Working Memory Virtualizer: real-time confirmed facts & dead ends  │
-│                                │                                         │
-│                                ▼                                         │
-│  [05. Deep Verification & TDD Loop]                                      │
-│   ├── Strict TDD cycle: RED (prove failure) -> GREEN -> REFACTOR         │
-│   ├── Hermetic sandbox pytest runner (Deep Verifier)                     │
-│   └── Shannon entropy telemetry: cyclic stagnation & dead-end breaks     │
-│                                │                                         │
-│                                ▼                                         │
-│  [06. GitOps Delivery & Verified PR]                                     │
-│   ├── Clean feature branch isolation (agent/feature-<slug>)              │
-│   ├── Test-suite pass gated atomic git commit                            │
-│   └── Automated, fully documented Pull Request (PR) opening on GitHub    │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph S1 ["01. Intent Routing & Recall"]
+        R1["🧭 Router: Multilingual Intent Classification"]
+        R2["⚡ Semantic Cache: 0ms Vector & Fuzzy Match"]
+        R3["🧠 Working Memory HUD: Fact Pinning & Anti-Drift"]
+        R1 --> R2 --> R3
+    end
+
+    subgraph S2 ["02. Dual-Shield & HITL Guard"]
+        G1["🛡️ Symbolic AST Scanner: Loop & Injection Invariants"]
+        G2["✋ HITL Approval Gate: Destructive Action Interception"]
+        G1 --> G2
+    end
+
+    subgraph S3 ["03. Deliberative Planning & Consensus"]
+        P1["🌳 MCTS & Tree-of-Thoughts Hypothesis Engine"]
+        P2["⚖️ Consensus Committee: Architect, Security & Pragmatist"]
+        P3["🔧 Dynamic Tool Synthesis: Capability Auto-Generation"]
+        P1 --> P2 --> P3
+    end
+
+    subgraph S4 ["04. Concurrent Execution & Active Context"]
+        E1["🔌 1-Line MCP Client: Postgres, GitHub, Slack, Brave"]
+        E2["⏪ Experience Replay: Episodic Failure Fingerprint Lookup"]
+        E3["📁 Working Memory Virtualizer: Live Fact Tracking"]
+        E1 --> E2 --> E3
+    end
+
+    subgraph S5 ["05. Deep Verification & TDD Loop"]
+        V1["🧪 Strict TDD Cycle: RED ➔ GREEN ➔ REFACTOR"]
+        V2["📦 Hermetic Sandbox Pytest Runner"]
+        V3["📈 Shannon Entropy Telemetry: Anti-Stagnation Break"]
+        V1 --> V2 --> V3
+    end
+
+    subgraph S6 ["06. GitOps Delivery & Verified PR"]
+        D1["🌿 Feature Branch Isolation: agent/feature-*"]
+        D2["🔒 Test-Gated Atomic Git Commit"]
+        D3["🚀 Automated GitHub Pull Request Creation"]
+        D1 --> D2 --> D3
+    end
+
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> S6
 ```
 
 ---
@@ -208,33 +215,41 @@ Universal Agent HP operates as a hierarchical, corporate-level cognitive organiz
 
 ```mermaid
 graph TD
-    CEO["👑 Level 1: CEO Meta-Orchestrator<br/>• Global Goal Memory<br/>• Token & USD Spend Budget<br/>• Department Conflict Arbiter"]
+    CEO["👑 Level 1: CEO Meta-Orchestrator<br/>• Global Goal Memory & Anti-Drift<br/>• Token & USD Spend Budget<br/>• Cross-Domain Conflict Arbiter"]
 
-    CTO["🛠️ Level 2: Engineering Lead (CTO)<br/>• System Architecture<br/>• Code Synthesis & API Schemas"]
-    SCI["🔬 Level 2: Research Lead (Chief Scientist)<br/>• Multi-Hop Web Research<br/>• Doc Audits & Vector RAG"]
-    OPS["⚙️ Level 2: Operations Lead (DevOps/SRE)<br/>• Terminal & Docker Sandboxes<br/>• DB & Git Migrations"]
-    SEC["🛡️ Level 2: Quality & Security Lead (QA/Sec)<br/>• AST Security Scanning<br/>• Test Suites & Rollback"]
+    subgraph L2 ["Level 2: Omni-Domain Department Leads & Directors"]
+        CTO["💻 Engineering Lead (CTO)<br/>• Architecture & API Schemas<br/>• AST Refactoring & TDD Gate"]
+        FIN["📈 Finance & Quantitative Lead<br/>• DCF Valuation & WACC Models<br/>• GAAP / IFRS Compliance"]
+        SCI["🔬 Chief Scientist & Medical Lead<br/>• Multi-Hop PubMed/Lancet RAG<br/>• Clinical Evidence & HIPAA"]
+        LAW["⚖️ Legal & Governance Counsel<br/>• IRAC Arguments & Contract Audit<br/>• GDPR / SOC 2 Compliance"]
+        MEDIA["🎬 Creative & Multimedia Lead<br/>• Lossless FFmpeg Montages<br/>• Headless Blender 3D (bpy)"]
+        OPS["🛡️ Operations & Security Lead<br/>• Terminal & Docker Sandboxes<br/>• SAST Audits & CI/CD Pipelines"]
+    end
 
     CEO --> CTO
+    CEO --> FIN
     CEO --> SCI
+    CEO --> LAW
+    CEO --> MEDIA
     CEO --> OPS
-    CEO --> SEC
 
-    subgraph L3 ["Level 3: 29 Specialist Worker Roles (staff.py)"]
-        W1["💻 Backend / Frontend / DB Coder"]
-        W2["📚 Vector RAG & Researcher"]
-        W3["🚀 Deployer & Dependency Updater"]
-        W4["🛡️ Blue Team Defense Sentinel"]
-        W5["🚨 Emergency Red Team Operator"]
-        W6["🧪 Test Writer & QA Verifier"]
+    subgraph L3 ["Level 3: Multi-Discipline Specialist Workforce (staff.py)"]
+        W1["💻 Full-Stack & AST Coder"]
+        W2["📈 DCF & Financial Modeler"]
+        W3["🔬 Clinical & PubMed Researcher"]
+        W4["⚖️ Contract & Regulatory Auditor"]
+        W5["🎬 Video Editor & 3D Artist"]
+        W6["🛡️ Blue Team Sentinel & Red Team"]
+        W7["🧪 Test Writer & QA Verifier"]
     end
 
     CTO --> W1
-    SCI --> W2
-    OPS --> W3
-    SEC --> W4
-    SEC --> W5
-    SEC --> W6
+    FIN --> W2
+    SCI --> W3
+    LAW --> W4
+    MEDIA --> W5
+    OPS --> W6
+    OPS --> W7
 
     subgraph L4_10 ["Levels 4 - 10: Cognitive Engines & Self-Improvement"]
         L4["⚡ Level 4: Kahn's DAG Parallel Wave Planner"]
@@ -247,7 +262,7 @@ graph TD
     end
 
     W1 -.-> L4
-    W6 -.-> L5
+    W7 -.-> L5
     L4 --> L5
     L5 --> L6
     L6 --> L7
@@ -262,13 +277,15 @@ graph TD
   * Maintains global project mission, overarching objectives, and multi-turn context (`Global Goal Memory`).
   * Enforces token consumption caps and monetary USD budgets.
   * Serves as final arbitrator for conflicting inter-departmental proposals (`Department Conflict Arbiter`).
-* **Level 2 — 4 Department Team Leads:**
+* **Level 2 — Omni-Domain Executive Department Leads:**
   * **Engineering Lead (CTO):** System architecture, interface contracts, code generation, and API schemas.
-  * **Research Lead (Chief Scientist):** Internet exploration, documentation auditing, and multi-hop Vector RAG.
-  * **Operations Lead (DevOps/SRE):** Terminal command execution, Docker container sandboxes, database migrations, and Git operations.
-  * **Quality & Security Lead (QA/Sec):** AST vulnerability scanning, regression test suites, and automated sandbox rollback.
+  * **Finance & Quantitative Lead:** DCF financial modeling, sensitivity analyses, and GAAP/IFRS regulatory compliance.
+  * **Chief Scientist & Medical Lead:** Multi-hop academic RAG, PubMed/Lancet synthesis, and HIPAA privacy safeguards.
+  * **Legal & Governance Counsel:** IRAC contract audits, regulatory mapping (GDPR, HIPAA, SOC 2), and liability reviews.
+  * **Creative & Multimedia Lead:** Zero-loss FFmpeg video montage pipelines and headless Blender 3D procedural modeling.
+  * **Operations & Security Lead (DevOps/SecOps):** Terminal command execution, Docker sandboxes, SAST vulnerability scanning, and automated rollback.
 * **Level 3 — 29 Specialist Worker Roles (`staff.py`):**
-  * `Backend / Frontend / DB Coder`, `Vector RAG & Researcher`, `Deployer & Dependency Updater`, `Blue Team Defense Sentinel`, `Emergency Red Team Operator`, `Test Writer & QA Verifier`, and specialized domain agents.
+  * `Full-Stack & AST Coder`, `DCF Financial Modeler`, `Clinical & PubMed Researcher`, `Contract & Regulatory Auditor`, `Video Montage & 3D Artist`, `Blue Team Defense Sentinel`, `Emergency Red Team Operator`, `Test Writer & QA Verifier`, and specialized domain agents.
 * **Levels 4 - 10 — Cognitive Engines & Continuous Self-Improvement:**
   * **Level 4: Kahn's DAG Parallel Wave Planner:** Decomposes complex tasks into directed acyclic graphs and executes independent wave tasks concurrently.
   * **Level 5: Reflexion & Multi-Agent Debate Arena:** Facilitates adversarial deliberation between agents to surface edge cases before code execution.
@@ -288,44 +305,51 @@ Universal Agent HP is not restricted to software development. It features a buil
 
 The Omni-Domain subsystem operates as a high-priority steering, compliance, and tool-scoping layer that wraps the agent's Tri-Loop Metacognitive Reasoning Engine:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│              OMNI-DOMAIN ADAPTATION FRAMEWORK — OPERATING ARCHITECTURE                 │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                        │
-│   [Activation Triggers]                                                                │
-│   ├── CLI Parameter        : `python run.py --domain <name>`                           │
-│   ├── Interactive Console  : `/domain [name]` (e.g. `/domain finance`)                 │
-│   ├── Environment Variable : `TITAN_DOMAIN=healthcare`                                │
-│   └── Agent Tools          : `domain_switch`, `domain_create`, `domain_list`           │
-│                                │                                                       │
-│                                ▼                                                       │
-│   [DomainManager Engine (Singleton Registry)]                                          │
-│   ├── Alias Resolution     : `dev` ──> `software_engineering`, `fin` ──> `finance`    │
-│   │                          `med` ──> `healthcare`, `law` ──> `legal`, `sec` ──> `... │
-│   ├── Built-in Store       : 12 pre-configured industry profiles                       │
-│   └── Custom Store         : Dynamic enterprise profiles loaded from `.titan/domains/` │
-│                                │                                                       │
-│                                ▼                                                       │
-│   [Cognitive Overlay Injection Pipeline]                                               │
-│   ├── System 1 (Intuition) : Direct heuristic tone and vocabulary calibration          │
-│   ├── System 2 (Planning)  : Domain-specific methodology (IRAC, GAAP, PubMed, AIDA)    │
-│   ├── System 3 (Overseer)  : Metacognitive checks enforcing compliance & truthfulness │
-│   └── Prompt Steering      : Mandatory regulatory guardrails injected into HUD         │
-│                                │                                                       │
-│                                ▼                                                       │
-│   [Tool Scoping & Policy Gating]                                                       │
-│   ├── Prioritization       : Preferred tools listed with top priority in catalog       │
-│   └── Restriction Gate     : Forbidden tools intercepted via `is_tool_allowed()`       │
-│                                │                                                       │
-│                                ▼                                                       │
-│   [Verified Compliant Industry Delivery]                                               │
-│   ├── Financial Models     : DCF, WACC, GAAP/IFRS balance sheets + non-advisory notice │
-│   ├── Legal Briefs         : IRAC structured briefs + non-counsel regulatory notice    │
-│   ├── Healthcare Analyses  : Peer-reviewed citations (PubMed/Lancet) + HIPAA privacy   │
-│   └── Media & 3D Assets    : Lossless FFmpeg cuts & headless Blender scripts           │
-│                                                                                        │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph IN ["1. Activation Triggers"]
+        T1["⌨️ CLI Parameter: python run.py --domain (name)"]
+        T2["💬 Interactive Console: /domain (name)"]
+        T3["⚙️ Environment Variable: TITAN_DOMAIN=(val)"]
+        T4["🤖 Agent Tools: domain_switch / domain_create"]
+    end
+
+    subgraph MGR ["2. DomainManager Singleton Engine"]
+        D1["🔄 Shorthand Alias Resolver: dev, fin, med, law, sec, video"]
+        D2["🏛️ Built-in Store: 12 Pre-configured Industry Profiles"]
+        D3["💾 Custom Store: Persistent .titan/domains/*.json"]
+        D1 --> D2
+        D2 --> D3
+    end
+
+    subgraph COG ["3. Cognitive Overlay Injection Pipeline"]
+        C1["⚡ System 1: Heuristic Tone & Specialized Vocabulary"]
+        C2["🧠 System 2: Domain Methodologies (GAAP, IRAC, PubMed, AIDA)"]
+        C3["👁️ System 3: Metacognitive Truth & Factuality Checks"]
+        C4["📜 Prompt Steering: Mandatory Regulatory Guardrails in HUD"]
+        C1 --> C2
+        C2 --> C3
+        C3 --> C4
+    end
+
+    subgraph POL ["4. Tool Scoping & Policy Gating"]
+        G1["✅ Preferred Tools: Prioritized in Live LLM Catalog"]
+        G2["⛔ Policy Filter: is_tool_allowed() Interception"]
+        G1 --> G2
+    end
+
+    subgraph OUT ["5. Verified Compliant Industry Delivery"]
+        O1["📈 Finance: DCF Models, GAAP Statements + Non-Advisory Notice"]
+        O2["⚖️ Legal: IRAC Briefs, Contract Audits + Non-Counsel Notice"]
+        O3["⚕️ Healthcare: PubMed/Lancet Evidence + HIPAA Safeguards"]
+        O4["🎬 Multimedia: Lossless FFmpeg Montages + Headless Blender Scripts"]
+        O5["🛡️ Cyber: OWASP Audits, Supply-Chain Scans + Secret Defense"]
+    end
+
+    IN --> MGR
+    MGR --> COG
+    COG --> POL
+    POL --> OUT
 ```
 
 ### 2. Cross-Industry Domain Matrix
