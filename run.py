@@ -64,13 +64,13 @@ def main():
     if args.telegram:
         from titan_agent.telegram_bot import run_bot_standalone
         asyncio.run(run_bot_standalone())
-    elif args.tui:
-        from titan_agent.tui import TitanOS
-        app = TitanOS()
-        app.run()
     elif args.cli:
         from cli import main as cli_main
         asyncio.run(cli_main())
+    elif args.tui or (not args.web and not args.port and len(sys.argv) == 1):
+        from ui.tui_app import UniversalAgentTUI
+        app = UniversalAgentTUI()
+        app.run()
     else:
         display_host = "localhost" if SERVER_HOST in ("0.0.0.0", "127.0.0.1") else SERVER_HOST
         url = f"http://{display_host}:{port}"
@@ -94,8 +94,8 @@ def universal_cli():
     if "--web" in sys.argv:
         main()
     elif "--tui" in sys.argv:
-        from titan_agent.tui import TitanOS
-        app = TitanOS()
+        from ui.tui_app import UniversalAgentTUI
+        app = UniversalAgentTUI()
         app.run()
     elif "--telegram" in sys.argv:
         from titan_agent.telegram_bot import run_bot_standalone

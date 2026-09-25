@@ -68,18 +68,30 @@ Execute a direct autonomous task from the command line:
 universal "Write a python script that prints Hello World"
 ```
 
-### 2. Interactive Terminal CLI
+### 2. Ultra-Modern Terminal TUI (OpenCode / Textual Style)
+Launch the full-screen Textual TUI with active session tabs, real-time thoughts, 27-agent matrix, and command palette:
+
+```bash
+python run.py
+# or explicitly:
+python run.py --tui
+```
+- `shift+tab`: 27 Specialist Agents matrix
+- `ctrl+p`: Command Palette (`/dag`, `/debate`, `/mcp`, `/pr`, `/rollback`, `/status`)
+- `ctrl+l`: Clear terminal log
+
+### 3. Interactive Terminal CLI
 Launch the interactive terminal shell with live syntax highlighting and tool feedback:
 
 ```bash
-universal
+universal --cli
 ```
 
-### 3. Mission Control Web Dashboard
+### 4. Mission Control Web Dashboard
 Launch the web dashboard with real-time SSE event streams and telemetry:
 
 ```bash
-universal --web
+python run.py --web
 ```
 
 Open your browser at `http://localhost:7860` to access the Mission Control UI.

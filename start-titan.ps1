@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     TITAN AGENT - PowerShell launcher script (automatic setup + Web/CLI).
 
@@ -17,6 +17,7 @@
 [CmdletBinding()]
 param(
     [switch]$CLI,
+    [switch]$TUI,
     [int]$Port = 7860,
     [string]$Provider = "",
     [string]$Model = "",
@@ -73,11 +74,14 @@ function Start-Titan {
     Write-Host "============================================================" -ForegroundColor DarkCyan
     Write-Host ""
 
-    if ($CLI) {
+    if ($TUI) {
+        Write-Titan "Starting Ultra-Modern Terminal TUI mode..."
+        & $VenvPy run.py --tui
+    } elseif ($CLI) {
         Write-Titan "Starting Terminal CLI mode..."
         & $VenvPy run.py --cli
     } else {
-        $urlArgs = @("run.py")
+        $urlArgs = @("run.py", "--web")
         if ($Port -ne 7860) { $urlArgs += "--port"; $urlArgs += "$Port" }
         if ($NoBrowser) { $urlArgs += "--no-browser" }
         if ($Provider) { $urlArgs += "--provider"; $urlArgs += $Provider }
