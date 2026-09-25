@@ -73,12 +73,19 @@ HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 HUGGINGFACE_BASE_URL = os.getenv("HUGGINGFACE_BASE_URL", "https://api-inference.huggingface.co/v1")
 
 # Default provider resolution:
-env_provider = os.getenv("TITAN_PROVIDER")
-env_model = os.getenv("TITAN_MODEL")
+env_provider = os.getenv("EXTRA_LLM_X_PROVIDER", os.getenv("ELX_PROVIDER", os.getenv("TITAN_PROVIDER")))
+env_model = os.getenv("EXTRA_LLM_X_MODEL_OVERRIDE", os.getenv("ELX_MODEL", os.getenv("TITAN_MODEL")))
 
 if env_provider:
     DEFAULT_PROVIDER = env_provider
-    DEFAULT_MODEL = env_model or ("gpt-4o" if env_provider == "g4f" else ("auto" if env_provider == "omni" else "hermes3:8b"))
+    if env_provider in ("extra-llm-x", "extra_llm_x", "elx"):
+        DEFAULT_MODEL = env_model or EXTRA_LLM_X_MODEL
+    elif env_provider == "g4f":
+        DEFAULT_MODEL = env_model or "gpt-4o"
+    elif env_provider == "omni":
+        DEFAULT_MODEL = env_model or "auto"
+    else:
+        DEFAULT_MODEL = env_model or "hermes3:8b"
 elif OPENROUTER_API_KEY:
     DEFAULT_PROVIDER = "openrouter"
     DEFAULT_MODEL = "nousresearch/hermes-3-llama-3.1-405b:free"
@@ -101,10 +108,9 @@ elif OMNI_API_KEY:
     DEFAULT_PROVIDER = "omni"
     DEFAULT_MODEL = OMNI_MODEL
 else:
-    # Default to Local Ollama (100% private, reliable, and official).
-    # To use experimental reverse-proxies (g4f/tgpt), set TITAN_PROVIDER=g4f or tgpt explicitly.
-    DEFAULT_PROVIDER = "ollama"
-    DEFAULT_MODEL = "hermes3:8b"
+    # Default to Extra LLM X Unified Gateway (640+ free models)
+    DEFAULT_PROVIDER = "extra-llm-x"
+    DEFAULT_MODEL = EXTRA_LLM_X_MODEL
 
 # ---- Phase 13: provider fallback chain -------------------------------
 # When the primary LLM provider fails with a network / rate-limit / server

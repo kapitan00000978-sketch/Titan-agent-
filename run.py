@@ -17,7 +17,7 @@ if sys.platform == "win32":
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Universal Agent HP - Ultra-powerful Autonomous AI Agent")
+    parser = argparse.ArgumentParser(description="Extra LLM X - Ultra-powerful Autonomous AI Agent")
     parser.add_argument("--cli", action="store_true", help="Launch interactive Terminal CLI mode")
     parser.add_argument("--port", type=int, default=None, help="Web server port (default: from .env, usually 7860)")
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
@@ -78,7 +78,7 @@ def main():
         display_host = "localhost" if SERVER_HOST in ("0.0.0.0", "127.0.0.1") else SERVER_HOST
         url = f"http://{display_host}:{port}"
         print("\n" + "="*60)
-        print("⚡ UNIVERSAL AGENT HP IS STARTING")
+        print("⚡ EXTRA LLM X IS STARTING")
         print(f"🌐 Web Control Panel: {url}")
         print("🔌 MCP Protocol & Multi-Model System Active")
         print("="*60 + "\n")

@@ -1,8 +1,8 @@
 @echo off
-title Universal Agent HP - Autonomous AI Cockpit
+title Extra LLM X - Autonomous AI Cockpit
 color 0b
 echo ========================================================
-echo     UNIVERSAL AGENT HP - AUTONOMOUS AI SYSTEM
+echo         EXTRA LLM X - AUTONOMOUS AI SYSTEM
 echo ========================================================
 echo.
 echo 1) Modern Terminal TUI (Textual / OpenCode style)

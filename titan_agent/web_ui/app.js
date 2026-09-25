@@ -1,4 +1,4 @@
-// Titan Agent Web UI Client Logic
+// Extra LLM X Web UI Client Logic
 
 const messagesStream = document.getElementById("messages-stream");
 const chatForm = document.getElementById("chat-form");
@@ -76,8 +76,8 @@ async function apiFetch(url, options = {}) {
 function promptForApiKey() {
   const current = getApiKey();
   const input = window.prompt(
-    "TITAN AGENT — server authentication is on.\n" +
-    "Enter the TITAN_API_KEY (it was printed once in the server console, or set in .env).\n" +
+    "EXTRA LLM X — server authentication is on.\n" +
+    "Enter the API key (it was printed once in the server console, or set in .env as TITAN_API_KEY / EXTRA_LLM_X_API_KEY).\n" +
     "Leave empty to try the public liveness check only.",
     current
   );
@@ -613,7 +613,7 @@ function createAgentCard() {
   statusLine.className = "status-line";
   statusLine.style.fontSize = "12px";
   statusLine.style.color = "var(--accent-cyan)";
-  statusLine.innerHTML = "⚡ Titan is working...";
+  statusLine.innerHTML = "⚡ Extra LLM X is working...";
   card.appendChild(statusLine);
 
   row.appendChild(card);
@@ -885,7 +885,7 @@ async function sendPuterMessage(prompt, card, statusLine) {
     const messages = [
       {
         role: "system",
-        content: "You are TITAN AGENT — an ultra-powerful autonomous AI reasoning and execution engine running in a web dashboard.\n\n" +
+        content: "You are EXTRA LLM X — an ultra-powerful autonomous AI reasoning and execution engine running in a web dashboard.\n\n" +
           "### PLAN-ACT-VERIFY-REPORT + REFLECT:\n" +
           "1. PLAN: briefly outline your strategy inside <thought>...</thought> before using tools.\n" +
           "2. ACT: use tools via <tool_call>{\"name\": \"tool_name\", \"arguments\": {...}}</tool_call>. Batch independent calls and run them together.\n" +

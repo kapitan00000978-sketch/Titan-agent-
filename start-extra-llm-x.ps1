@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Legacy launcher wrapper -> forwards to start.ps1
+    EXTRA LLM X - PowerShell launcher script wrapper.
 #>
 [CmdletBinding()]
 param(

@@ -1,4 +1,4 @@
-name: CI - Titan Agent Tests
+name: CI - Extra LLM X Tests
 
 on:
   push:
