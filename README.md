@@ -146,6 +146,83 @@ universal --cli
 
 ---
 
+## Agentning To‘liq Ishlash Sikli (Autonomous 6-Stage Lifecycle)
+
+Universal Agent HP har bir vazifani oddiy, bir martalik chaqiruv bilan emas, balki qat'iy **6 bosqichli o'z-o'zini tekshiruvchi yopiq sikl (closed-loop lifecycle)** orqali bajaradi:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│              UNIVERSAL AGENT HP — AVTONOM ISHLASH SIKLI                  │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  [01. Intent Routing & Recall]                                           │
+│   ├── Ko'p tilli niyatni aniqlash (Multilingual Intent Router)           │
+│   ├── Semantik Kesh tekshiruvi (0ms exact/fuzzy hit bo'lsa darhol qaytarish)│
+│   └── Ishchi Xotira HUD (Working Memory) pinned kontekstni yuklash       │
+│                                │                                         │
+│                                ▼                                         │
+│  [02. Dual-Shield & HITL Guard]                                          │
+│   ├── Statik AST inyeksiyalari va maxfiy ma'lumotlar tahlili             │
+│   └── Xavfli amallar to'xtatuvchisi (DangerousActionGate):               │
+│       «Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi?»     │
+│                                │                                         │
+│                                ▼                                         │
+│  [03. Deliberative Planning & Consensus]                                 │
+│   ├── Multi-hop ReAct yoki MCTS (Monte Carlo Tree Search) rejalashtirish │
+│   ├── Konsensus Qo'mitasi (Architect, Security, Pragmatist) vaznli ovozi │
+│   └── Kerakli yangi vosita bo'lmasa: Parvoz paytida Tool Synthesizer     │
+│                                │                                         │
+│                                ▼                                         │
+│  [04. Concurrent Execution & Active Context]                             │
+│   ├── 1-qatorda ulangan MCP serverlar (Postgres, GitHub, Slack, Brave)  │
+│   ├── Episodik Xotira (Experience Replay): O'tmishdagi xatoni eslash    │
+│   └── Xotira Virtualizatori (HUD): Har qadamda faktlar va xatolarni qayd │
+│                                │                                         │
+│                                ▼                                         │
+│  [05. Deep Verification & TDD Loop]                                      │
+│   ├── Qat'iy TDD sikli: RED (test qulashi) -> GREEN (kod) -> REFACTOR    │
+│   ├── Izolyatsiyalangan pytest qumdoni (Deep Verifier)                   │
+│   └── Shannon Entropiya monitoringi: Aylanib to'xtab qolishni sindirish  │
+│                                │                                         │
+│                                ▼                                         │
+│  [06. GitOps Delivery & Verified PR]                                     │
+│   ├── Yangi izolyatsiyalangan tarmoq ochish (agent/feature-<slug>)       │
+│   ├── 100% yashil testlar o'tgandan keyin xavfsiz git commit             │
+│   └── GitHub/GitLab'da avtomatik hisobot bilan Pull Request (PR) ochish  │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Sikl Bosqichlarining Batafsil Vazifasi:
+
+1. **[01. Intent Routing & Recall] — Niyatni Aniqlash va Tezkor Kesh:**
+   * Foydalanuvchi so'rovi (o'zbekcha, inglizcha, ruscha, kod) qabul qilinadi.
+   * Agar savol avval berilgan bo'lsa yoki deyarli o'xshash bo'lsa, **Semantik Kesh** orqali tashqi LLM'ga bormasdan **0ms** ichida javob beriladi (token sarfi tejaladi).
+   * Yangi vazifa bo'lsa, **Ishchi Xotira Virtualizatori (HUD)** tasdiqlangan faktlar va maqsadlarni kontekstga joylaydi.
+
+2. **[02. Dual-Shield & HITL Guard] — Kiber-Xavfsizlik va Inson Nazorati:**
+   * So'rov statik tahlil qilinadi. Cheksiz sikllar, shell inyeksiyalari yoki maxfiy tokenlar fosh bo'lish xavfi elakdan o'tkaziladi.
+   * Agar amal halokatli yoki qaytarib bo'lmaydigan bo'lsa (`rm -rf`, `delete_file`, `git push --force`, `.env` o'zgartirish), agent ishni to'xtatib, Web dashboard, Telegram yoki CLI orqali inson tasdig'ini so'raydi.
+
+3. **[03. Deliberative Planning & Consensus] — Chuqur Rejalashtirish va Konsensus:**
+   * Murakkab topshiriqlarda ko'p qadamli MCTS (Monte Carlo Tree Search) va Bayes gipotezalar daraxti shakllantiriladi.
+   * Yuqori xatarga ega o'zgarishlar oldidan uch mutaxassisdan iborat **Konsensus Qo'mitasi** (`Architect`, `SecurityOfficer`, `Pragmatist`) rasmiy ovoz berish orqali xulosani imzolaydi.
+   * Agar tizimda mavjud bo'lmagan yangi vosita talab qilinsa, **Dynamic Tool Synthesizer** vositani Python'da yozadi, qumdonda test qiladi va tirik registratsiyaga inject qiladi.
+
+4. **[04. Concurrent Execution & Active Context] — Vositalar va Episodik Xotira:**
+   * MCP serverlar (PostgreSQL, GitHub, Slack, Brave Search) orqali tashqi tizimlar bilan parallel yoki ketma-ket amallar bajariladi.
+   * Kutilmagan dasturiy xato (masalan, kutubxona mos kelmasligi) yuz bersa, **Episodik Xotira (Experience Replay)** zudlik bilan avvalgi tajribalarni qidirib, sinovdan o'tgan tuzatish retseptini qo'llaydi.
+
+5. **[05. Deep Verification & TDD Loop] — Chuqur Sinov va TDD Sikli:**
+   * Kod yozilgach, darhol qabul qilinmaydi. Agent dasturiy test yozadi, xato qulashini ko'radi (RED), so'ngra kodni yozadi (GREEN) va AST invariantlarini tekshiradi (REFACTOR).
+   * **Shannon Entropiyasi Nazoratchisi (System 3):** Agar agent bir xil xatoni takrorlayotgan bo'lsa yoki fikr aylanib qolsa, entropiya ko'rsatkichi asosida darhol boshqa strategiyaga o'tadi.
+
+6. **[06. GitOps Delivery & Verified PR] — Xavfsiz Yetkazib Berish:**
+   * Kod asosiy (`main`) tarmoqqa to'g'ridan-to'g'ri qo'shilmaydi.
+   * `agent/feature-<slug>` tarmog'iga ajratiladi, 100% yashil test natijalari bilan commit qilinadi va avtomatik ravishda GitHub'da Pull Request ochiladi.
+
+---
+
 ## Arxitektura: Tri-Loop Metacognitive Execution
 
 ```mermaid
