@@ -9,16 +9,16 @@ echo 1) Modern Terminal TUI (Textual / OpenCode style)
 echo 2) Web Dashboard (control via browser)
 echo 3) Interactive Terminal CLI
 echo.
-set /p choice="Choose (1, 2, or 3) [Default: 1]: "
+set /p choice="Choose (1, 2, or 3) [Default: 2]: "
 
-if "%choice%"=="2" (
-    echo Starting Web Dashboard...
-    powershell -ExecutionPolicy Bypass -File "%~dp0start-titan.ps1"
-) else if "%choice%"=="3" (
-    echo Starting Terminal CLI...
-    powershell -ExecutionPolicy Bypass -File "%~dp0start-titan.ps1" -CLI
-) else (
+if "%choice%"=="1" (
     echo Starting Modern Terminal TUI...
-    powershell -ExecutionPolicy Bypass -File "%~dp0start-titan.ps1" -TUI
+    python run.py --tui
+) else if "%choice%"=="3" (
+    echo Starting Interactive Terminal CLI...
+    python run.py --cli
+) else (
+    echo Starting Web Dashboard on http://localhost:7860 ...
+    python run.py --web
 )
 pause

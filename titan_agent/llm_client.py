@@ -33,6 +33,15 @@ from .config import (
     MISTRAL_BASE_URL,
     HUGGINGFACE_API_KEY,
     HUGGINGFACE_BASE_URL,
+    EXTRA_LLM_X_API_KEY,
+    EXTRA_LLM_X_BASE_URL,
+    EXTRA_LLM_X_MODEL,
+    TOGETHER_API_KEY,
+    TOGETHER_BASE_URL,
+    CEREBRAS_API_KEY,
+    CEREBRAS_BASE_URL,
+    COHERE_API_KEY,
+    COHERE_BASE_URL,
     provider_default_model,
     provider_fallback_chain,
     provider_fallback_models,
@@ -59,9 +68,15 @@ _PROVIDER_API_KEY_ATTR = {
     "omni": "OMNI_API_KEY",
     "completions": "COMPLETIONS_API_KEY",
     "openai": "OPENAI_API_KEY",
+    "extra-llm-x": "EXTRA_LLM_X_API_KEY",
+    "extra_llm_x": "EXTRA_LLM_X_API_KEY",
+    "elx": "EXTRA_LLM_X_API_KEY",
+    "together": "TOGETHER_API_KEY",
+    "cerebras": "CEREBRAS_API_KEY",
+    "cohere": "COHERE_API_KEY",
 }
 # Local / browser / free providers never need a key.
-_LOCAL_PROVIDERS = frozenset({"ollama", "lmstudio", "puter", "g4f", "tgpt", "laya-mlx"})
+_LOCAL_PROVIDERS = frozenset({"ollama", "lmstudio", "puter", "g4f", "tgpt", "laya-mlx", "extra-llm-x", "extra_llm_x", "elx"})
 
 
 class LLMResponse:
@@ -154,6 +169,21 @@ class LLMClient:
             # Hugging Face Serverless Inference
             self.base_url = HUGGINGFACE_BASE_URL
             self.api_key = HUGGINGFACE_API_KEY
+        elif self.provider in ("extra-llm-x", "extra_llm_x", "elx"):
+            # Extra LLM X — Unified Autonomous AI Gateway
+            self.base_url = EXTRA_LLM_X_BASE_URL
+            self.api_key = EXTRA_LLM_X_API_KEY
+            if self.model == DEFAULT_MODEL:
+                self.model = EXTRA_LLM_X_MODEL
+        elif self.provider == "together":
+            self.base_url = TOGETHER_BASE_URL
+            self.api_key = TOGETHER_API_KEY
+        elif self.provider == "cerebras":
+            self.base_url = CEREBRAS_BASE_URL
+            self.api_key = CEREBRAS_API_KEY
+        elif self.provider == "cohere":
+            self.base_url = COHERE_BASE_URL
+            self.api_key = COHERE_API_KEY
         else:
             self.base_url = OPENAI_BASE_URL
             self.api_key = OPENAI_API_KEY

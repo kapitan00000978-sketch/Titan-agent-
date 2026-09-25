@@ -33,6 +33,28 @@ OMNI_BASE_URL = os.getenv("OMNI_BASE_URL", "http://localhost:20128/v1")
 OMNI_MODEL = os.getenv("OMNI_MODEL", "auto")
 OMNI_AUTO_MODELS = ("auto", "auto/coding", "auto/fast", "auto/smart", "auto/offline", "auto/cheap")
 
+# Extra LLM X — Unified Autonomous Gateway (localhost:3000)
+EXTRA_LLM_X_API_KEY = os.getenv("EXTRA_LLM_X_API_KEY", os.getenv("ELX_API_KEY", "extra-llm-x-free-key"))
+EXTRA_LLM_X_BASE_URL = os.getenv("EXTRA_LLM_X_BASE_URL", os.getenv("ELX_BASE_URL", "http://localhost:3000/v1"))
+EXTRA_LLM_X_MODEL = os.getenv("EXTRA_LLM_X_MODEL", "extra/auto-free")
+EXTRA_LLM_X_MODELS = (
+    "extra/auto-free",
+    "extra/free-coding",
+    "extra/free-fast",
+    "extra/free-reasoning",
+    "extra/free-vision",
+)
+
+# Additional Free / Frontier Providers:
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "")
+TOGETHER_BASE_URL = os.getenv("TOGETHER_BASE_URL", "https://api.together.xyz/v1")
+
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "")
+CEREBRAS_BASE_URL = os.getenv("CEREBRAS_BASE_URL", "https://api.cerebras.ai/v1")
+
+COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
+COHERE_BASE_URL = os.getenv("COHERE_BASE_URL", "https://api.cohere.com/v2")
+
 
 # Additional Free Tier API Key Providers:
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -128,6 +150,12 @@ def provider_default_model(provider: str) -> str | None:
         "github": "gpt-4o",
         "mistral": "codestral-latest",
         "huggingface": "meta-llama/Llama-3.2-3B-Instruct",
+        "extra-llm-x": EXTRA_LLM_X_MODEL,
+        "extra_llm_x": EXTRA_LLM_X_MODEL,
+        "elx": EXTRA_LLM_X_MODEL,
+        "together": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "cerebras": "llama3.3-70b",
+        "cohere": "command-r-plus",
     }.get(provider)
 
 # ---- Phase 17: bounded parallel tool execution -------------------------
