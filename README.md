@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Architecture: Tri--Loop](https://img.shields.io/badge/Architecture-Tri--Loop%20Metacognition-purple.svg)](#architecture-genesis-10-level-cognitive-swarm-hierarchy-levels-1---10)
-[![Tests: 675+ Passing](https://img.shields.io/badge/tests-675%2B%20passing-brightgreen.svg)](#testing--security)
+[![Tests: 690+ Passing](https://img.shields.io/badge/tests-690%2B%20passing-brightgreen.svg)](#testing--security)
 
 Universal Agent HP is an autonomous AI software engineering and operations operating system built for real-world production environments. It fuses **Tri-Loop Metacognitive Reasoning**, an **Autonomous TDD Engine**, **Anthropic Model Context Protocol (MCP)** integration, **Human-in-the-Loop Guardrails**, and **Local Semantic Caching** into a verified, drift-free execution framework.
 
@@ -75,7 +75,7 @@ Universal Agent HP is engineered to solve acute, real-world engineering bottlene
    * **Terminal TUI:** Full-screen Textual dark interface (`python run.py`).
    * **Mission Control Web Dashboard:** Real-time visual control panel with SSE telemetry (`python run.py --web`).
    * **Interactive Terminal CLI & Telegram:** Lightweight console shell and remote mobile bot.
-5. **Comprehensive Automated Verification:** 685+ unit and integration tests verified 100% green on every commit via GitHub Actions CI across Python 3.11 and 3.12.
+5. **Comprehensive Automated Verification:** 690+ unit and integration tests verified 100% green on every commit via GitHub Actions CI across Python 3.11 and 3.12.
 6. **Multimedia & 3D Engineering (Video Montage & Blender bpy):**
    * **Automated Video Editing:** Zero-loss cuts (`-c copy`), dynamic aspect ratio conversion (16:9 to vertical 9:16 for Reels/Shorts/TikTok), multi-track audio sync, and speed alterations powered by `VideoEngine` and FFmpeg.
    * **Headless Blender 3D (bpy):** Procedural 3D mesh synthesis (cubes, spheres, cylinders, toruses), PBR material assignment (`Principled BSDF`), 3-point studio lighting, and background batch rendering via `BlenderEngine`.
@@ -280,9 +280,162 @@ graph TD
 
 ---
 
+## Omni-Domain Industry Adaptation Framework (Cross-Industry Operating Architecture)
+
+Universal Agent HP is not restricted to software development. It features a built-in, enterprise-grade **Omni-Domain Industry Adaptation Framework** (`titan_agent/core/domain/`) that enables the system to reconfigure its persona, cognitive methodologies, regulatory guardrails, and tool catalog on the fly for any field, profession, or industry vertical.
+
+### 1. Operational Working Structure & Execution Flow
+
+The Omni-Domain subsystem operates as a high-priority steering, compliance, and tool-scoping layer that wraps the agent's Tri-Loop Metacognitive Reasoning Engine:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│              OMNI-DOMAIN ADAPTATION FRAMEWORK — OPERATING ARCHITECTURE                 │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│   [Activation Triggers]                                                                │
+│   ├── CLI Parameter        : `python run.py --domain <name>`                           │
+│   ├── Interactive Console  : `/domain [name]` (e.g. `/domain finance`)                 │
+│   ├── Environment Variable : `TITAN_DOMAIN=healthcare`                                │
+│   └── Agent Tools          : `domain_switch`, `domain_create`, `domain_list`           │
+│                                │                                                       │
+│                                ▼                                                       │
+│   [DomainManager Engine (Singleton Registry)]                                          │
+│   ├── Alias Resolution     : `dev` ──> `software_engineering`, `fin` ──> `finance`    │
+│   │                          `med` ──> `healthcare`, `law` ──> `legal`, `sec` ──> `... │
+│   ├── Built-in Store       : 12 pre-configured industry profiles                       │
+│   └── Custom Store         : Dynamic enterprise profiles loaded from `.titan/domains/` │
+│                                │                                                       │
+│                                ▼                                                       │
+│   [Cognitive Overlay Injection Pipeline]                                               │
+│   ├── System 1 (Intuition) : Direct heuristic tone and vocabulary calibration          │
+│   ├── System 2 (Planning)  : Domain-specific methodology (IRAC, GAAP, PubMed, AIDA)    │
+│   ├── System 3 (Overseer)  : Metacognitive checks enforcing compliance & truthfulness │
+│   └── Prompt Steering      : Mandatory regulatory guardrails injected into HUD         │
+│                                │                                                       │
+│                                ▼                                                       │
+│   [Tool Scoping & Policy Gating]                                                       │
+│   ├── Prioritization       : Preferred tools listed with top priority in catalog       │
+│   └── Restriction Gate     : Forbidden tools intercepted via `is_tool_allowed()`       │
+│                                │                                                       │
+│                                ▼                                                       │
+│   [Verified Compliant Industry Delivery]                                               │
+│   ├── Financial Models     : DCF, WACC, GAAP/IFRS balance sheets + non-advisory notice │
+│   ├── Legal Briefs         : IRAC structured briefs + non-counsel regulatory notice    │
+│   ├── Healthcare Analyses  : Peer-reviewed citations (PubMed/Lancet) + HIPAA privacy   │
+│   └── Media & 3D Assets    : Lossless FFmpeg cuts & headless Blender scripts           │
+│                                                                                        │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. Cross-Industry Domain Matrix
+
+The framework comes pre-loaded with 12 production-grade industry profiles:
+
+| Domain | Icon | Aliases | Operational Methodology | Mandatory Regulatory Guardrail | Preferred Tools |
+| :--- | :---: | :--- | :--- | :--- | :--- |
+| **Universal** | 🌐 | `all`, `general` | Dynamic multi-disciplinary reasoning adapting across all human knowledge and technical tasks | Verify facts and cite sources across all empirical claims | `execute_command`, `read_file`, `write_file`, `web_search` |
+| **Software Engineering** | 💻 | `dev`, `code`, `coding` | AST surgical patching, clean architecture, TDD cycles, isolated GitOps branches | Zero AST security violations, credential protection, HITL destructive approval | `deep_coder`, `execute_command`, `edit_file`, `workspace_rag` |
+| **Finance & Banking** | 📈 | `fin`, `money` | DCF valuations, WACC, sensitivity modeling, GAAP/IFRS financial statements | **Non-Advisory Disclaimer**: Educational only; zero unauthorized live transactions | `python_eval`, `web_search`, `scrape_webpage`, `read_file` |
+| **Healthcare & Medicine** | ⚕️ | `med`, `health` | Evidence-based synthesis, PubMed/Lancet citations, pharmacological mechanisms | **Clinical Safety Disclaimer**: Educational/research only; strict HIPAA privacy | `web_search`, `deep_search`, `scrape_webpage`, `python_eval` |
+| **Legal & Compliance** | ⚖️ | `law` | IRAC/CREAC structuring, contract clause scrutiny, GDPR/HIPAA/SOC 2 regulatory mapping | **Legal Counsel Disclaimer**: Structural research only; zero document leakage | `workspace_rag`, `read_file`, `write_file`, `web_search` |
+| **Marketing & Growth** | 📢 | `mark` | AIDA, PAS, and StoryBrand frameworks, SEO search intent hierarchy, viral hooks | Truth in advertising; zero deceptive metrics, clickbait, or spam | `web_search`, `scrape_webpage`, `read_file`, `write_file` |
+| **Scientific Research** | 🔬 | `sci` | Falsifiable hypotheses, LaTeX mathematical notation, statistical significance (p-values) | Strict academic integrity; zero synthetic citations or hallucinated papers | `python_eval`, `web_search`, `deep_search`, `scrape_webpage` |
+| **Education & Pedagogy** | 🎓 | `edu` | Socratic inquiry, progressive hints, Feynman technique intuitive analogies | Active comprehension over homework cheating; age-appropriate guidance | `web_search`, `python_eval`, `read_file`, `write_file` |
+| **E-Commerce & Retail** | 🛒 | `shop`, `store` | Conversion-focused copywriting, unit economics (CAC, LTV, ROAS), inventory modeling | Consumer protection disclosures, clear warranty/return terms, order privacy | `web_search`, `scrape_webpage`, `python_eval`, `read_file` |
+| **Customer Support** | 🎧 | `help`, `support` | Empathetic communication, first-contact resolution, de-escalation, knowledge-base FAQs | Never request user credentials; structured tier-2 escalation protocols | `read_file`, `write_file`, `workspace_rag`, `web_search` |
+| **Multimedia & 3D** | 🎬 | `video`, `blender` | Lossless FFmpeg stream-copy cuts (`-c copy`), 9:16 mobile formats, headless Blender `bpy` | Non-destructive source media protection; disk storage exhaustion checks | `video_probe`, `video_montage_command`, `blender_generate_scene` |
+| **Cybersecurity & SecOps**| 🛡️ | `sec`, `security` | OWASP Top 10 SAST audits, dependency supply-chain scanning, high-entropy secret detection| Defensive mitigation and confidential disclosure; zero unauthorized exploits | `sast_scan`, `secret_scan`, `dependency_audit`, `workspace_rag` |
+
+### 3. Practical Usage & Domain Switching
+
+#### Option A: Command-Line Interface (Startup Flag)
+Start Universal Agent HP pre-configured for any industry:
+```bash
+# Launch in Finance & Quantitative Modeling mode
+python run.py --domain finance
+
+# Launch in Legal & Compliance mode
+python run.py --domain legal
+
+# Launch in Healthcare mode using shorthand alias
+python run.py --domain med
+```
+
+#### Option B: Interactive Slash Command (Runtime Switching)
+Switch domains mid-conversation without restarting:
+```text
+/domain marketing      # Switches active persona and guardrails to Marketing
+/domain dev            # Switches back to Software Engineering & DevOps
+/domain                # Displays active domain, regulatory disclaimers, and catalog
+```
+
+#### Option C: TUI Command Palette
+In the Textual TUI (`python run.py`), press <kbd>Ctrl</kbd> + <kbd>P</kbd> to open the Command Palette and select `/domain` to switch active profiles interactively.
+
+#### Option D: Agent Self-Adaptation Tools
+The agent can inspect and reconfigure its own operational domain autonomously:
+* `domain_list`: Lists all registered built-in and enterprise custom profiles.
+* `domain_switch`: Changes the operational profile based on task requirements.
+* `domain_get_active`: Inspects current guardrails, persona overlays, and active tool restrictions.
+* `domain_create`: Constructs and registers a brand-new custom enterprise profile on the fly.
+
+### 4. Custom Enterprise Domain Profiles (`.titan/domains/*.json`)
+
+Organizations can define custom domain profiles with bespoke regulatory guardrails, restricted toolsets, and specialized methodologies. Custom profiles are automatically loaded from `.titan/domains/*.json`:
+
+```json
+{
+  "name": "aerospace_engineering",
+  "display_name": "Aerospace & Avionics Systems",
+  "icon": "🚀",
+  "description": "DO-178C avionics software verification, telemetry analysis, and orbital mechanics modeling.",
+  "system_prompt_overlay": "1. SAFETY-CRITICAL: Adhere to DO-178C Level A verification standards.\n2. TELEMETRY: Parse and validate telemetry data with Python scientific tools.\n3. TRACEABILITY: Ensure bidirectional requirement-to-code traceability.",
+  "mandatory_guardrails": [
+    "Verify fault-tolerant safety boundaries before approving any control loop modification.",
+    "Zero tolerated unchecked floating-point arithmetic or buffer overflow vulnerabilities."
+  ],
+  "forbidden_tools": ["execute_unverified_binary"],
+  "preferred_tools": ["python_eval", "workspace_rag", "deep_coder", "read_file"],
+  "suggested_skills": ["coding-rules", "security-ops"],
+  "custom_rules": {
+    "standard": "DO-178C",
+    "target_platform": "RTOS"
+  }
+}
+```
+
+---
+
+## Multimedia & 3D Creative Engineering (Video Montage & Blender Pipelines)
+
+Universal Agent HP includes dedicated skills, engines, and tool interfaces for automated video production and headless 3D asset generation:
+
+### 1. Automated Video Editing Engine (`VideoEngine`)
+* **Lossless Stream-Copy Trimming:** Generates instant zero-reencoding cuts using FFmpeg `-c copy`.
+* **Aspect Ratio & Platform Targeting:** Re-encodes horizontal footage (16:9) to vertical format (9:16, 1080x1920) optimized for YouTube Shorts, Instagram Reels, and TikTok.
+* **Audio Track Synchronization:** Multi-channel audio mixing (`amix`), volume normalization, and background music blending.
+* **Playback Velocity Modulation:** Video speed adjustment using `setpts` filters and pitch-corrected audio re-timing via `atempo`.
+* **Skill Playbook:** Reference guide located in [`skills/video-editing.md`](skills/video-editing.md).
+
+### 2. Headless Blender 3D Synthesis (`BlenderEngine`)
+* **Procedural Scene Generation:** Synthesizes standalone, verifiable Python scripts utilizing Blender's `bpy` API.
+* **Mesh & Primitive Creation:** Procedural generation of cubes, UV spheres, cylinders, toruses, and camera/lighting rigs.
+* **PBR Material Assignment:** Configures `Principled BSDF` shader nodes with metallic, roughness, and custom base color vectors.
+* **Headless Background Execution:** Renders scenes and exports 3D models via `blender -b -P <script.py>` without requiring a graphical display.
+* **Skill Playbook:** Reference guide located in [`skills/blender-ops.md`](skills/blender-ops.md).
+
+### 3. Multimedia Agent Tools
+* `video_probe(file_path)`: Extracts duration, dimensions, framerate, video/audio codecs, and bitrate metadata.
+* `video_montage_command(operation, input_video, output_video, ...)`: Produces validated FFmpeg command recipes.
+* `blender_generate_scene(primitive, output_image, engine, save_path)`: Synthesizes procedural Blender 3D scripts.
+* `blender_execute_script(script_path)`: Executes Blender scripts in headless background mode with standard output tail capture.
+
+---
+
 ## Testing & Security
 
-* **Automated Test Suite:** Execute tests via `pytest tests/ -q` (**675+ unit and integration tests passing 100% green**).
+* **Automated Test Suite:** Execute tests via `pytest tests/ -q` (**690+ unit and integration tests passing 100% green**).
 * **Integrated Security:** AST invariant verification, secret scanning, and destructive command interception are embedded directly into the execution pipeline.
 
 ---
