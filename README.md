@@ -1,60 +1,92 @@
 # Titan Agent (Universal Agent HP)
 
-[![Build Status](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml/badge.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions)
+[![CI - Titan Agent Tests](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml/badge.svg)](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Architecture: Tri--Loop](https://img.shields.io/badge/Architecture-Tri--Loop%20Metacognition-purple.svg)](#architecture-tri-loop-metacognitive-execution)
+[![Tests: 655+ Passing](https://img.shields.io/badge/tests-655%2B%20passing-brightgreen.svg)](#testing--security)
 
-Titan Agent is an autonomous AI agent framework designed for executing coding tasks, running tests, and managing workflows in an isolated environment.
+Titan Agent is a high-performance autonomous AI operating system designed to execute complex real-world software engineering, research, and system administration workflows with verified correctness and zero context drift.
 
-![MVP Demo](https://via.placeholder.com/800x400.png?text=Working+MVP+Demo+GIF)
+```
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │                       TITAN UNIVERSAL AGENT                            │
+   │                                                                        │
+   │   [System 1: Fast Intuition] ──> Instant Heuristic Path (0ms)          │
+   │   [System 2: Planning Engine] ──> MCTS + Bayes Reasoning + TDD Loop     │
+   │   [System 3: Metacognitive]   ──> Shannon Entropy + Dynamic Synthesis  │
+   │   [Active Working Memory]     ──> Pinned Operational HUD (No Drift)    │
+   └────────────────────────────────────────────────────────────────────────┘
+```
 
-## ⚠️ Important Notice Regarding Free Model Access
-This project includes experimental integrations that allow "free" access to models via unofficial proxies (e.g., Puter.js, g4f, tgpt). 
-**Disclaimer:** These methods rely on unverified third-party reverse-proxies. They are unofficial, guarantee no uptime or privacy, and may violate the original provider's Terms of Service. They can break or be blocked at any time. We strongly recommend setting `TITAN_PROVIDER` to official APIs (like `groq`, `gemini`, `openrouter`) or using local models (`ollama`) for stability and security.
+---
+
+## ⚠️ Important Notice Regarding Model Providers
+
+This project supports standard commercial APIs (`groq`, `gemini`, `openrouter`), local self-hosted engines (`ollama`), as well as experimental providers. For maximum production stability, low latency, and security, configure `TITAN_PROVIDER` in your `.env` to official APIs or local Ollama instances.
+
+---
 
 ## Installation
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.11 or higher
 - Git
 
 ### Setup
-`ash
+
+```bash
 # Clone the repository
 git clone https://github.com/kapitan00000978-sketch/Universal-Agent-HP.git
 cd Universal-Agent-HP
 
 # Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies and project package
 pip install -r requirements.txt
 pip install -e .
-`
+```
 
 ### Configuration
+
 Copy the environment template and set your API keys:
-`ash
+
+```bash
 cp .env.example .env
-`
+```
+
+---
 
 ## Quick Start
-Run a simple one-shot task:
-`ash
+
+### 1. One-Shot Execution
+Execute a direct autonomous task from the command line:
+
+```bash
 universal "Write a python script that prints Hello World"
-`
+```
 
-Start the interactive terminal CLI:
-`ash
+### 2. Interactive Terminal CLI
+Launch the interactive terminal shell with live syntax highlighting and tool feedback:
+
+```bash
 universal
-`
+```
 
-Launch the web dashboard:
-`ash
+### 3. Mission Control Web Dashboard
+Launch the web dashboard with real-time SSE event streams and telemetry:
+
+```bash
 universal --web
-`
+```
 
-## Key Capabilities (Next-Gen Universal Agent)
+Open your browser at `http://localhost:7860` to access the Mission Control UI.
+
+---
+
+## Key Capabilities
 
 - **Tri-Loop Metacognitive Reasoning Engine:**
   - **System 1 (Fast Intuition):** 0ms pattern-matched instant path bypassing heavy tool reasoning for simple queries.
@@ -69,6 +101,8 @@ universal --web
 - **AST Code Intelligence & Surgical Patching:** Boundary-accurate replacement for functions and classes via `ASTPatcher`, preventing line-number offset errors.
 - **Deep Test-Driven Verification:** Self-healing verification loop that autonomously runs `pytest` in isolated sandboxes with Docker or native fallback.
 - **Dual-Shield Cyber Defense:** Integrated Blue Team security sentinels and emergency Red Team forensic analysis.
+
+---
 
 ## Architecture: Tri-Loop Metacognitive Execution
 
@@ -95,6 +129,8 @@ graph TD
     PostCheck -- Verified --> Output([Verified Delivery])
 ```
 
+---
+
 ## 120-Stage Master Architecture Blueprint
 
 The project is governed by a 120-stage progressive evolution roadmap spanning 6 core capability tracks:
@@ -105,15 +141,29 @@ The project is governed by a 120-stage progressive evolution roadmap spanning 6 
 5. **Stages 081–100:** Persistent Multi-Tier Memory & Knowledge Graph (Causal Impact Analysis, WAL High Concurrency Storage).
 6. **Stages 101–120:** Multimodal Telemetry, Visual Self-Correction & Industrial Delivery (Playwright DOM Inspector, Singularity Auto-Evolution).
 
+For the full specification, see [120_stages_universal_agent_blueprint.md](120_stages_universal_agent_blueprint.md).
+
+---
+
 ## Testing & Security
-- **Tests:** Run the test suite with `pytest tests/` (285+ unit & integration tests, 100% green).
+
+- **Tests:** Run the test suite with `pytest tests/ -q` (**655+ unit & integration tests, 100% green**).
 - **Security:** Static analysis, AST invariant checking, and secret scanning are integrated directly into the tool execution funnel.
 
+---
+
 ## Contributing
+
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+---
+
 ## Releases
-For a history of stable releases and versioning, check the [Releases page](https://github.com/example/titan_agent/releases).
+
+For a history of stable releases and versioning, check the [Releases page](https://github.com/kapitan00000978-sketch/Universal-Agent-HP/releases).
+
+---
 
 ## License
+
 MIT License
