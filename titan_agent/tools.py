@@ -1702,7 +1702,7 @@ class ToolRegistry:
                 "type": "function",
                 "function": {
                     "name": "hitl_request_approval",
-                    "description": "HUMAN-IN-THE-LOOP: Requests explicit human approval before executing destructive actions (e.g., file deletes, force pushes, secret edits). Prompts user: 'Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]'.",
+                    "description": "HUMAN-IN-THE-LOOP: Requests explicit human approval before executing destructive actions (e.g., file deletes, force pushes, secret edits). Prompts user: 'I am about to execute this action. Do you authorize this? [Yes / No]'.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -2225,7 +2225,7 @@ class ToolRegistry:
         """Requests human confirmation for sensitive operations."""
         from titan_agent.core.guardrails.dangerous_actions import DangerousActionClassifier
         assessment = DangerousActionClassifier.assess_action(action, resource, {"reason": reason})
-        prompt = assessment.suggested_prompt or f"«Bu amalni ({action} on {resource}) bajarmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»"
+        prompt = assessment.suggested_prompt or f"I am about to execute ({action} on {resource}). Do you authorize this? [Yes / No]"
         if getattr(self, "hitl", None) is not None:
             gate = getattr(self, "_dangerous_gate", None)
             if not gate:

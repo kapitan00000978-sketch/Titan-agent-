@@ -58,9 +58,9 @@ class DangerousActionClassifier:
             for pattern, level, category, desc in cls.DESTRUCTIVE_COMMAND_PATTERNS:
                 if re.search(pattern, command, re.IGNORECASE):
                     prompt = (
-                        f"«Bu amalni ({category}: `{command[:100]}`) bajarmoqchiman. "
-                        "U tizimda qaytarib bo'lmaydigan o'zgarishlarga olib kelishi mumkin. "
-                        "Ruxsat berasizmi? [Ha / Yo‘q]»"
+                        f"I am about to execute: {category} (`{command[:100]}`). "
+                        "This may cause irreversible changes to your system or repository. "
+                        "Do you authorize this action? [Yes / No]"
                     )
                     return RiskAssessment(
                         is_dangerous=True,
@@ -75,8 +75,8 @@ class DangerousActionClassifier:
             for pat in cls.SENSITIVE_FILES_PATTERNS:
                 if re.search(pat, path, re.IGNORECASE):
                     prompt = (
-                        f"«Ushbu nozik konfiguratsiya faylini (`{path}`) o‘zgartirmoqchiman. "
-                        "Ruxsat berasizmi? [Ha / Yo‘q]»"
+                        f"I am about to modify sensitive configuration file (`{path}`). "
+                        "Do you authorize this action? [Yes / No]"
                     )
                     return RiskAssessment(
                         is_dangerous=True,
@@ -87,7 +87,7 @@ class DangerousActionClassifier:
                     )
 
         if action == "delete_file":
-            prompt = f"«Ushbu faylni (`{path}`) butunlay o‘chirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»"
+            prompt = f"I am about to permanently delete this file (`{path}`). Do you authorize this action? [Yes / No]"
             return RiskAssessment(
                 is_dangerous=True,
                 risk_level="HIGH",

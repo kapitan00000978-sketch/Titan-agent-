@@ -14,7 +14,7 @@ def test_dangerous_action_classifier_detects_force_push():
     assert assessment.is_dangerous is True
     assert assessment.risk_level == "CRITICAL"
     assert "git_force_push" in assessment.category
-    assert "Ruxsat berasizmi? [Ha / Yo‘q]" in assessment.suggested_prompt
+    assert "Do you authorize this action? [Yes / No]" in assessment.suggested_prompt
 
 
 def test_dangerous_action_classifier_detects_rm_rf():
@@ -35,7 +35,7 @@ def test_dangerous_action_classifier_detects_env_edit():
     assert assessment.is_dangerous is True
     assert assessment.risk_level == "HIGH"
     assert "sensitive_file_modification" in assessment.category
-    assert "Ruxsat berasizmi? [Ha / Yo‘q]" in assessment.suggested_prompt
+    assert "Do you authorize this action? [Yes / No]" in assessment.suggested_prompt
 
 
 def test_safe_action_passes_without_flag():

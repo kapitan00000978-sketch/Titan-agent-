@@ -2031,7 +2031,7 @@ Titan. An interrupted session resumes from the exact state it stopped at.
 
 ### 2. Human-in-the-Loop (HITL) Dangerous Action Gate
 - Real-time classification of destructive commands (`rm -rf`, `delete_file`, `git push --force`, `.env` tampering, raw disk formats).
-- Interactive approval gate: *«Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»*.
+- Interactive approval gate: *"I am about to execute a destructive operation. Do you authorize this action? [Yes / No]"*.
 
 ### 3. Automated GitOps Branching & PR Engine
 - Feature isolation on `agent/feature-<slug>` branches.

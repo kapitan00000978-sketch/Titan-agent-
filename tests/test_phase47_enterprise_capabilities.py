@@ -35,7 +35,7 @@ async def test_tool_registry_hitl_approval_prompt(tmp_path):
         resource="git",
         reason="git push origin main --force",
     )
-    assert "Ruxsat berasizmi? [Ha / Yo‘q]" in prompt_res
+    assert "Do you authorize this? [Yes / No]" in prompt_res
 
 
 def test_tool_registry_git_branch_and_pr(tmp_path):

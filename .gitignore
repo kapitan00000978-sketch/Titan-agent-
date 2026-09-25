@@ -9,11 +9,12 @@ build/
 eggs/
 .eggs/
 
-# ===== Venv / Environment =====
+# ===== Venv / Environment / Node =====
 .venv/
 venv/
 env/
 ENV/
+node_modules/
 
 # ===== Secrets =====
 # .env stays local — never uploaded to GitHub (.env.example is committed)

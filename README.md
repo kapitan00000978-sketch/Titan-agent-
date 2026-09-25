@@ -45,7 +45,7 @@ Universal Agent HP is engineered to solve acute, real-world engineering bottlene
 ### 4. Halting Catastrophic Actions (Human-in-the-Loop Safety)
 * **The Problem:** AI agents inadvertently executing destructive commands (`rm -rf`, `delete_file`, `git push --force`, or leaking credentials in `.env`).
 * **Universal Agent Solution:** The `DangerousActionClassifier` intercepts irreversible actions and halts execution, prompting the operator across Terminal TUI, Web Dashboard, or Telegram:
-  > *«Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi? [Ha / Yo‘q]»*  
+  > *"I am about to execute a destructive operation. Do you authorize this action? [Yes / No]"*  
   Zero destructive actions execute without explicit human authorization.
 
 ### 5. Slashing LLM Token Costs by 30–40% (Semantic Caching)
@@ -171,7 +171,7 @@ Universal Agent HP processes every complex engineering task through a discipline
 │  [02. Dual-Shield & HITL Guard]                                          │
 │   ├── Static AST injection and secret credential scanning                │
 │   └── Dangerous Action Gate (HITL approval prompts):                     │
-│       «Bu fayllarni/amallarni o‘zgartirmoqchiman. Ruxsat berasizmi?»     │
+│       "I am about to execute a destructive operation. Authorize? [Y/N]"  │
 │                                │                                         │
 │                                ▼                                         │
 │  [03. Deliberative Planning & Consensus]                                 │

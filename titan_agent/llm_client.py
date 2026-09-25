@@ -23,9 +23,6 @@ from .config import (
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     OPENROUTER_API_KEY,
-    EXTRA_LLM_X_API_KEY,
-    EXTRA_LLM_X_BASE_URL,
-    EXTRA_LLM_X_MODEL,
     GEMINI_API_KEY,
     GEMINI_BASE_URL,
     SAMBANOVA_API_KEY,
@@ -50,9 +47,6 @@ log = logging.getLogger(__name__)
 # chain unless it already has its key baked in.
 _PROVIDER_API_KEY_ATTR = {
     "openrouter": "OPENROUTER_API_KEY",
-    "extra-llm-x": "EXTRA_LLM_X_API_KEY",
-    "extra_llm_x": "EXTRA_LLM_X_API_KEY",
-    "elx": "EXTRA_LLM_X_API_KEY",
     "groq": "GROQ_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "sambanova": "SAMBANOVA_API_KEY",
@@ -67,7 +61,7 @@ _PROVIDER_API_KEY_ATTR = {
     "openai": "OPENAI_API_KEY",
 }
 # Local / browser / free providers never need a key.
-_LOCAL_PROVIDERS = frozenset({"ollama", "lmstudio", "puter", "g4f", "tgpt", "laya-mlx", "extra-llm-x", "extra_llm_x", "elx"})
+_LOCAL_PROVIDERS = frozenset({"ollama", "lmstudio", "puter", "g4f", "tgpt", "laya-mlx"})
 
 
 class LLMResponse:
@@ -140,12 +134,6 @@ class LLMClient:
             # Completions.me — free OpenAI-compatible gateway (Claude Opus/GPT-5/Gemini/Grok).
             self.base_url = COMPLETIONS_BASE_URL
             self.api_key = COMPLETIONS_API_KEY
-        elif self.provider in ("extra-llm-x", "extra_llm_x", "elx"):
-            # Extra LLM X — Autonomous 100% Free AI Gateway
-            self.base_url = EXTRA_LLM_X_BASE_URL
-            self.api_key = EXTRA_LLM_X_API_KEY
-            if self.model == DEFAULT_MODEL:
-                self.model = EXTRA_LLM_X_MODEL
         elif self.provider == "gemini":
             # Google AI Studio (Gemini 2.0 Flash / Pro)
             self.base_url = GEMINI_BASE_URL
